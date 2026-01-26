@@ -1,0 +1,130 @@
+/* Trackeep Global Styles */
+
+@import './fonts.css';
+
+:root {
+  /* Color Scheme */
+  --color-primary: 57 185 255;
+  --color-primary-foreground: 255 255 255;
+  
+  --color-background: 24 24 27; /* #18181b */
+  --color-foreground: 250 250 250; /* #fafafa */
+  
+  --color-card: 20 20 21; /* #141415 */
+  --color-card-foreground: 250 250 250; /* #fafafa */
+  
+  --color-popover: 20 20 21; /* #141415 */
+  --color-popover-foreground: 250 250 250; /* #fafafa */
+  
+  --color-secondary: 38 38 38; /* #262626 */
+  --color-secondary-foreground: 250 250 250; /* #fafafa */
+  
+  --color-muted: 163 163 163; /* #a3a3a3 */
+  --color-muted-foreground: 163 163 163; /* #a3a3a3 */
+  
+  --color-accent: 38 38 38; /* #262626 */
+  --color-accent-foreground: 250 250 250; /* #fafafa */
+  
+  --color-destructive: 239 68 68;
+  --color-destructive-foreground: 248 250 252;
+  
+  --color-border: 38 38 38; /* #262626 */
+  --color-input: 20 20 21; /* #141415 */
+  --color-ring: 57 185 255;
+  
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-muted-foreground));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-secondary));
+}
+
+/* Focus Styles */
+*:focus-visible {
+  outline: 2px solid rgb(var(--color-ring));
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: rgb(var(--color-primary) / 0.2);
+  color: rgb(var(--color-foreground));
+}
+
+/* Utility Classes */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}

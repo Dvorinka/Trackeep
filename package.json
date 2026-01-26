@@ -1,0 +1,38 @@
+{
+  "name": "trackeep",
+  "version": "1.0.0",
+  "description": "Your Self-Hosted Productivity & Knowledge Hub",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && go run main.go",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && go build -o ../dist/trackeep-server main.go",
+    "install:all": "npm install && cd frontend && npm install",
+    "clean": "rm -rf dist node_modules frontend/node_modules backend/vendor"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "go": ">=1.21.0"
+  },
+  "keywords": [
+    "productivity",
+    "bookmarks",
+    "tasks",
+    "knowledge-management",
+    "self-hosted",
+    "solidjs",
+    "golang"
+  ],
+  "author": "Trackeep Team",
+  "license": "MIT"
+}
