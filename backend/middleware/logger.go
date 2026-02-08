@@ -205,12 +205,6 @@ func logJSON(data map[string]interface{}) {
 	log.Println(string(jsonData))
 }
 
-// generateRequestID generates a unique request ID
-func generateRequestID() string {
-	return time.Now().Format("20060102150405") + "-" +
-		string(rune(time.Now().UnixNano()%1000))
-}
-
 // SecurityLogger logs security-related events
 func SecurityLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {

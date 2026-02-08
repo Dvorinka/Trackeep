@@ -2,11 +2,50 @@
 
 ## Overview
 
-Trackeep provides a RESTful API for managing bookmarks, tasks, files, and notes. All API endpoints (except authentication) require a valid JWT token.
+Trackeep provides a RESTful API for managing bookmarks, tasks, files, and notes. All API endpoints (except authentication) require a valid JWT token. The application also integrates with AI services (Mistral and LongCat) for enhanced functionality.
 
 **Base URL:** `http://localhost:8080/api/v1`
 
 **Authentication:** Bearer Token (JWT)
+
+## AI Services Integration
+
+Trackeep integrates with multiple AI providers to enhance functionality:
+
+### Mistral AI
+- **Purpose:** General AI tasks and text processing
+- **Model:** mistral-small-latest (configurable)
+- **Environment Variables:**
+  - `MISTRAL_API_KEY`: Your Mistral API key
+  - `MISTRAL_MODEL`: The model to use (default: mistral-small-latest)
+
+### LongCat AI
+- **Purpose:** Advanced AI features and specialized tasks
+- **API Documentation:** https://longcat.chat/platform/docs/
+- **Environment Variables:**
+  - `LONGCAT_API_KEY`: Your LongCat API key
+  - `LONGCAT_BASE_URL`: LongCat API base URL (default: https://api.longcat.chat)
+- **API Key Format:** `ak_xxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- **Supported Formats:** OpenAI API Format and Anthropic API Format
+- **Endpoints:**
+  - OpenAI Format: `https://api.longcat.chat/openai`
+  - Anthropic Format: `https://api.longcat.chat/anthropic`
+- **Supported Models:** LongCat-Flash-Chat and others
+- **Authentication:** Bearer token in Authorization header
+
+## Environment Configuration
+
+To use AI features, configure the following environment variables in your `.env` file:
+
+```bash
+# Mistral AI Configuration
+MISTRAL_API_KEY=your_mistral_api_key_here
+MISTRAL_MODEL=mistral-small-latest
+
+# LongCat AI Configuration
+LONGCAT_API_KEY=ak_2886WQ2oE7rX3Ll3XD3pj1oM8iB4u
+LONGCAT_BASE_URL=https://api.longcat.chat
+```
 
 ## Authentication
 

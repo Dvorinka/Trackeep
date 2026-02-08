@@ -1,134 +1,1082 @@
-import { For } from 'solid-js'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
+import { createSignal, onMount, Show } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { 
-  IconBookmark, 
-  IconChecklist, 
-  IconFolder, 
+  IconUpload, 
+  IconFileText, 
+  IconFileTypePpt, 
+  IconFileTypeDocx,
+  IconDotsVertical,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
+  IconBookmark,
+  IconChecklist,
   IconNotebook,
+  IconFolder,
+  IconClock,
+  IconDownload,
+  IconTrash,
+  IconEdit,
+  IconEye,
+  IconRefresh,
   IconTrendingUp,
-  IconClock
-} from '@tabler/icons-solidjs'
+  IconChartLine,
+  IconActivity,
+  IconSearch,
+  IconChevronDown,
+  IconVideo,
+  IconSchool,
+  IconX
+} from '@tabler/icons-solidjs';
+import { BrowserSearch } from '@/components/search/BrowserSearch';
+import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
+import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
+import { ActivityFeed } from '@/components/ui/ActivityFeed';
+import { UploadModal } from '@/components/ui/UploadModal';
+import { BookmarkModal } from '@/components/ui/BookmarkModal';
+import { VideoUploadModal } from '@/components/ui/VideoUploadModal';
+import { 
+  getMockDocuments, 
+  getMockStats, 
+  getMockActivities,
+  getPopularTags
+} from '@/lib/mockData';
+import { formatDuration } from '@/lib/timeFormat';
 
-const stats = [
-  { name: 'Total Bookmarks', value: '248', icon: IconBookmark, change: '+12%', changeType: 'positive' },
-  { name: 'Active Tasks', value: '32', icon: IconChecklist, change: '-5%', changeType: 'negative' },
-  { name: 'Files Stored', value: '1,429', icon: IconFolder, change: '+18%', changeType: 'positive' },
-  { name: 'Notes Created', value: '89', icon: IconNotebook, change: '+7%', changeType: 'positive' },
-]
+interface Document {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+  createdAt: string;
+  tags: Array<{ name: string; color: string }>;
+  content?: string;
+}
 
-const recentActivity = [
-  { id: 1, type: 'bookmark', title: 'SolidJS Documentation', time: '2 hours ago', icon: IconBookmark },
-  { id: 2, type: 'task', title: 'Complete project setup', time: '4 hours ago', icon: IconChecklist },
-  { id: 3, type: 'file', title: 'Project proposal.pdf', time: '1 day ago', icon: IconFolder },
-  { id: 4, type: 'note', title: 'Meeting notes - Q1 planning', time: '2 days ago', icon: IconNotebook },
-]
+interface QuickStats {
+  totalDocuments: number;
+  totalBookmarks: number;
+  totalTasks: number;
+  totalNotes: number;
+  totalSize: string;
+  recentActivity: number;
+  completedTasks: number;
+  activeTasks: number;
+  monthlyGrowth: {
+    bookmarks: number;
+    documents: number;
+    tasks: number;
+    notes: number;
+  };
+  weeklyActivity: number[];
+  // Additional stats for enhanced dashboard
+  totalVideos: number;
+  totalLearningPaths: number;
+  totalTimeTracked: number;
+  averageProductivity: number;
+  storageUsed: number;
+  storageTotal: number;
+  recentProjects: Array<{
+    name: string;
+    progress: number;
+    status: string;
+  }>;
+  topTags: Array<{
+    name: string;
+    count: number;
+    color: string;
+  }>;
+  upcomingDeadlines: Array<{
+    title: string;
+    date: string;
+    priority: string;
+  }>;
+  recentAchievements: Array<{
+    title: string;
+    date: string;
+    type: string;
+  }>;
+}
 
-export function Dashboard() {
+interface RecentActivity {
+  id: string;
+  type: 'document' | 'bookmark' | 'task' | 'note';
+  action: string;
+  title: string;
+  timestamp: string;
+  icon: any;
+  details?: any;
+}
+
+export const Dashboard = () => {
+  const navigate = useNavigate();
+  const [documents, setDocuments] = createSignal<Document[]>([]);
+  const [, setRecentActivity] = createSignal<RecentActivity[]>([]);
+  const [showBrowserSearch, setShowBrowserSearch] = createSignal(true);
+  const [showFilePreview, setShowFilePreview] = createSignal(false);
+  const [selectedFile, setSelectedFile] = createSignal<Document | null>(null);
+  const [currentPage, setCurrentPage] = createSignal(1);
+  const [rowsPerPage, setRowsPerPage] = createSignal(10);
+  const [activityRefreshKey, setActivityRefreshKey] = createSignal(0);
+  
+  // Modal states
+  const [showUploadModal, setShowUploadModal] = createSignal(false);
+  const [showBookmarkModal, setShowBookmarkModal] = createSignal(false);
+  const [showVideoModal, setShowVideoModal] = createSignal(false);
+  
+  // Achievement/Deadline modal states
+  const [showAchievementModal, setShowAchievementModal] = createSignal(false);
+  const [showDeadlineModal, setShowDeadlineModal] = createSignal(false);
+  const [selectedAchievement, setSelectedAchievement] = createSignal<any>(null);
+  const [selectedDeadline, setSelectedDeadline] = createSignal<any>(null);
+  
+  const stats = (): QuickStats => getMockStats();
+
+  const taskCompletionRate = () => {
+    return Math.round((stats().completedTasks / stats().totalTasks) * 100);
+  };
+
+  const storagePercentage = () => {
+    const used = parseFloat(stats().totalSize);
+    const total = 50 * 1024; // 50 GB in MB
+    return Math.round((used / total) * 100);
+  };
+
+  // Modal handlers
+  const handleBookmarkSubmit = async (bookmark: any) => {
+    try {
+      // Use the API client to create bookmark
+      const { bookmarksApi } = await import('@/lib/api');
+      const newBookmark = await bookmarksApi.create({
+        title: bookmark.title,
+        url: bookmark.url,
+        description: bookmark.description,
+        tags: bookmark.tags,
+        is_public: false
+      });
+      console.log('Bookmark added:', newBookmark);
+      setShowBookmarkModal(false);
+    } catch (error) {
+      console.error('Failed to add bookmark:', error);
+      // Still close modal even if API fails for demo mode
+      setShowBookmarkModal(false);
+    }
+  };
+
+  const handleVideoSubmit = async (video: any) => {
+    try {
+      // Use the YouTube API to add video
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/youtube/video-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ video_id: video.video_id })
+      });
+      
+      if (response.ok) {
+        console.log('Video added:', video);
+      } else {
+        console.log('Video added (demo mode):', video);
+      }
+      setShowVideoModal(false);
+    } catch (error) {
+      console.error('Failed to add video:', error);
+      setShowVideoModal(false);
+    }
+  };
+
+  onMount(() => {
+    // Load browser search setting from localStorage
+    setShowBrowserSearch(localStorage.getItem('showBrowserSearch') !== 'false');
+    
+    // Load mock documents data
+    setDocuments(getMockDocuments());
+    
+    // Load mock activities - filter and cast to match the interface
+    const mockActivities = getMockActivities();
+    const filteredActivities = mockActivities
+      .filter(activity => ['document', 'bookmark', 'task', 'note'].includes(activity.type))
+      .map(activity => ({
+        id: activity.id,
+        type: activity.type as 'document' | 'bookmark' | 'task' | 'note',
+        action: activity.action,
+        title: activity.title,
+        timestamp: activity.timestamp,
+        icon: activity.type === 'document' ? IconFileText :
+              activity.type === 'bookmark' ? IconBookmark :
+              activity.type === 'task' ? IconChecklist :
+              IconNotebook,
+        details: activity.details
+      }));
+    setRecentActivity(filteredActivities as RecentActivity[]);
+  });
+
+  const getFileIcon = (type: string) => {
+    switch (type) {
+      case 'docx':
+        return { icon: IconFileTypeDocx, color: 'text-blue-500' };
+      case 'pptx':
+        return { icon: IconFileTypePpt, color: 'text-orange-500' };
+      case 'pdf':
+        return { icon: IconFileText, color: 'text-red-500' };
+      case 'xlsx':
+        return { icon: IconFileText, color: 'text-green-500' };
+      case 'txt':
+        return { icon: IconFileText, color: 'text-gray-500' };
+      case 'md':
+        return { icon: IconFileText, color: 'text-purple-500' };
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'svg':
+        return { icon: IconFileText, color: 'text-pink-500' };
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+        return { icon: IconVideo, color: 'text-indigo-500' };
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return { icon: IconFileText, color: 'text-yellow-600' };
+      default:
+        return { icon: IconFileText, color: 'text-primary' };
+    }
+  };
+
+  const handleDownloadDocument = (doc: Document) => {
+    // Simulate download
+    const link = document.createElement('a');
+    link.href = '#'; // In real app, this would be the actual file URL
+    link.download = doc.name;
+    link.click();
+  };
+
+  const handlePreviewDocument = (doc: Document) => {
+    setSelectedFile({
+      ...doc,
+      preview: doc.content,
+      downloadUrl: `#download-${doc.id}`,
+      viewUrl: `#view-${doc.id}`,
+      size: doc.size.includes('KB') ? `${parseFloat(doc.size) * 1024}` : 
+            doc.size.includes('MB') ? `${parseFloat(doc.size) * 1024 * 1024}` : 
+            doc.size.includes('GB') ? `${parseFloat(doc.size) * 1024 * 1024 * 1024}` : '1024'
+    });
+    setShowFilePreview(true);
+  };
+
+  const handleEditDocument = (doc: Document) => {
+    // Open edit modal or navigate to edit page
+    window.location.href = `/files/edit/${doc.id}`;
+  };
+
+  const handleDeleteDocument = (doc: Document) => {
+    if (confirm(`Are you sure you want to delete ${doc.name}?`)) {
+      // Delete the document
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+    }
+  };
+
+  const paginatedDocuments = () => {
+    const start = (currentPage() - 1) * rowsPerPage();
+    const end = start + rowsPerPage();
+    return documents().slice(start, end);
+  };
+
+  const totalPages = () => Math.ceil(documents().length / rowsPerPage());
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage: number) => {
+    setRowsPerPage(newRowsPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
   return (
-    <div class="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 class="text-3xl font-bold text-[#fafafa]">Dashboard</h1>
-        <p class="text-[#a3a3a3] mt-2">Welcome back! Here's an overview of your productivity hub.</p>
+    <div class="p-6 mt-4 pb-32 max-w-5xl mx-auto">
+      {/* Stats Overview */}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconFileText class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-light">{stats().totalDocuments}</p>
+              <p class="text-sm text-muted-foreground">Documents</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconBookmark class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-light">{stats().totalBookmarks}</p>
+              <p class="text-sm text-muted-foreground">Bookmarks</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconChecklist class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-light">{stats().totalTasks}</p>
+              <p class="text-sm text-muted-foreground">Tasks</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconNotebook class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-light">{stats().totalNotes}</p>
+              <p class="text-sm text-muted-foreground">Notes</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <For each={stats}>
-          {(stat) => {
-            const Icon = stat.icon
-            return (
-              <Card>
-                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle class="text-sm font-medium text-[#a3a3a3]">
-                    {stat.name}
-                  </CardTitle>
-                  <Icon class="h-4 w-4 text-[#a3a3a3]" />
-                </CardHeader>
-                <CardContent>
-                  <div class="text-2xl font-bold text-[#fafafa]">{stat.value}</div>
-                  <p class="text-xs text-[#a3a3a3] mt-1">
-                    <span class={stat.changeType === 'positive' ? 'text-green-400' : 'text-red-400'}>
-                      {stat.change}
-                    </span>{' '}
-                    from last month
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          }}
-        </For>
+      {/* Enhanced Stats Row */}
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconVideo class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{stats().totalVideos}</p>
+              <p class="text-xs text-muted-foreground font-medium">Videos</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconSchool class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{stats().totalLearningPaths}</p>
+              <p class="text-xs text-muted-foreground font-medium">Learning</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconClock class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{formatDuration(stats().totalTimeTracked)}</p>
+              <p class="text-xs text-muted-foreground font-medium">Time</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconTrendingUp class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{stats().averageProductivity}%</p>
+              <p class="text-xs text-muted-foreground font-medium">Productivity</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconFolder class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{stats().totalDocuments}</p>
+              <p class="text-xs text-muted-foreground font-medium">Documents</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border rounded-lg p-4">
+          <div class="flex flex-col items-center text-center gap-2">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+              <IconActivity class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl font-bold text-foreground">{stats().totalNotes}</p>
+              <p class="text-xs text-muted-foreground font-medium">Notes</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Content Grid */}
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <Card class="lg:col-span-2">
-          <CardHeader>
-            <CardTitle class="flex items-center space-x-2">
-              <IconClock class="h-5 w-5" />
-              <span>Recent Activity</span>
-            </CardTitle>
-            <CardDescription>
-              Your latest bookmarks, tasks, and files
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div class="space-y-4">
-              <For each={recentActivity}>
-                {(activity) => {
-                  const Icon = activity.icon
+      {/* Recent Achievements and Deadlines */}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Recent Achievements */}
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-4">
+            <IconTrendingUp class="size-4 text-primary" />
+            <h3 class="font-semibold">Recent Achievements</h3>
+          </div>
+          <div class="space-y-3">
+            {stats().recentAchievements.map((achievement) => (
+              <div 
+                class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                onClick={() => {
+                  setSelectedAchievement(achievement);
+                  setShowAchievementModal(true);
+                }}
+              >
+                <div class={`w-2 h-2 rounded-full ${
+                  achievement.type === 'milestone' ? 'bg-primary' :
+                  achievement.type === 'deployment' ? 'bg-primary' :
+                  'bg-primary'
+                }`}></div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">{achievement.title}</p>
+                  <p class="text-xs text-muted-foreground">{achievement.date}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upcoming Deadlines */}
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-4">
+            <IconClock class="size-4 text-primary" />
+            <h3 class="font-semibold">Upcoming Deadlines</h3>
+          </div>
+          <div class="space-y-3">
+            {stats().upcomingDeadlines.map((deadline) => (
+              <div 
+                class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                onClick={() => {
+                  setSelectedDeadline(deadline);
+                  setShowDeadlineModal(true);
+                }}
+              >
+                <div class={`w-2 h-2 rounded-full ${
+                  deadline.priority === 'high' ? 'bg-primary' :
+                  deadline.priority === 'medium' ? 'bg-primary' :
+                  'bg-primary'
+                }`}></div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium">{deadline.title}</p>
+                  <p class="text-xs text-muted-foreground">{deadline.date}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress and Activity Overview */}
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Task Completion Progress */}
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <IconChartLine class="size-4 text-primary" />
+            <h3 class="font-semibold">Task Completion</h3>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-muted-foreground">Progress</span>
+              <span>{stats().completedTasks}/{stats().totalTasks}</span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-2">
+              <div 
+                class="bg-primary h-2 rounded-full transition-all duration-500"
+                style={`width: ${taskCompletionRate()}%`}
+              ></div>
+            </div>
+            <p class="text-xs text-muted-foreground">{taskCompletionRate()}% completion rate</p>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <div class="text-center">
+                <p class="text-sm font-medium">{stats().completedTasks}</p>
+                <p class="text-xs text-muted-foreground">Completed</p>
+              </div>
+              <div class="text-center">
+                <p class="text-sm font-medium">{stats().activeTasks}</p>
+                <p class="text-xs text-muted-foreground">Active</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Storage Usage */}
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <IconFolder class="size-4 text-primary" />
+            <h3 class="font-semibold">Storage Usage</h3>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-muted-foreground">Used Space</span>
+              <span>{stats().totalSize}</span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-2">
+              <div 
+                class="bg-primary h-2 rounded-full transition-all duration-500"
+                style={`width: ${storagePercentage()}%`}
+              ></div>
+            </div>
+            <p class="text-xs text-muted-foreground">{storagePercentage()}% of 50 GB used</p>
+          </div>
+        </div>
+
+        {/* Weekly Activity */}
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <IconActivity class="size-4 text-primary" />
+            <h3 class="font-semibold">Weekly Activity</h3>
+          </div>
+          <div class="space-y-4">
+            {/* Bar chart visualization */}
+            <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
+              <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
+                <div class="border-t border-border/60"></div>
+                <div class="border-t border-border/40"></div>
+                <div class="border-t border-border/30"></div>
+                <div class="border-t border-border/20"></div>
+              </div>
+              <div class="relative flex items-end justify-between h-full gap-2 md:gap-3">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                  const weeklyActivity = stats().weeklyActivity || [12, 19, 8, 15, 22, 18, 25]; // Fallback data
+                  const activity = weeklyActivity[index];
+                  const maxActivity = Math.max(...weeklyActivity);
+                  // Use dynamic scale based on actual data
+                  const fixedMax = Math.max(maxActivity, 30); // Ensure minimum scale for better visualization
+                  const containerHeight = 128; // h-32 = 128px (base), md:h-36 = 144px
+                  const availableHeight = containerHeight * 0.75; // Use 75% of container height to leave room for labels
+                  const heightPercent = (activity / fixedMax) * (availableHeight / containerHeight) * 100;
+                  const minHeightPercent = (8 / containerHeight) * 100; // Minimum 8px height
+                  const finalHeightPercent = Math.max(heightPercent, minHeightPercent);
+
                   return (
-                    <div class="flex items-center space-x-3 p-3 rounded-lg bg-[#262626] hover:bg-[#141415] transition-colors">
-                      <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
-                        <Icon class="h-5 w-5 text-white" />
+                    <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-6">
+                      <div class="relative w-full max-w-3 md:max-w-4 flex flex-col items-center">
+                        <span 
+                          class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5"
+                        >
+                          {activity}
+                        </span>
+                        <div 
+                          class="w-full max-w-3 md:max-w-4 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
+                          style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 8px;`}
+                          title={`${day}: ${activity} activities`}
+                        ></div>
                       </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-[#fafafa] truncate">
-                          {activity.title}
-                        </p>
-                        <p class="text-xs text-[#a3a3a3]">{activity.time}</p>
+                      <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Weekly summary */}
+            <div class="flex justify-between text-xs text-muted-foreground pt-2 border-t border-border">
+              <span>Total: {(stats().weeklyActivity || [12, 19, 8, 15, 22, 18, 25]).reduce((a, b) => a + b, 0)} activities</span>
+              <span>Avg: {Math.round((stats().weeklyActivity || [12, 19, 8, 15, 22, 18, 25]).reduce((a, b) => a + b, 0) / 7)} per day</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Cards and Recent Activity */}
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        {/* Upload Card */}
+        <div class="lg:col-span-2 space-y-4">
+          <button 
+            type="button" 
+            onClick={() => setShowUploadModal(true)}
+            class="w-full h-32 inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 items-start flex-col gap-4 py-6 px-6 text-left"
+          >
+            <IconUpload class="size-6" />
+            <div>
+              <div class="font-semibold">Upload documents</div>
+              <div class="text-sm opacity-90">Drag and drop or click to browse</div>
+            </div>
+          </button>
+          
+          {/* Split buttons for Video and Bookmark */}
+          <div class="grid grid-cols-2 gap-4">
+            <button 
+              type="button" 
+              onClick={() => setShowVideoModal(true)}
+              class="w-full inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow hover:bg-secondary/90 items-start flex-col gap-4 py-4 px-4 text-left"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-video size-5">
+                <path d="M4 4m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"></path>
+                <path d="M15 7l4 4l0 4"></path>
+                <path d="M15 11l4 -4"></path>
+              </svg>
+              <div>
+                <div class="font-semibold">Save YouTube Video</div>
+                <div class="text-sm opacity-90">Save a YouTube video link</div>
+              </div>
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={() => setShowBookmarkModal(true)}
+              class="w-full inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow hover:bg-secondary/90 items-start flex-col gap-4 py-4 px-4 text-left"
+            >
+              <IconBookmark class="size-5" />
+              <div>
+                <div class="font-semibold">Add Bookmark</div>
+                <div class="text-sm opacity-90">Save web links</div>
+              </div>
+            </button>
+          </div>
+
+          {/* GitHub Activity Section */}
+          <div class="border rounded-lg p-4">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <IconActivity class="size-4 text-muted-foreground" />
+                <h3 class="font-semibold">GitHub Activity</h3>
+              </div>
+            </div>
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+              {[
+                {
+                  type: 'push' as const,
+                  title: 'Updated dashboard with new features',
+                  date: new Date().toISOString().split('T')[0],
+                  repo: 'trackeep',
+                  action: 'pushed'
+                },
+                {
+                  type: 'bookmark' as const,
+                  title: 'Added bookmark: Advanced CSS Techniques',
+                  date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+                  link: '/app/bookmarks'
+                },
+                {
+                  type: 'note' as const,
+                  title: 'Created note: Project Architecture Ideas',
+                  date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+                  link: '/app/notes'
+                },
+                {
+                  type: 'commit' as const,
+                  title: 'Fix responsive design issues',
+                  date: new Date(Date.now() - 259200000).toISOString().split('T')[0],
+                  repo: 'trackeep',
+                  action: 'committed'
+                }
+              ].map((event) => (
+                <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
+                  <div class="flex items-center gap-3">
+                    <div class="bg-primary/10 p-2 rounded-lg">
+                      {event.type === 'push' || event.type === 'commit' ? (
+                        <IconChartLine class="size-4 text-primary" />
+                      ) : event.type === 'bookmark' ? (
+                        <IconBookmark class="size-4 text-primary" />
+                      ) : (
+                        <IconNotebook class="size-4 text-primary" />
+                      )}
+                    </div>
+                    <div class="flex-1">
+                      <p class="text-sm text-foreground font-medium">{event.title}</p>
+                      <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <span>{event.date}</span>
+                        {event.repo && (
+                          <>
+                            <span>•</span>
+                            <span class="text-primary">{event.repo}</span>
+                          </>
+                        )}
+                        {event.action && (
+                          <>
+                            <span>•</span>
+                            <span>{event.action}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  )
-                }}
-              </For>
+                  </div>
+                  {event.link && (
+                    <button 
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+                      onClick={() => {
+                        if (event.link) {
+                          window.location.href = event.link;
+                        }
+                      }}
+                    >
+                      <IconSearch class="size-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle class="flex items-center space-x-2">
-              <IconTrendingUp class="h-5 w-5" />
-              <span>Quick Actions</span>
-            </CardTitle>
-            <CardDescription>
-              Common tasks and shortcuts
-            </CardDescription>
-          </CardHeader>
-          <CardContent class="space-y-3">
-            <Button class="w-full justify-start" variant="outline">
-              <IconBookmark class="mr-2 h-4 w-4" />
-              Add Bookmark
-            </Button>
-            <Button class="w-full justify-start" variant="outline">
-              <IconChecklist class="mr-2 h-4 w-4" />
-              Create Task
-            </Button>
-            <Button class="w-full justify-start" variant="outline">
-              <IconFolder class="mr-2 h-4 w-4" />
-              Upload File
-            </Button>
-            <Button class="w-full justify-start" variant="outline">
-              <IconNotebook class="mr-2 h-4 w-4" />
-              New Note
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        
+        {/* Activity Feed - Enhanced from Activity page */}
+        <div class="lg:col-span-2 border rounded-lg p-4 h-full">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <IconClock class="size-4 text-muted-foreground" />
+              <h3 class="font-semibold">Activity Feed</h3>
+            </div>
+            <button 
+              onClick={() => setActivityRefreshKey(prev => prev + 1)}
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+            >
+              <IconRefresh class="size-4" />
+            </button>
+          </div>
+          <ActivityFeed 
+            limit={10} 
+            refreshKey={activityRefreshKey()} 
+            showFilter={false}
+          />
+        </div>
       </div>
+
+      {/* Browser Search Section - Collapsible */}
+      <div class="mb-8">
+        <div class="border rounded-lg">
+          {/* Collapsible Header */}
+          <button
+            onClick={() => {
+              const newState = !showBrowserSearch();
+              setShowBrowserSearch(newState);
+              localStorage.setItem('showBrowserSearch', newState.toString());
+            }}
+            class="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-t-lg"
+          >
+            <div class="flex items-center gap-2">
+              <IconSearch class="size-4 text-primary" />
+              <h2 class="text-lg font-semibold">Browser Search</h2>
+              <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                Powered by Brave Search
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-muted-foreground">
+                {showBrowserSearch() ? 'Hide' : 'Show'}
+              </span>
+              <IconChevronDown 
+                class={`size-4 text-muted-foreground transition-transform duration-200 ${
+                  showBrowserSearch() ? 'rotate-180' : ''
+                }`} 
+              />
+            </div>
+          </button>
+          
+          {/* Collapsible Content */}
+          <Show when={showBrowserSearch()}>
+            <div class="border-t border-border p-4">
+              <BrowserSearch />
+            </div>
+          </Show>
+        </div>
+      </div>
+
+      {/* Popular Tags Section */}
+      <div class="mb-8">
+        <div class="border rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-4">
+            <IconSearch class="size-4 text-primary" />
+            <h3 class="font-semibold">Popular Tags</h3>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {getPopularTags().map((tag) => (
+              <button
+                class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:underline text-xs"
+                onClick={() =>
+                  navigate(
+                    `/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`
+                  )
+                }
+              >
+                <span
+                  class="size-1.5 rounded-full"
+                  style={`background-color: ${tag.color}`}
+                ></span>
+                <span class="font-medium">{tag.name}</span>
+                <span class="text-[10px] text-muted-foreground">({tag.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Latest Documents Section */}
+      <h2 class="text-lg font-semibold mb-4">Latest imported documents</h2>
+      
+      <div>
+        <div class="w-full overflow-auto">
+          <table class="w-full caption-bottom text-sm text-nowrap">
+            <thead class="[&_tr]:border-b">
+              <tr class="border-b transition-colors data-[state=selected]:bg-muted">
+                <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">File name</th>
+                <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                  <span class="hidden sm:block">Tags</span>
+                </th>
+                <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                  <span class="hidden sm:block">Created at</span>
+                </th>
+                <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                  <span class="block text-right">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="[&_tr:last-child]:border-0">
+              {paginatedDocuments().map((doc) => {
+                const fileIconData = getFileIcon(doc.type);
+                const FileIcon = fileIconData.icon;
+                const iconColor = fileIconData.color;
+                return (
+                  <tr class="border-b transition-colors data-[state=selected]:bg-muted" data-state="false">
+                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                      <div class="overflow-hidden flex gap-4 items-center">
+                        <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+                          <FileIcon class={`size-6 ${iconColor}`} />
+                        </div>
+                        <div class="flex-1 flex flex-col gap-1 truncate">
+                          <button 
+                            onClick={() => handlePreviewDocument(doc)}
+                            class="font-bold truncate block hover:underline text-left"
+                          >
+                            {doc.name}
+                          </button>
+                          <div class="text-xs text-muted-foreground lh-tight">
+                            {doc.size} - {doc.type} - <time>{doc.createdAt}</time>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                      <div class="text-muted-foreground hidden sm:flex flex-wrap gap-1">
+                        {doc.tags.map((tag) => (
+                          <button 
+                            onClick={() => navigate(`/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`)}
+                            class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:bg-accent/50 hover:text-accent-foreground hover:underline text-xs transition-colors cursor-pointer"
+                            title={`Search for "${tag.name}"`}
+                          >
+                            <span class="size-1.5 rounded-full" style={`background-color: ${tag.color}`}></span>
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                      <time class="text-muted-foreground hidden sm:block">{doc.createdAt}</time>
+                    </td>
+                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                      <div class="flex items-center justify-end">
+                        <DropdownMenu
+                          trigger={
+                            <button type="button" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-9 w-9">
+                              <IconDotsVertical class="size-4" />
+                            </button>
+                          }
+                        >
+                          <DropdownMenuItem onClick={() => handlePreviewDocument(doc)} icon={IconEye}>
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadDocument(doc)} icon={IconDownload}>
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditDocument(doc)} icon={IconEdit}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteDocument(doc)} icon={IconTrash} variant="destructive">
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div class="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-end mt-4">
+          <div class="flex items-center space-x-2">
+            <p class="whitespace-nowrap text-sm font-medium">Rows per page</p>
+            <select
+              value={rowsPerPage()}
+              onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+              class="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-shadow h-8 w-[4.5rem] text-foreground bg-card"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-center whitespace-nowrap text-sm font-medium">
+            Page {currentPage()} of {totalPages()}
+          </div>
+          <div class="flex items-center space-x-2">
+            <button 
+              type="button" 
+              disabled={currentPage() === 1}
+              onClick={() => handlePageChange(1)}
+              class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 p-0 disabled:opacity-50"
+            >
+              <IconChevronsLeft class="size-4" />
+            </button>
+            <button 
+              type="button" 
+              disabled={currentPage() === 1}
+              onClick={() => handlePageChange(currentPage() - 1)}
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
+            >
+              <IconChevronLeft class="size-4" />
+            </button>
+            <button 
+              type="button" 
+              disabled={currentPage() === totalPages()}
+              onClick={() => handlePageChange(currentPage() + 1)}
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
+            >
+              <IconChevronRight class="size-4" />
+            </button>
+            <button 
+              type="button" 
+              disabled={currentPage() === totalPages()}
+              onClick={() => handlePageChange(totalPages())}
+              class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 disabled:opacity-50"
+            >
+              <IconChevronsRight class="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        isOpen={showFilePreview()}
+        onClose={() => setShowFilePreview(false)}
+        file={selectedFile()}
+      />
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={showUploadModal()}
+        onClose={() => setShowUploadModal(false)}
+      />
+
+      {/* Bookmark Modal */}
+      <BookmarkModal
+        isOpen={showBookmarkModal()}
+        onClose={() => setShowBookmarkModal(false)}
+        onSubmit={handleBookmarkSubmit}
+      />
+
+      {/* Video Upload Modal */}
+      <VideoUploadModal
+        isOpen={showVideoModal()}
+        onClose={() => setShowVideoModal(false)}
+        onSubmit={handleVideoSubmit}
+      />
+
+      {/* Achievement Detail Modal */}
+      <Show when={showAchievementModal() && selectedAchievement()}>
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Achievement Details</h3>
+              <button
+                onClick={() => setShowAchievementModal(false)}
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+              >
+                <IconX class="size-4" />
+              </button>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <h4 class="font-medium text-foreground">{selectedAchievement().title}</h4>
+                <p class="text-sm text-muted-foreground mt-1">{selectedAchievement().date}</p>
+              </div>
+              <div>
+                <p class="text-sm text-muted-foreground">
+                  Congratulations on this achievement! This represents your hard work and dedication to your goals.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
+                  {selectedAchievement().type || 'Achievement'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      {/* Deadline Detail Modal */}
+      <Show when={showDeadlineModal() && selectedDeadline()}>
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Deadline Details</h3>
+              <button
+                onClick={() => setShowDeadlineModal(false)}
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+              >
+                <IconX class="size-4" />
+              </button>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <h4 class="font-medium text-foreground">{selectedDeadline().title}</h4>
+                <p class="text-sm text-muted-foreground mt-1">{selectedDeadline().date}</p>
+              </div>
+              <div>
+                <p class="text-sm text-muted-foreground">
+                  This deadline requires your attention. Make sure to allocate sufficient time to complete this task.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class={`px-2 py-1 rounded text-xs font-medium ${
+                  selectedDeadline().priority === 'high' ? 'bg-destructive/10 text-destructive' :
+                  selectedDeadline().priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {selectedDeadline().priority || 'Normal'} Priority
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        isOpen={showFilePreview()}
+        onClose={() => {
+          setShowFilePreview(false);
+          setSelectedFile(null);
+        }}
+        file={selectedFile()}
+      />
     </div>
-  )
-}
+  );
+};

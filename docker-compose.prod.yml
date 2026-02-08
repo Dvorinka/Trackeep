@@ -10,6 +10,7 @@ services:
       - "443:443"
     environment:
       - NODE_ENV=production
+      - VITE_DEMO_MODE=${VITE_DEMO_MODE}
     depends_on:
       - trackeep-backend
     restart: unless-stopped
@@ -23,7 +24,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - .env.prod
+      - .env
     volumes:
       - ./data:/data
       - ./uploads:/app/uploads
@@ -73,6 +74,24 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+
+  youtube-scraper:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.youtube-scraper
+    ports:
+      - "7857:7857"
+    restart: unless-stopped
+    networks:
+      - trackeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7857/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    profiles:
+      - demo
 
   # Backup service
   backup:

@@ -6,17 +6,28 @@ import (
 	"os"
 
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
+// JWTSecret for signing tokens
+var JWTSecret = getJWTSecret()
+
+// getJWTSecret retrieves JWT secret from environment or uses a default
+func getJWTSecret() string {
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		return secret
+	}
+	// Default secret for development (should be changed in production)
+	return "your-secret-key-change-in-production"
+}
+
 // InitDatabase initializes the database connection
 func InitDatabase() {
 	var err error
-	
+
 	// Configure GORM logger
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
@@ -24,7 +35,7 @@ func InitDatabase() {
 
 	dbType := os.Getenv("DB_TYPE")
 	if dbType == "" {
-		dbType = "sqlite" // Default to SQLite for development
+		dbType = "postgres" // Always use PostgreSQL
 	}
 
 	switch dbType {
@@ -38,12 +49,7 @@ func InitDatabase() {
 			os.Getenv("DB_SSL_MODE"),
 		)
 		DB, err = gorm.Open(postgres.Open(dsn), gormConfig)
-	case "sqlite":
-		dbPath := os.Getenv("SQLITE_DB_PATH")
-		if dbPath == "" {
-			dbPath = "./trackeep.db"
-		}
-		DB, err = gorm.Open(sqlite.Open(dbPath), gormConfig)
+		log.Println("Using PostgreSQL database")
 	default:
 		log.Fatal("Unsupported database type: " + dbType)
 	}

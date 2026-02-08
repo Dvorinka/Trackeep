@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  oauth-service:
+    build: ./oauth-service
+    container_name: github-oauth-service
+    ports:
+      - "9090:9090"
+    environment:
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_REDIRECT_URL=http://localhost:9090/auth/github/callback
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - PORT=9090
+      - GIN_MODE=release
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080,https://yourdomain.com
+      - DEFAULT_CLIENT_URL=http://localhost:5173
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+    volumes:
+      - ./oauth-service/.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - oauth-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for session storage (for production)
+  redis:
+    image: redis:7-alpine
+    container_name: oauth-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - oauth-network
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
+
+networks:
+  oauth-network:
+    driver: bridge

@@ -28,24 +28,28 @@ type File struct {
 	UserID uint `json:"user_id" gorm:"not null;index"`
 	User   User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
-	OriginalName string    `json:"original_name" gorm:"not null"`
-	FileName     string    `json:"file_name" gorm:"not null;uniqueIndex"`
-	FilePath     string    `json:"file_path" gorm:"not null"`
-	FileSize     int64     `json:"file_size" gorm:"not null"`
-	MimeType     string    `json:"mime_type" gorm:"not null"`
-	FileType     FileType  `json:"file_type" gorm:"not null"`
-	
+	OriginalName string   `json:"original_name" gorm:"not null"`
+	FileName     string   `json:"file_name" gorm:"not null;uniqueIndex"`
+	FilePath     string   `json:"file_path" gorm:"not null"`
+	FileSize     int64    `json:"file_size" gorm:"not null"`
+	MimeType     string   `json:"mime_type" gorm:"not null"`
+	FileType     FileType `json:"file_type" gorm:"not null"`
+
+	// Encryption
+	IsEncrypted   bool   `json:"is_encrypted" gorm:"default:false"`
+	EncryptionKey string `json:"-" gorm:"column:encryption_key"` // User-specific encryption key (optional)
+
 	// Organization
 	Tags []Tag `json:"tags,omitempty" gorm:"many2many:file_tags;"`
-	
+
 	// Metadata
 	Description string `json:"description"`
-	IsPublic     bool   `json:"is_public" gorm:"default:false"`
-	
+	IsPublic    bool   `json:"is_public" gorm:"default:false"`
+
 	// Preview/Thumbnail
 	ThumbnailPath string `json:"thumbnail_path"`
 	PreviewPath   string `json:"preview_path"`
-	
+
 	// Content extraction (for documents)
 	Content string `json:"content"`
 }

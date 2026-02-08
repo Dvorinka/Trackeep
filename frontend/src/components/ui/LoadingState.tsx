@@ -25,9 +25,9 @@ export const LoadingState = (props: LoadingStateProps) => {
 
   return (
     <div class={containerClasses}>
-      <IconLoader2 class={`animate-spin text-blue-400 ${sizeClasses[props.size || 'md']}`} />
+      <IconLoader2 class={`animate-spin text-primary ${sizeClasses[props.size || 'md']}`} />
       {props.message && (
-        <span class={`ml-2 text-gray-400 ${textSizeClasses[props.size || 'md']}`}>
+        <span class={`ml-2 text-muted-foreground ${textSizeClasses[props.size || 'md']}`}>
           {props.message}
         </span>
       )}
@@ -36,16 +36,16 @@ export const LoadingState = (props: LoadingStateProps) => {
 }
 
 export const SkeletonCard = () => (
-  <div class="bg-[#141415] border border-[#262626] rounded-lg p-6 animate-pulse">
+  <div class="bg-card border border-border rounded-lg p-6 animate-pulse">
     <div class="flex items-start space-x-4">
-      <div class="w-8 h-8 bg-gray-700 rounded-full"></div>
+      <div class="w-8 h-8 bg-muted rounded-full"></div>
       <div class="flex-1 space-y-3">
-        <div class="h-4 bg-gray-700 rounded w-3/4"></div>
-        <div class="h-3 bg-gray-700 rounded w-1/2"></div>
-        <div class="h-3 bg-gray-700 rounded w-full"></div>
+        <div class="h-4 bg-muted rounded w-3/4"></div>
+        <div class="h-3 bg-muted rounded w-1/2"></div>
+        <div class="h-3 bg-muted rounded w-full"></div>
         <div class="flex space-x-2">
-          <div class="h-6 bg-gray-700 rounded w-16"></div>
-          <div class="h-6 bg-gray-700 rounded w-16"></div>
+          <div class="h-6 bg-muted rounded w-16"></div>
+          <div class="h-6 bg-muted rounded w-16"></div>
         </div>
       </div>
     </div>
@@ -54,16 +54,16 @@ export const SkeletonCard = () => (
 
 export const SkeletonGrid = ({ count = 6 }: { count?: number }) => (
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    {Array.from({ length: count }, (_, i) => (
-      <SkeletonCard key={i} />
+    {Array.from({ length: count }, () => (
+      <SkeletonCard />
     ))}
   </div>
 )
 
 export const SkeletonList = ({ count = 5 }: { count?: number }) => (
   <div class="space-y-4">
-    {Array.from({ length: count }, (_, i) => (
-      <SkeletonCard key={i} />
+    {Array.from({ length: count }, () => (
+      <SkeletonCard />
     ))}
   </div>
 )

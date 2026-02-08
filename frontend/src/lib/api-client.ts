@@ -2,7 +2,7 @@ import { createQuery, useQueryClient, createMutation } from '@tanstack/solid-que
 import { getAuthHeaders } from './auth';
 
 // API base URL
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 // Retry configuration
 const DEFAULT_RETRY_CONFIG = {

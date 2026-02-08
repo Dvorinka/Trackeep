@@ -1,245 +1,603 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { SkeletonGrid } from '@/components/ui/LoadingState'
-import { 
-  IconBookmark, 
-  IconSearch, 
-  IconPlus,
-  IconExternalLink,
-  IconTag,
-  IconClock,
-  IconStar,
-  IconStarOff,
-  IconRefresh,
-  IconAlertTriangle
-} from '@tabler/icons-solidjs'
-import { createSignal, For, Show } from 'solid-js'
-import { bookmarksApi, type Bookmark } from '@/lib/api-client'
+import { createSignal, onMount, Show } from 'solid-js';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { BookmarkModal } from '@/components/ui/BookmarkModal';
+import { EditBookmarkModal } from '@/components/ui/EditBookmarkModal';
+import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
+import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
+import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo } from '@tabler/icons-solidjs';
+import { getMockBookmarks, getMockVideos } from '@/lib/mockData';
 
-export function Bookmarks() {
-  const [searchQuery, setSearchQuery] = createSignal('')
-  
-  const bookmarksQuery = bookmarksApi.useGetAll()
-  const deleteBookmarkMutation = bookmarksApi.useDelete()
-  const updateBookmarkMutation = bookmarksApi.useUpdate()
+interface BookmarkTag {
+  id: number;
+  name: string;
+  color?: string;
+}
+
+interface Bookmark {
+  id: number;
+  title: string;
+  url: string;
+  description?: string;
+  // Normalized tags: always string[] for easier filtering/rendering
+  tags: string[];
+  created_at?: string;
+  isImportant?: boolean;
+  favicon?: string;
+  screenshot?: string;
+  screenshot_thumbnail?: string;
+  screenshot_medium?: string;
+  screenshot_large?: string;
+  screenshot_original?: string;
+}
+
+export const Bookmarks = () => {
+  const adaptBookmarkFromApi = (raw: any): Bookmark => {
+    const rawTags: BookmarkTag[] | string[] | undefined = raw.tags;
+    let tags: string[] = [];
+
+    if (Array.isArray(rawTags)) {
+      if (rawTags.length > 0 && typeof rawTags[0] === 'string') {
+        tags = rawTags as string[];
+      } else {
+        tags = (rawTags as BookmarkTag[]).map((t) => t.name).filter(Boolean);
+      }
+    }
+
+    return {
+      id: raw.id,
+      title: raw.title || raw.url,
+      url: raw.url,
+      description: raw.description,
+      tags,
+      created_at: raw.created_at,
+      isImportant: raw.is_favorite ?? raw.isImportant ?? false,
+      favicon: raw.favicon,
+      screenshot: raw.screenshot,
+      screenshot_thumbnail: raw.screenshot_thumbnail,
+      screenshot_medium: raw.screenshot_medium,
+      screenshot_large: raw.screenshot_large,
+      screenshot_original: raw.screenshot_original,
+    };
+  };
+
+  const getFaviconUrl = (bookmark: Bookmark) => {
+    if (bookmark.favicon) return bookmark.favicon;
+    try {
+      const url = new URL(bookmark.url);
+      return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+    } catch {
+      return '';
+    }
+  };
+
+  const getScreenshotUrl = (bookmark: Bookmark) => {
+    return (
+      bookmark.screenshot_medium ||
+      bookmark.screenshot ||
+      bookmark.screenshot_large ||
+      bookmark.screenshot_thumbnail ||
+      bookmark.screenshot_original ||
+      ''
+    );
+  };
+
+  const [bookmarks, setBookmarks] = createSignal<Bookmark[]>([]);
+  const [videoBookmarks, setVideoBookmarks] = createSignal<any[]>([]);
+  const [isLoading, setIsLoading] = createSignal(true);
+  const [isLoadingVideos, setIsLoadingVideos] = createSignal(true);
+  const [searchTerm, setSearchTerm] = createSignal('');
+  const [selectedTag, setSelectedTag] = createSignal('');
+  const [showAddModal, setShowAddModal] = createSignal(false);
+  const [showEditModal, setShowEditModal] = createSignal(false);
+  const [editingBookmark, setEditingBookmark] = createSignal<Bookmark | null>(null);
+  const [activeTab, setActiveTab] = createSignal<'bookmarks' | 'videos'>('bookmarks');
+  // We no longer show inline HTML content previews, only the bookmark cards themselves
+
+  onMount(async () => {
+    // Check if we're in demo mode and load mock data directly
+    const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
+                     document.title.includes('Demo Mode') ||
+                     window.location.search.includes('demo=true');
+    
+    if (isDemoMode) {
+      console.log('Demo mode detected, loading mock bookmarks');
+      const mockBookmarks = getMockBookmarks();
+      const adaptedBookmarks: Bookmark[] = mockBookmarks.map((bookmark, index) => ({
+        id: index + 1,
+        title: bookmark.title,
+        url: bookmark.url,
+        description: bookmark.description,
+        tags: bookmark.tags.map((tag) => tag.name),
+        created_at: bookmark.createdAt,
+        isImportant: bookmark.tags.some((tag) => tag.name === 'important' || tag.name === 'favorite'),
+        favicon: bookmark.favicon,
+        screenshot: bookmark.screenshot,
+        screenshot_medium: bookmark.screenshot,
+      }));
+      setBookmarks(adaptedBookmarks);
+      setIsLoading(false);
+
+      // Load mock video bookmarks
+      const mockVideos = getMockVideos();
+      setVideoBookmarks(mockVideos);
+      setIsLoadingVideos(false);
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1';
+      const response = await fetch(`${API_BASE_URL}/bookmarks`, {
+        headers: {
+          'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load bookmarks');
+      }
+      const data = await response.json();
+
+      // Normalize API response:
+      // - Ensure we always work with an array
+      // - Map Tag objects to simple string[]
+      const normalized: Bookmark[] = (Array.isArray(data) ? data : []).map(adaptBookmarkFromApi);
+
+      setBookmarks(normalized);
+    } catch (error) {
+      console.error('Failed to load bookmarks:', error);
+      // Fallback to mock data if API fails
+      const mockBookmarks = getMockBookmarks();
+      const adaptedBookmarks: Bookmark[] = mockBookmarks.map((bookmark, index) => ({
+        id: index + 1,
+        title: bookmark.title,
+        url: bookmark.url,
+        description: bookmark.description,
+        tags: bookmark.tags.map((tag) => tag.name),
+        created_at: bookmark.createdAt,
+        isImportant: bookmark.tags.some((tag) => tag.name === 'important' || tag.name === 'favorite'),
+        favicon: bookmark.favicon,
+        screenshot: bookmark.screenshot,
+        screenshot_medium: bookmark.screenshot,
+      }));
+      setBookmarks(adaptedBookmarks);
+    } finally {
+      setIsLoading(false);
+    }
+  });
+
+  // Get all unique tags from bookmarks
+  const getAllTags = () => {
+    const tags = new Set<string>();
+    bookmarks().forEach((bookmark) => {
+      (bookmark.tags || []).forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  };
 
   const filteredBookmarks = () => {
-    const query = searchQuery().toLowerCase()
-    if (!query) return bookmarksQuery.data || []
+    const term = searchTerm().toLowerCase();
+    const tag = selectedTag();
     
-    return (bookmarksQuery.data || []).filter(bookmark => 
-      bookmark.title.toLowerCase().includes(query) ||
-      bookmark.description?.toLowerCase().includes(query) ||
-      bookmark.url.toLowerCase().includes(query) ||
-      bookmark.tags.some(tag => tag.toLowerCase().includes(query))
-    )
-  }
+    return bookmarks().filter(bookmark => {
+      const matchesSearch = !term || 
+        bookmark.title.toLowerCase().includes(term) ||
+        bookmark.url.toLowerCase().includes(term) ||
+        bookmark.description?.toLowerCase().includes(term) ||
+        (bookmark.tags || []).some((t) => t.toLowerCase().includes(term));
+      
+      const matchesTag = !tag || (bookmark.tags || []).includes(tag);
+      
+      return matchesSearch && matchesTag;
+    });
+  };
 
-  const handleDeleteBookmark = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this bookmark?')) return
-    
+  // We no longer fetch or display full page metadata/content previews here.
+
+  const handleAddBookmark = async (bookmarkData: any) => {
     try {
-      await deleteBookmarkMutation.mutateAsync(id)
-    } catch (error) {
-      console.error('Error deleting bookmark:', error)
-      // Error is already handled by the mutation's onError callback
-    }
-  }
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const response = await fetch(`${API_BASE_URL}/bookmarks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+        },
+        body: JSON.stringify(bookmarkData),
+      });
 
-  const handleToggleFavorite = async (bookmark: Bookmark) => {
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create bookmark');
+      }
+
+      const raw = await response.json();
+      const newBookmark = adaptBookmarkFromApi(raw);
+      setBookmarks(prev => [newBookmark, ...prev]);
+      setShowAddModal(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to add bookmark');
+    }
+  };
+
+  const toggleImportant = (bookmarkId: number) => {
+    setBookmarks((prev) =>
+      prev.map((bookmark) =>
+        bookmark.id === bookmarkId
+          ? { ...bookmark, isImportant: !bookmark.isImportant }
+          : bookmark
+      )
+    );
+  };
+
+  const deleteBookmark = async (bookmarkId: number) => {
+    if (confirm('Are you sure you want to delete this bookmark?')) {
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+        const response = await fetch(`${API_BASE_URL}/bookmarks/${bookmarkId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete bookmark');
+        }
+
+        setBookmarks(prev => prev.filter(bookmark => bookmark.id !== bookmarkId));
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to delete bookmark');
+      }
+    }
+  };
+
+  const editBookmark = (bookmark: Bookmark) => {
+    setEditingBookmark(bookmark);
+    setShowEditModal(true);
+  };
+
+  const handleTagClick = (tag: string) => {
+    setSelectedTag((current) => (current === tag ? '' : tag));
+    setSearchTerm(''); // Clear search when filtering by tag
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedTag('');
+  };
+
+  const handleEditBookmark = async (bookmarkData: Partial<Bookmark>) => {
+    if (!editingBookmark()) return;
+
     try {
-      await updateBookmarkMutation.mutateAsync({
-        id: bookmark.id,
-        data: { is_favorite: !bookmark.is_favorite }
-      })
-    } catch (error) {
-      console.error('Error updating bookmark:', error)
-      // Error is already handled by the mutation's onError callback
-    }
-  }
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const response = await fetch(`${API_BASE_URL}/bookmarks/${editingBookmark()!.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+        },
+        body: JSON.stringify(bookmarkData),
+      });
 
-  const handleToggleRead = async (bookmark: Bookmark) => {
-    try {
-      await updateBookmarkMutation.mutateAsync({
-        id: bookmark.id,
-        data: { is_read: !bookmark.is_read }
-      })
-    } catch (error) {
-      console.error('Error updating bookmark:', error)
-      // Error is already handled by the mutation's onError callback
-    }
-  }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update bookmark');
+      }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
+      const raw = await response.json();
+      const updatedBookmark = adaptBookmarkFromApi(raw);
+      setBookmarks(prev => 
+        prev.map(bookmark => 
+          bookmark.id === updatedBookmark.id ? updatedBookmark : bookmark
+        )
+      );
+      setShowEditModal(false);
+      setEditingBookmark(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to update bookmark');
+    }
+  };
 
   return (
-    <ErrorBoundary>
-      <div class="space-y-6">
-        {/* Header */}
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-[#fafafa]">Bookmarks</h1>
-            <p class="text-[#a3a3a3]">Save and organize your favorite links</p>
-          </div>
-          <Button class="bg-[#39b9ff] hover:bg-[#2a8fdb]">
-            <IconPlus class="mr-2 h-4 w-4" />
-            Add Bookmark
-          </Button>
-        </div>
-
-        {/* Search */}
-        <div class="relative">
-          <IconSearch class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
-          <Input
-            type="search"
-            placeholder="Search bookmarks..."
-            value={searchQuery()}
-            onInput={(e) => e.target && setSearchQuery((e.target as HTMLInputElement).value)}
-            class="pl-10 bg-[#141415] border-[#262626] text-[#fafafa] placeholder-[#a3a3a3]"
-          />
-        </div>
-
-        {/* Loading State */}
-        <Show when={bookmarksQuery.isLoading}>
-          <SkeletonGrid count={6} />
-        </Show>
-
-        {/* Error State */}
-        <Show when={bookmarksQuery.isError}>
-          <div class="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div class="flex items-center">
-              <IconAlertTriangle class="mr-2 h-5 w-5" />
-              <span>Failed to load bookmarks: {bookmarksQuery.error?.message}</span>
+    <div class="p-6 space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-3xl font-bold text-foreground">Bookmarks</h1>
+          <Show when={localStorage.getItem('demoMode') === 'true' || window.location.search.includes('demo=true')}>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                Demo Mode
+              </span>
+              <span class="text-sm text-muted-foreground">Showing sample bookmarks</span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => bookmarksQuery.refetch()}
-              class="text-red-400 hover:text-red-300"
-            >
-              <IconRefresh class="mr-2 h-4 w-4" />
-              Retry
-            </Button>
+          </Show>
+        </div>
+        <Button onClick={() => setShowAddModal(true)}>
+          Add Bookmark
+        </Button>
+      </div>
+
+      {/* Tabs */}
+      <div class="border-b border-border">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('bookmarks')}
+            class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab() === 'bookmarks'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+            }`}
+          >
+            Web Bookmarks
+          </button>
+          <button
+            onClick={() => setActiveTab('videos')}
+            class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+              activeTab() === 'videos'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+            }`}
+          >
+            <IconVideo class="size-4" />
+            Video Bookmarks
+          </button>
+        </nav>
+      </div>
+
+      {/* Content based on active tab */}
+      <Show when={activeTab() === 'bookmarks'}>
+        <SearchTagFilterBar
+          searchPlaceholder="Search bookmarks..."
+          searchValue={searchTerm()}
+          onSearchChange={(value) => setSearchTerm(value)}
+          tagOptions={getAllTags()}
+          selectedTag={selectedTag()}
+          onTagChange={(value) => setSelectedTag(value)}
+          onReset={resetFilters}
+        />
+
+        <BookmarkModal
+          isOpen={showAddModal()}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddBookmark}
+          availableTags={getAllTags()}
+        />
+
+        <EditBookmarkModal
+          isOpen={showEditModal()}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingBookmark(null);
+          }}
+          onSubmit={handleEditBookmark}
+          bookmark={editingBookmark()}
+          availableTags={getAllTags()}
+        />
+
+        {isLoading() ? (
+          <div class="space-y-4">
+            {[...Array(3)].map(() => (
+              <Card class="p-6">
+                <div class="animate-pulse">
+                  <div class="h-6 bg-muted rounded mb-2"></div>
+                  <div class="h-4 bg-muted rounded mb-2 w-3/4"></div>
+                  <div class="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+              </Card>
+            ))}
           </div>
-        </Show>
-
-        {/* Bookmarks Grid */}
-        <Show when={!bookmarksQuery.isLoading && !bookmarksQuery.isError}>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <For each={filteredBookmarks()}>
-            {(bookmark) => (
-              <Card class="bg-[#141415] border-[#262626] hover:border-[#39b9ff] transition-colors">
-                <CardHeader class="pb-3">
-                  <div class="flex items-start justify-between">
+        ) : (
+          <div class="space-y-4">
+            {filteredBookmarks().map((bookmark) => {
+              const faviconUrl = getFaviconUrl(bookmark);
+              const screenshotUrl = getScreenshotUrl(bookmark);
+              return (
+                <Card class="p-6 hover:bg-accent transition-colors">
+                  <div class="flex justify-between items-start gap-4">
+                    {/* Left side: preview image + favicon + title + URL + tags */}
                     <div class="flex-1 min-w-0">
-                      <CardTitle class="text-[#fafafa] truncate">
-                        <a 
-                          href={bookmark.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          class="hover:text-[#39b9ff] transition-colors"
+                      {screenshotUrl && (
+                        <div class="mb-3 rounded-md overflow-hidden border border-border bg-muted/40">
+                          <img
+                            src={screenshotUrl}
+                            alt="Website preview"
+                            class="w-full h-32 sm:h-40 object-cover"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div class="flex items-center gap-3 mb-2">
+                        <div class="flex-shrink-0 w-8 h-8 bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                          {faviconUrl ? (
+                            <img
+                              src={faviconUrl}
+                              alt=""
+                              class="w-6 h-6 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement!.innerHTML = `<span class=\"text-xs text-muted-foreground font-medium\">${bookmark.title.charAt(0).toUpperCase()}</span>`;
+                              }}
+                            />
+                          ) : (
+                            <span class="text-xs text-muted-foreground font-medium">
+                              {bookmark.title.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <h3 class="text-lg font-semibold text-foreground truncate">
+                            <a
+                              href={bookmark.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                            >
+                              {bookmark.title}
+                              <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current" />
+                            </a>
+                          </h3>
+                          <p class="text-muted-foreground text-sm truncate">{bookmark.url}</p>
+                        </div>
+                      </div>
+
+                    {bookmark.description && (
+                      <p class="text-foreground text-sm mb-3 line-clamp-2">{bookmark.description}</p>
+                    )}
+
+                    <div class="flex flex-wrap gap-2 mt-1">
+                      {(bookmark.tags || []).map((tag) => (
+                        <button
+                          onClick={() => handleTagClick(tag)}
+                          class={`px-2 py-1 text-xs rounded-md border transition-colors cursor-pointer
+                            ${selectedTag() === tag
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-muted text-muted-foreground border-transparent hover:bg-primary hover:text-primary-foreground hover:border-primary'
+                            }`}
+                          title={`Click to filter by ${tag}`}
                         >
-                          {bookmark.title}
-                        </a>
-                      </CardTitle>
-                      <CardDescription class="text-[#a3a3a3] text-xs mt-1">
-                        {new URL(bookmark.url).hostname}
-                      </CardDescription>
-                    </div>
-                    <div class="flex items-center space-x-1 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-[#a3a3a3] hover:text-[#fafafa]"
-                        onClick={() => handleToggleFavorite(bookmark)}
-                      >
-                        <Show when={bookmark.is_favorite} fallback={<IconStarOff class="h-4 w-4" />}>
-                          <IconStar class="h-4 w-4 text-yellow-500" />
-                        </Show>
-                      </Button>
+                          {tag}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </CardHeader>
-                
-                <CardContent class="space-y-3">
-                  <Show when={bookmark.description}>
-                    <p class="text-sm text-[#a3a3a3] line-clamp-2">
-                      {bookmark.description}
-                    </p>
-                  </Show>
 
-                  {/* Tags */}
-                  <Show when={bookmark.tags.length > 0}>
-                    <div class="flex flex-wrap gap-1">
-                      <For each={bookmark.tags}>
-                        {(tag) => (
-                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[#262626] text-[#a3a3a3]">
-                            <IconTag class="mr-1 h-3 w-3" />
-                            {tag}
-                          </span>
-                        )}
-                      </For>
-                    </div>
-                  </Show>
-
-                  {/* Actions */}
-                  <div class="flex items-center justify-between pt-2 border-t border-[#262626]">
-                    <div class="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        class={`text-xs ${bookmark.is_read ? 'text-[#a3a3a3]' : 'text-[#39b9ff]'}`}
-                        onClick={() => handleToggleRead(bookmark)}
+                  {/* Right side: optional date above important star + menu */}
+                  <div class="flex flex-col items-end gap-2 ml-2">
+                    {bookmark.created_at && !isNaN(new Date(bookmark.created_at).getTime()) && (
+                      <div class="text-muted-foreground text-xs">
+                        {new Date(bookmark.created_at).toLocaleDateString()}
+                      </div>
+                    )}
+                    <div class="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleImportant(bookmark.id)}
+                        class={`flex-shrink-0 p-1 rounded hover:bg-accent/50 transition-colors ${
+                          bookmark.isImportant ? 'order-first' : ''
+                        }`}
+                        title={bookmark.isImportant ? 'Remove from favorites' : 'Mark as favorite'}
                       >
-                        {bookmark.is_read ? 'Read' : 'Unread'}
-                      </Button>
-                      <span class="text-xs text-[#a3a3a3] flex items-center">
-                        <IconClock class="mr-1 h-3 w-3" />
-                        {formatDate(bookmark.created_at)}
-                      </span>
-                    </div>
-                    
-                    <div class="flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-[#a3a3a3] hover:text-[#fafafa]"
-                        onClick={() => window.open(bookmark.url, '_blank')}
+                        <IconStar
+                          class={`size-4 ${
+                            bookmark.isImportant
+                              ? 'text-primary fill-primary'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        />
+                      </button>
+                      <DropdownMenu
+                        trigger={
+                          <button class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8">
+                            <IconDotsVertical class="size-4" />
+                          </button>
+                        }
                       >
-                        <IconExternalLink class="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-[#a3a3a3] hover:text-red-400"
-                        onClick={() => handleDeleteBookmark(bookmark.id)}
-                      >
-                        ×
-                      </Button>
+                        <DropdownMenuItem onClick={() => editBookmark(bookmark)} icon={IconEdit}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => toggleImportant(bookmark.id)}
+                          icon={IconStar}
+                        >
+                          {bookmark.isImportant ? 'Remove from favorites' : 'Mark as favorite'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => deleteBookmark(bookmark.id)}
+                          icon={IconTrash}
+                          variant="destructive"
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenu>
                     </div>
                   </div>
-                </CardContent>
+                  </div>
+                </Card>
+              );
+            })}
+
+            {filteredBookmarks().length === 0 && (
+              <Card class="p-12 text-center">
+                <p class="text-muted-foreground">
+                  {searchTerm() ? 'No bookmarks found matching your search.' : 'No bookmarks yet. Add your first bookmark!'}
+                </p>
               </Card>
             )}
-          </For>
-        </div>
-
-        {/* Empty State */}
-        <Show when={filteredBookmarks().length === 0}>
-          <div class="text-center py-12">
-            <IconBookmark class="mx-auto h-12 w-12 text-[#a3a3a3]" />
-            <h3 class="mt-2 text-sm font-medium text-[#fafafa]">No bookmarks found</h3>
-            <p class="mt-1 text-sm text-[#a3a3a3]">
-              {searchQuery() ? 'Try adjusting your search terms' : 'Get started by adding your first bookmark'}
-            </p>
           </div>
-        </Show>
-        </Show>
-      </div>
-    </ErrorBoundary>
-  )
-}
+        )}
+      </Show>
+
+      <Show when={activeTab() === 'videos'}>
+        {isLoadingVideos() ? (
+          <div class="space-y-4">
+            {[...Array(3)].map(() => (
+              <Card class="p-6">
+                <div class="animate-pulse">
+                  <div class="h-6 bg-muted rounded mb-2"></div>
+                  <div class="h-4 bg-muted rounded mb-2 w-3/4"></div>
+                  <div class="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div class="space-y-4">
+            {videoBookmarks().map((video) => (
+              <Card class="p-6 hover:bg-accent transition-colors">
+                <div class="flex gap-4">
+                  <div class="flex-shrink-0">
+                    <img
+                      src={video.thumbnail}
+                      alt={video.title}
+                      class="w-32 h-20 object-cover rounded-md"
+                    />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-foreground mb-2">
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                      >
+                        {video.title}
+                        <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current" />
+                      </a>
+                    </h3>
+                    <p class="text-muted-foreground text-sm mb-2">{video.description}</p>
+                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>{video.channel}</span>
+                      <span>•</span>
+                      <span>{video.duration}</span>
+                      <span>•</span>
+                      <span>{video.publishedAt}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      {video.tags.map((tag: any) => (
+                        <span class="px-2 py-1 text-xs rounded-md bg-muted text-muted-foreground">
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+
+            {videoBookmarks().length === 0 && (
+              <Card class="p-12 text-center">
+                <p class="text-muted-foreground">
+                  No video bookmarks yet. Save your first YouTube video!
+                </p>
+              </Card>
+            )}
+          </div>
+        )}
+      </Show>
+    </div>
+  );
+};

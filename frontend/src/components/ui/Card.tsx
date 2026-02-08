@@ -4,17 +4,19 @@ import { cn } from '@/lib/utils'
 export interface CardProps {
   class?: string
   children: any
+  onClick?: () => void
 }
 
 export function Card(props: CardProps) {
-  const [local, others] = splitProps(props, ['class', 'children'])
+  const [local, others] = splitProps(props, ['class', 'children', 'onClick'])
 
   return (
     <div
       class={cn(
-        'rounded-lg border bg-[#141415] text-[#fafafa] shadow-sm border-[#262626]',
+        'card-papra',
         local.class
       )}
+      onClick={local.onClick}
       {...others}
     >
       {local.children}
@@ -49,7 +51,7 @@ export function CardDescription(props: CardProps) {
   const [local, others] = splitProps(props, ['class', 'children'])
 
   return (
-    <p class={cn('text-sm text-[#a3a3a3]', local.class)} {...others}>
+    <p class={cn('text-sm text-muted-foreground', local.class)} {...others}>
       {local.children}
     </p>
   )

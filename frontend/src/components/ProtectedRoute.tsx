@@ -1,27 +1,32 @@
 import { useAuth } from '@/lib/auth';
-import { Login } from '@/pages/Login';
+import { AuthenticationWarning } from '@/components/AuthenticationWarning';
+import { isDemoMode } from '@/lib/demo-mode';
 
 interface ProtectedRouteProps {
   children: any;
 }
 
 export const ProtectedRoute = (props: ProtectedRouteProps) => {
+  // In demo mode, show UI immediately without any checks
+  if (isDemoMode()) {
+    console.log('[ProtectedRoute] Demo mode active - showing UI immediately');
+    return props.children;
+  }
+
   const { authState } = useAuth();
 
-  if (authState.isLoading) {
-    return (
-      <div class="min-h-screen bg-[#18181b] flex items-center justify-center">
-        <div class="text-center">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#39b9ff] mx-auto mb-4"></div>
-          <p class="text-[#a3a3a3]">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  console.log('[ProtectedRoute] Render:', {
+    isDemoMode: isDemoMode(),
+    isAuthenticated: authState.isAuthenticated,
+    isLoading: authState.isLoading
+  });
 
+  // If not authenticated, show authentication warning (no loading state)
   if (!authState.isAuthenticated) {
-    return <Login />;
+    console.log('[ProtectedRoute] Rendering authentication warning');
+    return <AuthenticationWarning />;
   }
 
+  console.log('[ProtectedRoute] Rendering children');
   return props.children;
 };

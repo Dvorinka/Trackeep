@@ -1,186 +1,576 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { 
-  IconNotebook, 
-  IconSearch, 
-  IconPlus,
-  IconEdit,
-  IconTrash,
-  IconCalendar,
-  IconTag,
-  IconLoader2
-} from '@tabler/icons-solidjs'
-import { createSignal, For, Show } from 'solid-js'
-import { notesApi, type Note } from '@/lib/api-client'
+import { createSignal, onMount, For, Show } from 'solid-js';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
+import { NoteModal } from '@/components/ui/NoteModal';
+import { ViewNoteModal } from '@/components/ui/ViewNoteModal';
+import { IconPin, IconTrash, IconEdit, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
+import { getMockNotes } from '@/lib/mockData';
 
-export function Notes() {
-  const [searchQuery, setSearchQuery] = createSignal('')
-  
-  const notesQuery = notesApi.useGetAll()
-  const deleteNoteMutation = notesApi.useDelete()
+interface Note {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  pinned: boolean;
+  attachments?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    url?: string;
+  }>;
+  isMarkdown?: boolean;
+  isHtml?: boolean;
+}
+
+const normalizeMockDate = (dateStr: string): string => {
+  const directDate = new Date(dateStr);
+  if (!isNaN(directDate.getTime())) {
+    return directDate.toISOString();
+  }
+
+  const match = dateStr.match(/(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago/i);
+  if (!match) {
+    return new Date().toISOString();
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  const date = new Date();
+
+  switch (unit) {
+    case 'day':
+    case 'days':
+      date.setDate(date.getDate() - value);
+      break;
+    case 'week':
+    case 'weeks':
+      date.setDate(date.getDate() - value * 7);
+      break;
+    case 'month':
+    case 'months':
+      date.setMonth(date.getMonth() - value);
+      break;
+    case 'year':
+    case 'years':
+      date.setFullYear(date.getFullYear() - value);
+      break;
+  }
+
+  return date.toISOString();
+};
+
+const renderMarkdownPreviewHtml = (content: string, maxBlocks = 4): string => {
+  const html = content
+    .replace(/^# (.*$)/gim, '<h1 class="text-base font-semibold mb-1">$1<\/h1>')
+    .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1">$1<\/h2>')
+    .replace(/^### (.*$)/gim, '<h3 class="text-sm font-semibold mb-1">$1<\/h3>')
+    .replace(/^#### (.*$)/gim, '<h4 class="text-xs font-semibold mb-1">$1<\/h4>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1<\/strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
+    .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-xs">$1<\/code>')
+    .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2<\/code><\/pre>')
+    .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1<\/li>')
+    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1<\/li>')
+    .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-3 italic text-[#aaa] mb-2">$1<\/blockquote>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1<\/a>')
+    .replace(/\n\n+/g, '<\/p><p class="mb-2">');
+
+  const parts = html.split('<\/p><p class="mb-2">');
+  const limited = parts.slice(0, maxBlocks).join('<\/p><p class="mb-2">');
+  return limited;
+};
+
+const renderPlainTextPreviewHtml = (content: string): string => {
+  return content
+    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1<\/a>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1<\/strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
+    .split('\n')
+    .slice(0, 6)
+    .map((line) => (line ? line : '<br \/>'))
+    .join('\n');
+};
+
+export const Notes = () => {
+  const [notes, setNotes] = createSignal<Note[]>([]);
+  const [isLoading, setIsLoading] = createSignal(true);
+  const [searchTerm, setSearchTerm] = createSignal('');
+  const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
+  const [showAddModal, setShowAddModal] = createSignal(false);
+  const [showEditModal, setShowEditModal] = createSignal(false);
+  const [showViewModal, setShowViewModal] = createSignal(false);
+  const [editingNote, setEditingNote] = createSignal<Note | null>(null);
+  const [viewingNote, setViewingNote] = createSignal<Note | null>(null);
+  const [copiedContent, setCopiedContent] = createSignal(false);
+  const [expandedNotes, setExpandedNotes] = createSignal<Set<number>>(new Set());
+
+  // Check if we're in demo mode
+  const isDemoMode = () => {
+    return localStorage.getItem('demoMode') === 'true' || 
+           document.title.includes('Demo Mode') ||
+           window.location.search.includes('demo=true');
+  };
+
+  onMount(async () => {
+    try {
+      if (isDemoMode()) {
+        // Use mock data in demo mode
+        const mockNotes = getMockNotes();
+        const adaptedNotes = mockNotes.map((note, index) => ({
+          id: index + 1,
+          title: note.title,
+          content: note.content,
+          createdAt: normalizeMockDate(note.createdAt),
+          updatedAt: normalizeMockDate(note.updatedAt),
+          tags: note.tags.map(tag => tag.name),
+          pinned: note.tags.some(tag => tag.name === 'important' || tag.name === 'pinned'),
+          attachments: note.attachments?.map((att, index) => ({
+          id: `att_${index}`,
+          name: att.name,
+          type: att.type,
+          size: att.size,
+          url: `/attachments/${att.name}`
+        })) || [],
+          isMarkdown: note.content.includes('#') || note.content.includes('*'),
+          isHtml: note.content.includes('<') && note.content.includes('>')
+        }));
+        setNotes(adaptedNotes);
+        setIsLoading(false);
+        return;
+      }
+
+      // Load mock notes data
+      const mockNotes = getMockNotes();
+      const adaptedNotes = mockNotes.map((note, index) => ({
+        id: index + 1,
+        title: note.title,
+        content: note.content,
+        createdAt: normalizeMockDate(note.createdAt),
+        updatedAt: normalizeMockDate(note.updatedAt),
+        tags: note.tags.map(tag => tag.name),
+        pinned: note.tags.some(tag => tag.name === 'important' || tag.name === 'pinned'),
+        attachments: note.attachments?.map((att, index) => ({
+          id: `att_${index}`,
+          name: att.name,
+          type: att.type,
+          size: att.size,
+          url: `/attachments/${att.name}`
+        })) || [],
+        isMarkdown: note.content.includes('#') || note.content.includes('*'),
+        isHtml: note.content.includes('<') && note.content.includes('>')
+      }));
+      setNotes(adaptedNotes);
+    } catch (error) {
+      console.error('Failed to load notes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  });
 
   const filteredNotes = () => {
-    const query = searchQuery().toLowerCase()
-    if (!query) return notesQuery.data || []
+    const term = searchTerm().toLowerCase();
+    const tags = selectedTags();
     
-    return (notesQuery.data || []).filter(note => 
-      note.title.toLowerCase().includes(query) ||
-      note.content.toLowerCase().includes(query) ||
-      note.tags.some(tag => tag.toLowerCase().includes(query))
-    )
-  }
+    return notes().filter(note => {
+      const matchesSearch = note.title.toLowerCase().includes(term) ||
+        note.content.toLowerCase().includes(term) ||
+        note.tags.some(tag => tag.toLowerCase().includes(term));
+      
+      const matchesTags = tags.length === 0 || 
+        tags.every(tag => note.tags.includes(tag));
+      
+      return matchesSearch && matchesTags;
+    }).sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  };
 
-  const handleDeleteNote = async (noteId: number) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
-    
-    try {
-      await deleteNoteMutation.mutateAsync(noteId)
-    } catch (error) {
-      console.error('Error deleting note:', error)
-      alert('Failed to delete note')
+  const allTags = () => {
+    const tagSet = new Set<string>();
+    notes().forEach(note => {
+      note.tags.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  };
+
+  const toggleTag = (tag: string) => {
+    const currentTags = selectedTags();
+    if (currentTags.includes(tag)) {
+      setSelectedTags([]);
+    } else {
+      setSelectedTags([tag]);
     }
-  }
+  };
+
+  const handleAddNote = async (noteData: any) => {
+    try {
+      // TODO: Replace with actual API call
+      const note: Note = {
+        id: Date.now(),
+        title: noteData.title,
+        content: noteData.content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags: noteData.tags,
+        pinned: false
+      };
+      
+      setNotes(prev => [note, ...prev]);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Failed to add note:', error);
+    }
+  };
+
+  const handleEditNote = async (noteData: any) => {
+    try {
+      // TODO: Replace with actual API call
+      setNotes(prev => prev.map(note => 
+        note.id === noteData.id 
+          ? { 
+              ...note, 
+              title: noteData.title, 
+              content: noteData.content, 
+              tags: noteData.tags,
+              updatedAt: new Date().toISOString()
+            }
+          : note
+      ));
+      setShowEditModal(false);
+      setEditingNote(null);
+    } catch (error) {
+      console.error('Failed to update note:', error);
+    }
+  };
+
+  const togglePin = async (noteId: number) => {
+    try {
+      // TODO: Replace with actual API call
+      setNotes(prev => prev.map(note => 
+        note.id === noteId ? { ...note, pinned: !note.pinned } : note
+      ));
+    } catch (error) {
+      console.error('Failed to toggle pin:', error);
+    }
+  };
+
+  const deleteNote = async (noteId: number) => {
+    try {
+      // TODO: Replace with actual API call
+      setNotes(prev => prev.filter(note => note.id !== noteId));
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+    }
+  };
+
+  const startEditNote = (note: Note) => {
+    setEditingNote(note);
+    setShowEditModal(true);
+  };
+
+  const viewNote = (note: Note) => {
+    console.log('Viewing note:', note.title);
+    setViewingNote(note);
+    setShowViewModal(true);
+  };
+
+  const copyNoteContent = async (note: Note) => {
+    try {
+      await navigator.clipboard.writeText(note.content);
+      setCopiedContent(true);
+      setTimeout(() => setCopiedContent(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy content:', error);
+    }
+  };
+
+  const toggleNoteExpansion = (noteId: number) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  const exportNote = (note: Note) => {
+    const content = note.isMarkdown ? `# ${note.title}\n\n${note.content}` : note.content;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title.replace(/\s+/g, '_')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div class="space-y-6">
-      {/* Page Header */}
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-white">Notes</h1>
-          <p class="text-gray-400 mt-2">Capture and organize your thoughts and ideas</p>
-        </div>
-        <Button>
-          <IconPlus class="mr-2 h-4 w-4" />
-          New Note
+    <div class="p-6 space-y-6">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-[#fafafa]">Notes</h1>
+        <Button onClick={() => setShowAddModal(true)}>
+          Add Note
         </Button>
       </div>
 
-      {/* Error Display */}
-      <Show when={notesQuery.error}>
-        <div class="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded">
-          Failed to load notes: {notesQuery.error?.message}
+      <SearchTagFilterBar
+        searchPlaceholder="Search notes..."
+        searchValue={searchTerm()}
+        onSearchChange={(value) => setSearchTerm(value)}
+        tagOptions={allTags()}
+        selectedTag={selectedTags()[0] || ''}
+        onTagChange={(value) => setSelectedTags(value ? [value] : [])}
+        onReset={() => {
+          setSearchTerm('');
+          setSelectedTags([]);
+        }}
+      />
+
+      <Show when={copiedContent()}>
+        <div class="bg-primary/15 text-primary px-3 py-1 rounded-md text-sm">
+          Content copied!
         </div>
       </Show>
 
-      {/* Search and Filters */}
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="relative flex-1">
-          <IconSearch class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="search"
-            placeholder="Search notes..."
-            value={searchQuery()}
-            onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
-            class="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
-          />
+      {isLoading() ? (
+        <div class="space-y-4">
+          {[...Array(3)].map(() => (
+            <Card class="p-6">
+              <div class="animate-pulse">
+                <div class="h-6 bg-[#262626] rounded mb-2"></div>
+                <div class="h-4 bg-[#262626] rounded w-3/4"></div>
+              </div>
+            </Card>
+          ))}
         </div>
-        <div class="flex gap-2">
-          <Button variant="outline" size="sm">
-            <IconTag class="mr-2 h-4 w-4" />
-            All Tags
-          </Button>
-          <Button variant="outline" size="sm">
-            <IconCalendar class="mr-2 h-4 w-4" />
-            Recent
-          </Button>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      <Show when={notesQuery.isLoading}>
-        <div class="flex items-center justify-center py-12">
-          <IconLoader2 class="h-8 w-8 animate-spin text-blue-400" />
-          <span class="ml-2 text-gray-400">Loading notes...</span>
-        </div>
-      </Show>
-
-      {/* Notes Grid */}
-      <Show when={!notesQuery.isLoading && !notesQuery.error}>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <For each={filteredNotes()}>
-            {(note) => (
-              <Card class="hover:shadow-lg transition-shadow">
-                <CardHeader class="pb-3">
-                  <div class="flex items-start justify-between">
-                    <div class="flex items-center space-x-3">
-                      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-                        <IconNotebook class="h-4 w-4 text-white" />
-                      </div>
-                      <div class="min-w-0 flex-1">
-                        <CardTitle class="text-lg text-white truncate">
-                          {note.title}
-                        </CardTitle>
-                        <CardDescription class="text-xs text-gray-400">
-                          {new Date(note.updated_at).toLocaleDateString()}
-                        </CardDescription>
-                      </div>
-                    </div>
+      ) : (
+        <div class="space-y-4">
+          {filteredNotes().map((note) => (
+            <Card 
+              class={`p-6 cursor-pointer transition-all hover:shadow-lg hover:bg-[#1a1a1a] ${note.pinned ? 'border-l-4 border-l-primary' : ''}`}
+              onClick={() => viewNote(note)}
+            >
+              <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-semibold text-[#fafafa]">{note.title}</h3>
+                  {note.pinned && <IconPin class="size-4 text-primary" />}
+                  {note.isMarkdown && <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">MD</span>}
+                  {note.isHtml && <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">HTML</span>}
+                </div>
+                <div class="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyNoteContent(note);
+                    }}
+                    class="text-white hover:text-white/80 p-1"
+                  >
+                    <IconCopy size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      exportNote(note);
+                    }}
+                    class="text-white hover:text-white/80 p-1"
+                  >
+                    <IconDownload size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditNote(note);
+                    }}
+                    class="text-white hover:text-white/80 p-1"
+                  >
+                    <IconEdit size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePin(note.id);
+                    }}
+                    class="text-primary hover:text-primary/80 p-1"
+                    {...{title: note.pinned ? "Unpin note" : "Pin note"}}
+                  >
+                    <IconPin size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNote(note.id);
+                    }}
+                    class="text-destructive hover:text-destructive/80 p-1"
+                  >
+                    <IconTrash size={16} />
+                  </Button>
+                </div>
+              </div>
+              
+              <div class="text-[#a3a3a3] text-sm mb-3">
+                <div class="prose prose-invert max-w-none">
+                  <Show 
+                    when={expandedNotes().has(note.id)} 
+                    fallback={
+                      <div
+                        class="overflow-hidden"
+                        style={{
+                          display: '-webkit-box',
+                          '-webkit-line-clamp': '3',
+                          '-webkit-box-orient': 'vertical',
+                          'max-height': '4.5em',
+                          'line-height': '1.5em'
+                        }}
+                        innerHTML={
+                          note.isHtml
+                            ? note.content
+                            : note.isMarkdown
+                              ? renderMarkdownPreviewHtml(note.content)
+                              : renderPlainTextPreviewHtml(note.content)
+                        }
+                      />
+                    }
+                  >
+                    <div
+                      innerHTML={
+                        note.isHtml
+                          ? note.content
+                          : note.isMarkdown
+                            ? note.content.replace(/^# (.*$)/gim, '<h1 class="text-base font-semibold mb-2">$1</h1>')
+                              .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1">$1</h2>')
+                              .replace(/^### (.*$)/gim, '<h3 class="text-sm font-semibold mb-1">$1</h3>')
+                              .replace(/^#### (.*$)/gim, '<h4 class="text-xs font-semibold mb-1">$1</h4>')
+                              .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                              .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-xs">$1</code>')
+                              .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2</code></pre>')
+                              .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
+                              .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
+                              .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-3 italic text-[#aaa] mb-2">$1</blockquote>')
+                              .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+                              .replace(/\n\n+/g, '</p><p class="mb-2">')
+                            : note.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+                              .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                              .split('\n').map((line) => line ? `<p class="mb-2">${line}</p>` : '<br />').join('')
+                      }
+                    />
+                  </Show>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Show more clicked for note:', note.title);
+                    toggleNoteExpansion(note.id);
+                  }}
+                  class="mt-2 text-xs text-primary hover:text-primary/80 font-medium cursor-pointer transition-colors"
+                >
+                  {expandedNotes().has(note.id) ? 'Show less ←' : 'Show more →'}
+                </button>
+              </div>
+              
+              {/* Attachments */}
+              <Show when={note.attachments && note.attachments.length > 0}>
+                <div class="mb-3">
+                  <div class="flex items-center gap-2 mb-2">
+                    <IconPaperclip class="size-4 text-[#a3a3a3]" />
+                    <span class="text-xs text-[#a3a3a3]">Attachments ({note.attachments?.length || 0})</span>
                   </div>
-                </CardHeader>
-                <CardContent class="space-y-3">
-                  {note.content && (
-                    <p class="text-sm text-gray-300 line-clamp-3">
-                      {note.content}
-                    </p>
-                  )}
-                  
-                  {/* Tags */}
-                  {note.tags && note.tags.length > 0 && (
-                    <div class="flex flex-wrap gap-1">
-                      <For each={note.tags}>
-                        {(tag) => (
-                          <span
-                            class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-700 text-gray-300"
-                          >
-                            {tag}
-                          </span>
-                        )}
-                      </For>
-                    </div>
-                  )}
-                  
-                  {/* Actions */}
-                  <div class="flex items-center justify-between pt-2 border-t border-gray-700">
-                    <span class="text-xs text-gray-400">
-                      Created {new Date(note.created_at).toLocaleDateString()}
-                    </span>
-                    <div class="flex space-x-1">
-                      <Button variant="ghost" size="sm" class="text-gray-400 hover:text-white">
-                        <IconEdit class="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        class="text-gray-400 hover:text-red-400"
-                        onClick={() => handleDeleteNote(note.id)}
-                      >
-                        <IconTrash class="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <div class="flex flex-wrap gap-2">
+                    <For each={note.attachments || []}>
+                      {(attachment) => (
+                        <div class="flex items-center gap-2 px-2 py-1 bg-[#262626] rounded-md text-xs">
+                          <span class="text-[#a3a3a3]">{attachment.name}</span>
+                          <span class="text-[#666]">({attachment.size})</span>
+                        </div>
+                      )}
+                    </For>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </For>
+                </div>
+              </Show>
+              
+              <div class="flex flex-wrap gap-2 mb-3">
+                <For each={note.tags}>
+                  {(tag) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTag(tag);
+                      }}
+                      class="px-2 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs rounded-md transition-colors cursor-pointer"
+                    >
+                      {tag}
+                    </button>
+                  )}
+                </For>
+              </div>
+              
+              <p class="text-[#a3a3a3] text-xs">
+                Updated: {note.updatedAt && !isNaN(new Date(note.updatedAt).getTime()) ? new Date(note.updatedAt).toLocaleDateString() : 'Invalid Date'}
+              </p>
+            </Card>
+          ))}
+          
+          {filteredNotes().length === 0 && (
+            <Card class="p-12 text-center">
+              <p class="text-muted-foreground">
+                {searchTerm() || selectedTags().length > 0 
+                  ? 'No notes found matching your search or filters.' 
+                  : 'No notes yet. Add your first note!'}
+              </p>
+            </Card>
+          )}
         </div>
-        
-        {/* Empty State */}
-        <Show when={filteredNotes().length === 0}>
-          <div class="text-center py-12">
-            <IconNotebook class="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 class="text-lg font-medium text-white mb-2">No notes found</h3>
-            <p class="text-gray-400 mb-4">
-              {searchQuery() ? 'Try adjusting your search terms' : 'Create your first note to get started'}
-            </p>
-            <Button>
-              <IconPlus class="mr-2 h-4 w-4" />
-              New Note
-            </Button>
-          </div>
-        </Show>
-      </Show>
+      )}
 
+      {/* Add Note Modal */}
+      <NoteModal
+        isOpen={showAddModal()}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddNote}
+        availableTags={allTags()}
+      />
+
+      {/* Edit Note Modal */}
+      <NoteModal
+        isOpen={showEditModal()}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingNote(null);
+        }}
+        onSubmit={handleEditNote}
+        note={editingNote()}
+        availableTags={allTags()}
+      />
+
+      {/* View Note Modal */}
+      <ViewNoteModal
+        isOpen={showViewModal()}
+        onClose={() => {
+          setShowViewModal(false);
+          setViewingNote(null);
+        }}
+        note={viewingNote()}
+        onEdit={startEditNote}
+        onTogglePin={togglePin}
+        onDelete={deleteNote}
+        onCopyContent={copyNoteContent}
+        onExportNote={exportNote}
+      />
     </div>
-  )
-}
+  );
+};

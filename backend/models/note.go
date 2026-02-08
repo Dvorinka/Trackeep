@@ -16,22 +16,26 @@ type Note struct {
 	UserID uint `json:"user_id" gorm:"not null;index"`
 	User   User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
-	Title string `json:"title" gorm:"not null"`
+	Title   string `json:"title" gorm:"not null"`
 	Content string `json:"content" gorm:"type:text"`
-	
+
+	// Encryption
+	IsEncrypted   bool   `json:"is_encrypted" gorm:"default:false"`
+	EncryptionKey string `json:"-" gorm:"column:encryption_key"` // User-specific encryption key (optional)
+
 	// Organization
 	Tags []Tag `json:"tags,omitempty" gorm:"many2many:note_tags;"`
-	
+
 	// Metadata
 	Description string `json:"description"`
 	IsPublic    bool   `json:"is_public" gorm:"default:false"`
 	IsPinned    bool   `json:"is_pinned" gorm:"default:false"`
-	
+
 	// Formatting
 	ContentType string `json:"content_type" gorm:"default:markdown"` // markdown, html, plain
-	
+
 	// Relationships
-	ParentNoteID *uint `json:"parent_note_id,omitempty"`
-	ParentNote   *Note `json:"parent_note,omitempty" gorm:"foreignKey:ParentNoteID"`
+	ParentNoteID *uint  `json:"parent_note_id,omitempty"`
+	ParentNote   *Note  `json:"parent_note,omitempty" gorm:"foreignKey:ParentNoteID"`
 	Subnotes     []Note `json:"subnotes,omitempty" gorm:"foreignKey:ParentNoteID"`
 }

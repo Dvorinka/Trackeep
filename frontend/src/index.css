@@ -1,68 +1,798 @@
+/* Complete Papra CSS - 1:1 match */
+
+/* Animation utilities */
+.data-\[expanded\]\:animate-in[data-expanded] {
+    animation: una-in;
+    animation-name: una-in;
+    animation-duration: .15s;
+    --una-enter-opacity: initial;
+    --una-enter-scale: initial;
+    --una-enter-rotate: initial;
+    --una-enter-translate-x: initial;
+    --una-enter-translate-y: initial
+}
+
+.data-\[closed\]\:animate-out[data-closed] {
+    animation: una-out;
+    animation-name: una-out;
+    animation-duration: .15s;
+    --una-exit-opacity: initial;
+    --una-exit-scale: initial;
+    --una-exit-rotate: initial;
+    --una-exit-translate-x: initial;
+    --una-exit-translate-y: initial
+}
+
+/* Complete Inter Font Faces - Exact Papra */
+@font-face {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 400;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url(https://fonts.bunny.net/inter/files/inter-latin-400-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-400-normal.woff) format("woff");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+}
+
+@font-face {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 500;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url(https://fonts.bunny.net/inter/files/inter-latin-500-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-500-normal.woff) format("woff");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+}
+
+@font-face {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 600;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url(https://fonts.bunny.net/inter/files/inter-latin-600-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-600-normal.woff) format("woff");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+}
+
+@font-face {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 700;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url(https://fonts.bunny.net/inter/files/inter-latin-700-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-700-normal.woff) format("woff");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+}
+
+/* Exact Papra CSS Variables and Base Styles */
+:root,:host {
+    --colors-border: hsl(var(--border));
+    --colors-background: hsl(var(--background));
+    --colors-foreground: hsl(var(--foreground));
+    --font-sans: "Inter",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+    --radius-lg: .5rem;
+    --spacing: .25rem;
+    --fontWeight-semibold: 600;
+    --radius-xl: .75rem;
+    --fontWeight-bold: 700;
+    --fontWeight-medium: 500;
+    --leading-tight: 1.25;
+    --font-mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+    --container-xl: 36rem;
+    --radius-md: .375rem;
+    --container-sm: 24rem;
+    --container-xs: 20rem;
+    --leading-none: 1;
+    --container-md: 28rem;
+    --default-transition-timingFunction: cubic-bezier(.4, 0, .2, 1);
+    --default-transition-duration: .15s;
+    --container-7xl: 80rem;
+    --container-5xl: 64rem;
+    --fontWeight-normal: 400;
+    --fontWeight-light: 300;
+    --colors-primary-DEFAULT: hsl(var(--primary));
+    --radius-DEFAULT: .25rem;
+    --radius-sm: .25rem;
+    --tracking-widest: .1em;
+    --container-lg: 32rem;
+    --colors-card-DEFAULT: hsl(var(--card));
+    --ease-DEFAULT: cubic-bezier(.4, 0, .2, 1);
+    --ease-out: cubic-bezier(0, 0, .2, 1);
+    --tracking-tight: -.025em;
+    --colors-secondary-DEFAULT: hsl(var(--secondary));
+    --ease-linear: linear;
+    --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+    --colors-ring: hsl(var(--ring));
+    --container-2xl: 42rem;
+    --colors-destructive-DEFAULT: hsl(var(--destructive));
+    --colors-muted-foreground: hsl(var(--muted-foreground));
+    --colors-red-500: oklch(63.7% .237 25.331);
+    --colors-red-DEFAULT: oklch(70.4% .191 22.216);
+    --colors-primary-foreground: hsl(var(--primary-foreground));
+    --colors-muted-DEFAULT: hsl(var(--muted));
+    --colors-warning-DEFAULT: hsl(var(--warning));
+    --colors-popover-DEFAULT: hsl(var(--popover));
+    --colors-popover-foreground: hsl(var(--popover-foreground));
+    --colors-destructive-foreground: hsl(var(--destructive-foreground));
+    --colors-input: hsl(var(--input));
+    --colors-secondary-foreground: hsl(var(--secondary-foreground));
+    --colors-card-foreground: hsl(var(--card-foreground));
+    --colors-accent-DEFAULT: hsl(var(--accent));
+    --text-sm-fontSize: .875rem;
+    --text-sm-lineHeight: 1.25rem;
+    --text-xs-fontSize: .75rem;
+    --text-xs-lineHeight: 1rem;
+    --text-2xl-fontSize: 1.5rem;
+    --text-2xl-lineHeight: 2rem;
+    --text-lg-fontSize: 1.125rem;
+    --text-lg-lineHeight: 1.75rem;
+    --text-xl-fontSize: 1.25rem;
+    --text-xl-lineHeight: 1.75rem;
+    --text-base-fontSize: 1rem;
+    --text-base-lineHeight: 1.5rem;
+    --text-3xl-fontSize: 1.875rem;
+    --text-3xl-lineHeight: 2.25rem;
+    --colors-accent-foreground: hsl(var(--accent-foreground));
+    --text-4xl-fontSize: 2.25rem;
+    --text-4xl-lineHeight: 2.5rem;
+    --text-6xl-fontSize: 3.75rem;
+    --text-6xl-lineHeight: 1;
+    --colors-red-600: oklch(57.7% .245 27.325);
+    --leading-relaxed: 1.625;
+    --default-font-family: var(--font-sans);
+    --default-monoFont-family: var(--font-mono)
+}
+
+/* Papra color system - improved light theme */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 98.5%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 199 89% 67%;
+    --primary-foreground: 0 0% 3.9%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 8%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 0 0% 95%;
+    --accent-foreground: 0 0% 8%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 0%;
+    --warning: 31 98% 50%;
+    --warning-foreground: 0 0% 0%;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: 199 89% 67%;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* Light mode enhancements */
+:root {
+    /* Better shadows for light mode */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
-a:hover {
-  color: #535bf2;
+
+/* Light mode specific styles */
+:root .card {
+    box-shadow: var(--shadow-sm);
+    border: 1px solid hsl(var(--border));
+}
+
+:root .hover\:shadow-md:hover {
+    box-shadow: var(--shadow-md);
+}
+
+:root .hover\:shadow-lg:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Better button styling in light mode */
+:root button {
+    transition: all 0.15s ease-in-out;
+}
+
+:root .bg-primary {
+    box-shadow: var(--shadow-sm);
+}
+
+:root .bg-primary:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* Improved input styling in light mode */
+:root input, :root textarea, :root select {
+    box-shadow: var(--shadow-sm);
+}
+
+:root input:focus, :root textarea:focus, :root select:focus {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+/* Light mode scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+/* Papra dark theme - exact match */
+[data-kb-theme=dark] {
+    --background: 240 4% 10%;
+    --foreground: 0 0% 98%;
+    --card: 240 4% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 4% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 199 89% 67%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --warning: 31 98% 50%;
+    --warning-foreground: 0 0% 0%;
+    --border: #262626;
+    --input: #262626;
+    --ring: 0 0% 83.1%;
+}
+
+/* Ensure all borders are #262626 in dark mode only */
+[data-kb-theme=dark] * {
+    border-color: #262626 !important;
+}
+
+/* Override all border utilities in dark mode */
+[data-kb-theme=dark] .border,
+[data-kb-theme=dark] .border-t,
+[data-kb-theme=dark] .border-b,
+[data-kb-theme=dark] .border-l,
+[data-kb-theme=dark] .border-r,
+[data-kb-theme=dark] .border-x,
+[data-kb-theme=dark] .border-y,
+[data-kb-theme=dark] .border-0,
+[data-kb-theme=dark] .border-2,
+[data-kb-theme=dark] .border-4,
+[data-kb-theme=dark] .border-8,
+[data-kb-theme=dark] .border-input,
+[data-kb-theme=dark] .border-border,
+[data-kb-theme=dark] .border-destructive,
+[data-kb-theme=dark] .border-primary,
+[data-kb-theme=dark] .border-secondary,
+[data-kb-theme=dark] .border-accent,
+[data-kb-theme=dark] .border-muted,
+[data-kb-theme=dark] .border-foreground,
+[data-kb-theme=dark] .border-card,
+[data-kb-theme=dark] .border-popover {
+    border-color: #262626 !important;
+}
+
+/* Ensure borders don't change on hover in dark mode */
+[data-kb-theme=dark] .hover\:border:hover,
+[data-kb-theme=dark] .hover\:border-t:hover,
+[data-kb-theme=dark] .hover\:border-b:hover,
+[data-kb-theme=dark] .hover\:border-l:hover,
+[data-kb-theme=dark] .hover\:border-r:hover,
+[data-kb-theme=dark] .hover\:border-x:hover,
+[data-kb-theme=dark] .hover\:border-y:hover,
+[data-kb-theme=dark] .hover\:border-input:hover,
+[data-kb-theme=dark] .hover\:border-border:hover,
+[data-kb-theme=dark] .hover\:border-destructive:hover,
+[data-kb-theme=dark] .hover\:border-primary:hover,
+[data-kb-theme=dark] .hover\:border-secondary:hover,
+[data-kb-theme=dark] .hover\:border-accent:hover,
+[data-kb-theme=dark] .hover\:border-muted:hover,
+[data-kb-theme=dark] .hover\:border-foreground:hover,
+[data-kb-theme=dark] .hover\:border-card:hover,
+[data-kb-theme=dark] .hover\:border-popover:hover {
+    border-color: #262626 !important;
+}
+
+/* Focus states in dark mode */
+[data-kb-theme=dark] .focus\:border:focus,
+[data-kb-theme=dark] .focus\:border-t:focus,
+[data-kb-theme=dark] .focus\:border-b:focus,
+[data-kb-theme=dark] .focus\:border-l:focus,
+[data-kb-theme=dark] .focus\:border-r:focus,
+[data-kb-theme=dark] .focus\:border-x:focus,
+[data-kb-theme=dark] .focus\:border-y:focus,
+[data-kb-theme=dark] .focus\:border-input:focus,
+[data-kb-theme=dark] .focus\:border-border:focus,
+[data-kb-theme=dark] .focus\:border-destructive:focus,
+[data-kb-theme=dark] .focus\:border-primary:focus,
+[data-kb-theme=dark] .focus\:border-secondary:focus,
+[data-kb-theme=dark] .focus\:border-accent:focus,
+[data-kb-theme=dark] .focus\:border-muted:focus,
+[data-kb-theme=dark] .focus\:border-foreground:focus,
+[data-kb-theme=dark] .focus\:border-card:focus,
+[data-kb-theme=dark] .focus\:border-popover:focus {
+    border-color: #262626 !important;
+}
+
+/* Table borders in dark mode */
+[data-kb-theme=dark] table,
+[data-kb-theme=dark] table th,
+[data-kb-theme=dark] table td,
+[data-kb-theme=dark] table thead,
+[data-kb-theme=dark] table tbody,
+[data-kb-theme=dark] table tfoot,
+[data-kb-theme=dark] table tr {
+    border-color: #262626 !important;
+}
+
+/* Form elements in dark mode */
+[data-kb-theme=dark] input,
+[data-kb-theme=dark] textarea,
+[data-kb-theme=dark] select,
+[data-kb-theme=dark] button {
+    border-color: #262626 !important;
+}
+
+/* Dark mode select/dropdown fixes */
+[data-kb-theme=dark] select {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] select option {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+[data-kb-theme=dark] select:focus {
+    border-color: hsl(var(--primary)) !important;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1) !important;
+}
+
+/* Dark mode dropdown content fixes */
+[data-kb-theme=dark] .bg-popover {
+    background-color: hsl(var(--popover)) !important;
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .text-popover-foreground {
+    color: hsl(var(--popover-foreground)) !important;
+}
+
+[data-kb-theme=dark] [role="option"],
+[data-kb-theme=dark] .select-item {
+    background-color: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+}
+
+[data-kb-theme=dark] [role="option"]:hover,
+[data-kb-theme=dark] .select-item:hover,
+[data-kb-theme=dark] [role="option"]:focus,
+[data-kb-theme=dark] .select-item:focus {
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Card and component borders in dark mode */
+[data-kb-theme=dark] .card,
+[data-kb-theme=dark] [role="dialog"],
+[data-kb-theme=dark] [role="menu"],
+[data-kb-theme=dark] [role="listbox"],
+[data-kb-theme=dark] [role="option"],
+[data-kb-theme=dark] .dropdown,
+[data-kb-theme=dark] .popover,
+[data-kb-theme=dark] .tooltip {
+    border-color: #262626 !important;
+}
+
+/* Papra base styles - exact match */
+*,:after,:before,::backdrop,::file-selector-button {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid
+}
+
+html,:host {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-feature-settings: var(--default-font-featureSettings, normal);
+    font-variation-settings: var(--default-font-variationSettings, normal);
+    -webkit-tap-highlight-color: transparent
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-variation-settings: normal;
+    font-weight: 400;
+    line-height: 1.5;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Papra utility classes */
+.w-280px {
+    width: 280px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.size-5\.5 {
+    width: 1.375rem;
+    height: 1.375rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Papra tabler icons */
+.i-tabler-chevron-down {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 9l6 6l6-6'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-file-text {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 13H8M16 17H8M10 9H8'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-home {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m3 9l9-7l9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 22V12h6v10'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-tag {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M20.5 7.5L16 12l-4.5 4.5L3 21l1.5-8.5L9 8l4.5-4.5z'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M20.5 7.5L16 12m0 0l-4.5 4.5L3 21l1.5-8.5L9 8l4.5-4.5L16 12z'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-list-check {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m3 7l6 6l4-4'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 17h18M3 12h18'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-users {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 1 1-8 0a4 4 0 0 1 8 0M12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 21v-2a4 4 0 0 1 4-4'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M17 8a4 4 0 0 1 0 8'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-trash {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6'/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+.i-tabler-settings {
+    --un-icon: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 24 24' width='1em' height='1em' xmlns='http://www.w3.org/2000/svg' %3E%3Cpath fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 1-2.65-.22l-.13-.13a2 2 0 0 0-2.83 0l-.06.06a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .22 2.65l-.08.15a2 2 0 0 1-1.73 1H2a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.73 1l.08.15a2 2 0 0 1-.22 2.65l-.13.13a2 2 0 0 0 0 2.83l.06.06a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1 2.65-.22l.15.08a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 1 2.65.22l.13.13a2 2 0 0 0 2.83 0l.06-.06a2 2 0 0 0 0-2.83l-.13-.13a2 2 0 0 1-.22-2.65l.08-.15a2 2 0 0 1 1.73-1H22a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.73-1l-.08-.15a2 2 0 0 1 .22-2.65l.13-.13a2 2 0 0 0 0-2.83l-.06-.06a2 2 0 0 0-2.83 0l-.13.13a2 2 0 0 1-2.65.22l-.15-.08a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/%3E%3C/svg%3E");
+    -webkit-mask: var(--un-icon) no-repeat;
+    mask: var(--un-icon) no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    background-color: currentColor;
+    color: inherit;
+    width: 1em;
+    height: 1em
+}
+
+/* Papra transitions */
+.transition {
+    transition: all var(--default-transition-duration) var(--default-transition-timingFunction);
+}
+
+/* Border styles - maintain #262626 on hover in dark mode */
+[data-kb-theme=dark] .border {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .border-input {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .border-r {
+    border-right-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .border-r-border {
+    border-right-color: #262626 !important;
+}
+
+/* Ensure borders don't change on hover in dark mode */
+[data-kb-theme=dark] .hover\:bg-accent\/50:hover {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .hover\:bg-accent:hover {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] .hover\:text-accent-foreground:hover {
+    border-color: #262626 !important;
+}
+
+/* Button hover states - maintain border color in dark mode */
+[data-kb-theme=dark] button:hover {
+    border-color: #262626 !important;
+}
+
+/* Icon background colors in dark mode */
+[data-kb-theme=dark] .bg-muted {
+    background-color: #262727 !important;
+}
+
+/* Icon containers in dashboard and sidebar in dark mode */
+[data-kb-theme=dark] .bg-muted.flex.items-center.justify-center.p-2.rounded-lg {
+    background-color: #262727 !important;
+}
+
+/* Organization selector icon background in dark mode */
+[data-kb-theme=dark] .p-1\.5.rounded.text-lg.font-bold.flex.items-center.bg-muted {
+    background-color: #262727 !important;
+}
+
+/* Ensure icon backgrounds stay consistent on hover in dark mode */
+[data-kb-theme=dark] .bg-muted:hover {
+    background-color: #262727 !important;
+}
+
+/* Table borders in dark mode */
+[data-kb-theme=dark] table {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] table th,
+[data-kb-theme=dark] table td {
+    border-color: #262626 !important;
+}
+
+[data-kb-theme=dark] table thead tr {
+    border-bottom-color: #262626 !important;
+}
+
+[data-kb-theme=dark] table tbody tr {
+    border-bottom-color: #262626 !important;
+}
+
+/* Papra sidebar styling */
+.sidebar-papra {
+    width: 280px;
+    border-right: 1px solid hsl(var(--border));
+    flex-shrink: 0;
+    display: none;
+    background-color: hsl(var(--card));
+}
+
+@media (min-width: 768px) {
+    .sidebar-papra {
+        display: block;
+    }
+}
+
+/* Ensure primary color is properly applied */
+.text-primary {
+    color: hsl(var(--primary)) !important;
+}
+
+.bg-primary {
+    background-color: hsl(var(--primary)) !important;
+}
+
+/* Bar chart specific fixes */
+.weekly-bar {
+    background-color: hsl(var(--primary)) !important;
+    min-height: 4px !important;
+    display: block !important;
+    transition: all 0.3s ease !important;
+}
+
+[data-kb-theme=dark] .weekly-bar {
+    background-color: hsl(199 89% 67%) !important;
+}
+
+/* Additional bar chart fixes */
+.bg-primary.rounded-t {
+    background-color: hsl(var(--primary)) !important;
+    min-height: 4px !important;
+}
+
+[data-kb-theme=dark] .bg-primary.rounded-t {
+    background-color: hsl(199 89% 67%) !important;
+}
+
+/* Force bar chart visibility */
+.weekly-activity-chart .bg-primary {
+    background-color: hsl(199 89% 67%) !important;
+}
+
+.weekly-activity-chart .weekly-bar {
+    background-color: hsl(199 89% 67%) !important;
+}
+
+/* Direct bar styling */
+div[class*="bg-primary"][class*="rounded-t"] {
+    background-color: hsl(199 89% 67%) !important;
+}
+
+/* Better bar proportions */
+.weekly-activity-chart .max-w-8 {
+    width: 2rem !important;
+    max-width: 2rem !important;
+}
+
+/* Enhanced bar visibility */
+.weekly-activity-chart .weekly-bar {
+    min-height: 8px !important;
+    width: 2rem !important;
+    max-width: 2rem !important;
+}
+
+/* Responsive bar chart */
+.weekly-activity-chart {
+    min-height: 128px !important; /* h-32 */
+}
+
+@media (min-width: 768px) {
+    .weekly-activity-chart {
+        min-height: 144px !important; /* h-36 */
+    }
+    
+    .weekly-activity-chart .max-w-8 {
+        width: 2.5rem !important;
+        max-width: 2.5rem !important;
+    }
+    
+    .weekly-activity-chart .weekly-bar {
+        width: 2.5rem !important;
+        max-width: 2.5rem !important;
+    }
+}
+
+/* Icon color fixes */
+.text-primary .icon,
+.text-primary svg,
+.bg-primary .icon,
+.bg-primary svg {
+    color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Button primary color fixes */
+.bg-primary:hover {
+    background-color: hsl(var(--primary) / 0.9) !important;
+}
+
+/* Ensure icon containers show primary color */
+.bg-primary\/10 {
+    background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+.text-primary\/foreground {
+    color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Utility: match Tailwind-style max-h-96 used in activity feed */
+.max-h-96 {
+    max-height: 29.7rem;
+}
+
+/* Utility: slim scrollbars for activity feed list */
+.scrollbar-thin {
+    scrollbar-width: thin;
+}
+
+.scrollbar-thumb-border::-webkit-scrollbar-thumb {
+    border-color: hsl(var(--border));
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #262626;
+    border-radius: 4px;
+    border: 1px solid #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #404040;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #262626 transparent;
+}
+
+/* Dark mode scrollbar adjustments */
+[data-kb-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #404040;
+    border: 1px solid #262626;
+}
+
+[data-kb-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: #555555;
+}
+
+[data-kb-theme="dark"] * {
+    scrollbar-color: #404040 transparent;
 }
