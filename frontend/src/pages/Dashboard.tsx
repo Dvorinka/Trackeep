@@ -43,6 +43,9 @@ import {
   getPopularTags
 } from '@/lib/mockData';
 import { formatDuration } from '@/lib/timeFormat';
+import { 
+  isSearchAvailable
+} from '@/lib/credentials';
 
 interface Document {
   id: string;
@@ -138,9 +141,20 @@ export const Dashboard = () => {
   };
 
   const storagePercentage = () => {
-    const used = parseFloat(stats().totalSize);
+    const sizeString = stats().totalSize;
+    let usedMB = 0;
+    
+    // Parse the size string to extract the numeric value in MB
+    if (sizeString.includes('MB')) {
+      usedMB = parseFloat(sizeString);
+    } else if (sizeString.includes('GB')) {
+      usedMB = parseFloat(sizeString) * 1024;
+    } else if (sizeString.includes('KB')) {
+      usedMB = parseFloat(sizeString) / 1024;
+    }
+    
     const total = 50 * 1024; // 50 GB in MB
-    return Math.round((used / total) * 100);
+    return Math.round((usedMB / total) * 100);
   };
 
   // Modal handlers
@@ -555,7 +569,7 @@ export const Dashboard = () => {
                 <div class="border-t border-border/30"></div>
                 <div class="border-t border-border/20"></div>
               </div>
-              <div class="relative flex items-end justify-between h-full gap-2 md:gap-3">
+              <div class="relative flex items-end justify-between h-full gap-1 md:gap-2">
                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
                   const weeklyActivity = stats().weeklyActivity || [12, 19, 8, 15, 22, 18, 25]; // Fallback data
                   const activity = weeklyActivity[index];
@@ -565,20 +579,20 @@ export const Dashboard = () => {
                   const containerHeight = 128; // h-32 = 128px (base), md:h-36 = 144px
                   const availableHeight = containerHeight * 0.75; // Use 75% of container height to leave room for labels
                   const heightPercent = (activity / fixedMax) * (availableHeight / containerHeight) * 100;
-                  const minHeightPercent = (8 / containerHeight) * 100; // Minimum 8px height
+                  const minHeightPercent = (6 / containerHeight) * 100; // Minimum 6px height
                   const finalHeightPercent = Math.max(heightPercent, minHeightPercent);
 
                   return (
-                    <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-6">
-                      <div class="relative w-full max-w-3 md:max-w-4 flex flex-col items-center">
+                    <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-4">
+                      <div class="relative w-full max-w-2 md:max-w-3 flex flex-col items-center">
                         <span 
                           class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5"
                         >
                           {activity}
                         </span>
                         <div 
-                          class="w-full max-w-3 md:max-w-4 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
-                          style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 8px;`}
+                          class="w-full max-w-2 md:max-w-3 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
+                          style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 6px;`}
                           title={`${day}: ${activity} activities`}
                         ></div>
                       </div>
@@ -752,45 +766,47 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Browser Search Section - Collapsible */}
-      <div class="mb-8">
-        <div class="border rounded-lg">
-          {/* Collapsible Header */}
-          <button
-            onClick={() => {
-              const newState = !showBrowserSearch();
-              setShowBrowserSearch(newState);
-              localStorage.setItem('showBrowserSearch', newState.toString());
-            }}
-            class="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-t-lg"
-          >
-            <div class="flex items-center gap-2">
-              <IconSearch class="size-4 text-primary" />
-              <h2 class="text-lg font-semibold">Browser Search</h2>
-              <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                Powered by Brave Search
-              </span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-muted-foreground">
-                {showBrowserSearch() ? 'Hide' : 'Show'}
-              </span>
-              <IconChevronDown 
-                class={`size-4 text-muted-foreground transition-transform duration-200 ${
-                  showBrowserSearch() ? 'rotate-180' : ''
-                }`} 
-              />
-            </div>
-          </button>
-          
-          {/* Collapsible Content */}
-          <Show when={showBrowserSearch()}>
-            <div class="border-t border-border p-4">
-              <BrowserSearch />
-            </div>
-          </Show>
+      {/* Browser Search Section - Collapsible - Only show if search credentials are available */}
+      <Show when={isSearchAvailable()}>
+        <div class="mb-8">
+          <div class="border rounded-lg">
+            {/* Collapsible Header */}
+            <button
+              onClick={() => {
+                const newState = !showBrowserSearch();
+                setShowBrowserSearch(newState);
+                localStorage.setItem('showBrowserSearch', newState.toString());
+              }}
+              class="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-t-lg"
+            >
+              <div class="flex items-center gap-2">
+                <IconSearch class="size-4 text-primary" />
+                <h2 class="text-lg font-semibold">Browser Search</h2>
+                <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                  Powered by Brave Search
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">
+                  {showBrowserSearch() ? 'Hide' : 'Show'}
+                </span>
+                <IconChevronDown 
+                  class={`size-4 text-muted-foreground transition-transform duration-200 ${
+                    showBrowserSearch() ? 'rotate-180' : ''
+                  }`} 
+                />
+              </div>
+            </button>
+            
+            {/* Collapsible Content */}
+            <Show when={showBrowserSearch()}>
+              <div class="border-t border-border p-4">
+                <BrowserSearch />
+              </div>
+            </Show>
+          </div>
         </div>
-      </div>
+      </Show>
 
       {/* Popular Tags Section */}
       <div class="mb-8">
@@ -1000,7 +1016,7 @@ export const Dashboard = () => {
 
       {/* Achievement Detail Modal */}
       <Show when={showAchievementModal() && selectedAchievement()}>
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 mt-0">
           <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold">Achievement Details</h3>
@@ -1033,7 +1049,7 @@ export const Dashboard = () => {
 
       {/* Deadline Detail Modal */}
       <Show when={showDeadlineModal() && selectedDeadline()}>
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 mt-0">
           <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold">Deadline Details</h3>

@@ -1,4 +1,4 @@
-import { createSignal, onMount, For, Show } from 'solid-js';
+import { createSignal, onMount, Show } from 'solid-js';
 import { IconPalette, IconCheck, IconRepeat, IconSun, IconMoon, IconDownload, IconUpload, IconEye, IconEyeOff } from '@tabler/icons-solidjs';
 
 interface ColorScheme {

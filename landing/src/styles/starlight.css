@@ -1,0 +1,182 @@
+/* Trackkeep Starlight Custom Styles */
+
+:root {
+  --sl-color-accent-low: #5BC4F220;
+  --sl-color-accent: #5BC4F2;
+  --sl-color-accent-high: #5BC4F2;
+  --sl-color-text-accent: #5BC4F2;
+  
+  --sl-color-bg-sidebar: #1a1a1a;
+  --sl-color-bg-sidebar-mobile: #1a1a1a;
+  --sl-color-text-sidebar: #fafafa;
+  --sl-color-text-sidebar-secondary: #a3a3a3;
+  
+  --sl-color-bg-code: #0d1117;
+  --sl-color-text-code: #e6edf3;
+  
+  --sl-hue: 200;
+  --sl-font-normal: 400;
+  --sl-font-medium: 500;
+  --sl-font-semibold: 600;
+  --sl-font-bold: 700;
+}
+
+/* Dark mode overrides */
+[data-theme='dark'] {
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #1a1a1a;
+  --sl-color-bg-panel: #1a1a1a;
+  --sl-color-bg-inline-code: #1a1a1a;
+  --sl-color-bg-hairline: #262626;
+  --sl-color-bg-scrollbar-thumb: #262626;
+  --sl-color-bg-scrollbar-thumb-hover: #393942;
+  --sl-color-text: #fafafa;
+  --sl-color-text-secondary: #a3a3a3;
+  --sl-color-text-hairline: #393942;
+}
+
+/* Light mode overrides */
+[data-theme='light'] {
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #fafafa;
+  --sl-color-bg-panel: #ffffff;
+  --sl-color-bg-inline-code: #f1f5f9;
+  --sl-color-bg-hairline: #e2e8f0;
+  --sl-color-bg-scrollbar-thumb: #e2e8f0;
+  --sl-color-bg-scrollbar-thumb-hover: #cbd5e1;
+  --sl-color-text: #0a0a0a;
+  --sl-color-text-secondary: #64748b;
+  --sl-color-text-hairline: #e2e8f0;
+}
+
+/* Custom component styles */
+.starlight-aside--tip {
+  --sl-color-aside-bg: #5BC4F210;
+  --sl-color-aside-text: #5BC4F2;
+  --sl-color-aside-border: #5BC4F230;
+}
+
+.starlight-aside--note {
+  --sl-color-aside-bg: #3b82f610;
+  --sl-color-aside-text: #3b82f6;
+  --sl-color-aside-border: #3b82f630;
+}
+
+.starlight-aside--caution {
+  --sl-color-aside-bg: #f59e0b10;
+  --sl-color-aside-text: #f59e0b;
+  --sl-color-aside-border: #f59e0b30;
+}
+
+.starlight-aside--danger {
+  --sl-color-aside-bg: #ef444410;
+  --sl-color-aside-text: #ef4444;
+  --sl-color-aside-border: #ef444430;
+}
+
+/* Code block styling */
+.starlight-aside--tip pre,
+.starlight-aside--tip code {
+  --sl-color-bg-code: #5BC4F210;
+  --sl-color-text-code: #5BC4F2;
+}
+
+/* Table styling */
+table {
+  --sl-color-bg-table-head: #5BC4F210;
+  --sl-color-text-table-head: #5BC4F2;
+  --sl-color-bg-table-row-stripe: #f8fafc;
+}
+
+[data-theme='dark'] table {
+  --sl-color-bg-table-row-stripe: #1a1a1a;
+}
+
+/* Custom button styles */
+.starlight-cta {
+  background: linear-gradient(135deg, #5BC4F2, #0ea5e9);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.starlight-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px #5BC4F240;
+}
+
+/* Search bar styling */
+.starlight-search {
+  --sl-color-search-bg: #f1f5f9;
+  --sl-color-search-text: #0a0a0a;
+  --sl-color-search-placeholder: #64748b;
+  --sl-color-search-border: #e2e8f0;
+}
+
+[data-theme='dark'] .starlight-search {
+  --sl-color-search-bg: #1a1a1a;
+  --sl-color-search-text: #fafafa;
+  --sl-color-search-placeholder: #a3a3a3;
+  --sl-color-search-border: #393942;
+}
+
+/* Sidebar link hover effects */
+.sidebar a:hover {
+  background: #5BC4F210;
+  color: #5BC4F2;
+}
+
+/* Pagination styling */
+.pagination-links a {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0a0a0a;
+}
+
+.pagination-links a:hover {
+  border-color: #5BC4F2;
+  background: #5BC4F210;
+  color: #5BC4F2;
+}
+
+[data-theme='dark'] .pagination-links a {
+  border-color: #393942;
+  background: #1a1a1a;
+  color: #fafafa;
+}
+
+[data-theme='dark'] .pagination-links a:hover {
+  border-color: #5BC4F2;
+  background: #5BC4F210;
+  color: #5BC4F2;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #393942;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}

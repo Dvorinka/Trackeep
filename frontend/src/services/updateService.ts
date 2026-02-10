@@ -93,10 +93,10 @@ export const updateService = {
     }
   },
 
-  // Get current app version from package.json
+  // Get current app version from build-time constant
   getCurrentVersion(): string {
-    // This would typically be injected at build time
-    return import.meta.env.VITE_APP_VERSION || '1.0.0';
+    // Use build-time version from vite config, fallback to environment variable or default
+    return (typeof __APP_VERSION__ !== 'undefined') ? __APP_VERSION__ : import.meta.env.VITE_APP_VERSION || '1.0.0';
   },
 
   // Poll for update progress during installation

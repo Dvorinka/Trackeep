@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { createSignal, createEffect, onCleanup } from 'solid-js';
 import { IconX, IconCheck, IconAlertTriangle, IconInfoCircle } from '@tabler/icons-solidjs';
 
 interface Toast {

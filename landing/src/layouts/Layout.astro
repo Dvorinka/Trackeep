@@ -1,0 +1,132 @@
+---
+export interface Props {
+	title: string;
+	description: string;
+	image?: string;
+}
+
+const { title, description, image = '/og-image.png' } = Astro.props;
+
+---
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="description" content={description} />
+	<meta name="viewport" content="width=device-width" />
+	<!-- Favicon -->
+	<link rel="icon" type="image/png" href="/trackeepfavi.png" />
+	<link rel="apple-touch-icon" href="/trackeepfavi.png" />
+	<meta name="generator" content={Astro.generator} />
+	
+	<!-- Open Graph / Facebook -->
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://trackeep.org/" />
+	<meta property="og:title" content={title} />
+	<meta property="og:description" content={description} />
+	<meta property="og:image" content={`https://trackeep.org${image}`} />
+
+	<!-- Twitter -->
+	<meta property="twitter:card" content="summary_large_image" />
+	<meta property="twitter:url" content="https://trackeep.org/" />
+	<meta property="twitter:title" content={title} />
+	<meta property="twitter:description" content={description} />
+	<meta property="twitter:image" content={`https://trackeep.org${image}`} />
+
+	<!-- Preload critical resources -->
+	<link rel="preload" href="/src/styles/global.css" as="style" />
+	<link rel="stylesheet" href="/src/styles/global.css" />
+	
+	<!-- Theme color -->
+	<meta name="theme-color" content="#39b9ff" />
+	
+	<!-- Preconnect to external domains -->
+	<link rel="preconnect" href="https://fonts.bunny.net" />
+</head>
+<body class="min-h-screen bg-background font-sans antialiased">
+	<div class="relative overflow-hidden">
+		<!-- Background gradient blobs -->
+		<div class="gradient-blob bg-primary w-96 h-96 -top-48 -right-48"></div>
+		<div class="gradient-blob bg-trackeep-purple w-96 h-96 -bottom-48 -left-48"></div>
+		
+		<!-- Main content -->
+		<main class="relative z-10">
+			<slot />
+		</main>
+	</div>
+
+	<!-- Dark mode enforcement - no theme toggle -->
+	<script>
+		// Force dark mode
+		document.documentElement.classList.add('dark');
+		document.documentElement.style.colorScheme = 'dark';
+	</script>
+	
+	<!-- Enhanced interactions script -->
+	<!-- <script src="/src/scripts/enhanced-interactions.js"></script> -->
+	
+	<!-- Copy Command Functionality -->
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			const copyButton = document.getElementById('copy-button');
+			const copyIcon = document.getElementById('copy-icon');
+			const checkIcon = document.getElementById('check-icon');
+			const copySuccess = document.getElementById('copy-success');
+			const installCommand = document.getElementById('install-command');
+			
+			if (copyButton && installCommand) {
+				copyButton.addEventListener('click', async () => {
+					const command = installCommand.textContent;
+					
+					try {
+						await navigator.clipboard.writeText(command);
+						
+						// Show success state
+						copyIcon.classList.add('hidden');
+						checkIcon.classList.remove('hidden');
+						copySuccess.classList.remove('hidden');
+						
+						// Reset after 3 seconds
+						setTimeout(() => {
+							copyIcon.classList.remove('hidden');
+							checkIcon.classList.add('hidden');
+							copySuccess.classList.add('hidden');
+						}, 3000);
+						
+					} catch (err) {
+						// Fallback for older browsers
+						const textArea = document.createElement('textarea');
+						textArea.value = command;
+						textArea.style.position = 'fixed';
+						textArea.style.opacity = '0';
+						document.body.appendChild(textArea);
+						textArea.select();
+						
+						try {
+							document.execCommand('copy');
+							
+							// Show success state
+							copyIcon.classList.add('hidden');
+							checkIcon.classList.remove('hidden');
+							copySuccess.classList.remove('hidden');
+							
+							// Reset after 3 seconds
+							setTimeout(() => {
+								copyIcon.classList.remove('hidden');
+								checkIcon.classList.add('hidden');
+								copySuccess.classList.add('hidden');
+							}, 3000);
+							
+						} catch (fallbackErr) {
+							console.error('Failed to copy command:', fallbackErr);
+						}
+						
+						document.body.removeChild(textArea);
+					}
+				});
+			}
+		});
+	</script>
+</body>
+</html>

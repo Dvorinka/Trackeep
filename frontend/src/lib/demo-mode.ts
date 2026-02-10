@@ -1,5 +1,7 @@
 // Demo mode API interceptor to provide mock data instead of making real API calls
 
+import { hasAnyCredentials, isBackendAvailable, isSearchAvailable } from './credentials';
+
 // Check if demo mode is enabled via environment variable
 export const isEnvDemoMode = (): boolean => {
   const result = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -11,6 +13,21 @@ export const isEnvDemoMode = (): boolean => {
 export const isDemoMode = (): boolean => {
   // Only check environment variable - no localStorage persistence
   return isEnvDemoMode();
+};
+
+// Check if we should use real APIs even in demo mode
+export const shouldUseRealAPIs = (): boolean => {
+  return hasAnyCredentials();
+};
+
+// Check if we should use real backend API
+export const shouldUseRealBackend = (): boolean => {
+  return isBackendAvailable();
+};
+
+// Check if we should use real search APIs
+export const shouldUseRealSearch = (): boolean => {
+  return isSearchAvailable();
 };
 
 // Clear demo mode from localStorage
@@ -181,6 +198,12 @@ const generateMockAIProviders = () => [
 
 // Demo mode fetch interceptor
 export const demoFetch = async (url: string, options?: RequestInit): Promise<Response> => {
+  // Check if we should use real APIs even in demo mode
+  if (shouldUseRealAPIs()) {
+    console.log('[Demo Mode] Real credentials detected, using real API for:', url);
+    return fetch(url, options);
+  }
+
   if (!isDemoMode()) {
     return fetch(url, options);
   }

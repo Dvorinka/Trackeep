@@ -38,3 +38,6 @@ declare module "*.bmp" {
   const content: string;
   export default content;
 }
+
+// Global build-time constants
+declare const __APP_VERSION__: string;

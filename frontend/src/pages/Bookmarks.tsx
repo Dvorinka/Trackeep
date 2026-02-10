@@ -394,7 +394,7 @@ export const Bookmarks = () => {
               const faviconUrl = getFaviconUrl(bookmark);
               const screenshotUrl = getScreenshotUrl(bookmark);
               return (
-                <Card class="p-6 hover:bg-accent transition-colors">
+                <Card class="p-6 hover:bg-accent transition-colors group">
                   <div class="flex justify-between items-start gap-4">
                     {/* Left side: preview image + favicon + title + URL + tags */}
                     <div class="flex-1 min-w-0">
@@ -420,7 +420,7 @@ export const Bookmarks = () => {
                               class="w-6 h-6 object-contain"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerHTML = `<span class=\"text-xs text-muted-foreground font-medium\">${bookmark.title.charAt(0).toUpperCase()}</span>`;
+                                e.currentTarget.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${bookmark.title.charAt(0).toUpperCase()}</span>`;
                               }}
                             />
                           ) : (
@@ -438,7 +438,7 @@ export const Bookmarks = () => {
                               class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                             >
                               {bookmark.title}
-                              <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current" />
+                              <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current group-hover:text-white" />
                             </a>
                           </h3>
                           <p class="text-muted-foreground text-sm truncate">{bookmark.url}</p>
@@ -456,7 +456,7 @@ export const Bookmarks = () => {
                           class={`px-2 py-1 text-xs rounded-md border transition-colors cursor-pointer
                             ${selectedTag() === tag
                               ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted text-muted-foreground border-transparent hover:bg-primary hover:text-primary-foreground hover:border-primary'
+                              : 'bg-muted/80 text-muted-foreground border-transparent group-hover:bg-accent group-hover:text-accent-foreground group-hover:border-border'
                             }`}
                           title={`Click to filter by ${tag}`}
                         >

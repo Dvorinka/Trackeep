@@ -25,7 +25,7 @@ type WebsiteMetadata struct {
 // FetchWebsiteMetadata extracts metadata from a URL
 func FetchWebsiteMetadata(targetURL string) (*WebsiteMetadata, error) {
 	// Parse URL to ensure it's valid
-	parsedURL, err := url.Parse(targetURL)
+	_, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
@@ -69,14 +69,11 @@ func FetchWebsiteMetadata(targetURL string) (*WebsiteMetadata, error) {
 	metadata = extractTwitterMetadata(content, metadata)
 	metadata = extractBasicHTMLMetadata(content, metadata)
 
-	// Extract favicon
+	// Extract favicon using enhanced fetcher
 	if metadata.Favicon == "" {
-		metadata.Favicon = extractFavicon(content, parsedURL)
-	}
-
-	// If still no favicon, try default locations
-	if metadata.Favicon == "" {
-		metadata.Favicon = getDefaultFavicon(parsedURL)
+		if favicon, err := GetFavicon(targetURL); err == nil && favicon != "" {
+			metadata.Favicon = favicon
+		}
 	}
 
 	return metadata, nil

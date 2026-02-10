@@ -4,7 +4,8 @@ import { type BraveSearchResult } from '@/lib/brave-search';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { isEnvDemoMode } from '@/lib/demo-mode';
+import { isEnvDemoMode, shouldUseRealSearch } from '@/lib/demo-mode';
+import { getSearchProvider, getApiBaseUrl } from '@/lib/credentials';
 
 export const BrowserSearch = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
@@ -15,8 +16,13 @@ export const BrowserSearch = () => {
   const [searchType, setSearchType] = createSignal<'web' | 'news'>('web');
 
   // Check if we're in demo mode
-  const isDemoMode = () => {
+  const isDemo = () => {
     return isEnvDemoMode();
+  };
+
+  // Check if we should use real search APIs
+  const shouldUseReal = () => {
+    return shouldUseRealSearch();
   };
 
   const handleSearch = async () => {
@@ -28,12 +34,65 @@ export const BrowserSearch = () => {
     setHasSearched(true);
 
     try {
-      const isDemo = isDemoMode();
+      const isDemoMode = isDemo();
+      const useRealAPIs = shouldUseReal();
       
-      // In demo mode, use the demo mode API interceptor
-      if (isDemo) {
+      console.log(`[BrowserSearch] Demo mode: ${isDemoMode}, Use real APIs: ${useRealAPIs}`);
+      
+      // If we have credentials and should use real APIs, try them first
+      if (useRealAPIs) {
+        console.log('Using real search APIs...');
+        
+        // Try the configured search provider first
+        const searchProvider = getSearchProvider();
+        console.log(`Using search provider: ${searchProvider}`);
+        
+        if (searchProvider === 'brave' && import.meta.env.VITE_BRAVE_API_KEY) {
+          try {
+            const { searchBrave } = await import('@/lib/brave-search');
+            const results = await searchBrave(query, 8, searchType());
+            if (results && results.length > 0) {
+              setSearchResults(results);
+              return;
+            }
+          } catch (err) {
+            console.warn('Brave Search failed:', err);
+          }
+        }
+        
+        // Try backend as fallback
+        const API_BASE_URL = getApiBaseUrl();
+        const token = localStorage.getItem('token') || 
+                      localStorage.getItem('auth_token') || 
+                      localStorage.getItem('trackeep_token');
+        const endpoint = searchType() === 'news' ? '/api/v1/search/news' : '/api/v1/search/web';
+        
+        try {
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+            body: JSON.stringify({ query, count: 8 }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              setSearchResults(data.results);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('Backend search failed:', err);
+        }
+      }
+      
+      // In demo mode or as fallback, use the demo mode API interceptor
+      if (isDemoMode) {
         console.log('Demo mode detected, using demo API interceptor...');
-        const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8080';
+        const API_BASE_URL = getApiBaseUrl();
         const endpoint = searchType() === 'news' ? '/api/v1/search/news' : '/api/v1/search/web';
         
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -53,43 +112,7 @@ export const BrowserSearch = () => {
             return;
           }
         }
-        console.warn('Demo API failed, falling back to direct Brave API...');
-      }
-
-      // Try Brave Search API directly (for production mode or as fallback)
-      const { searchBrave } = await import('@/lib/brave-search');
-      const results = await searchBrave(query, 8, searchType());
-      
-      if (results && results.length > 0) {
-        setSearchResults(results);
-        return;
-      }
-      
-      // If no results from Brave API, try backend as last resort (only in non-demo mode)
-      if (!isDemo) {
-        console.warn('Brave Search returned no results, trying backend...');
-        const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8080';
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('auth_token') || 
-                      localStorage.getItem('trackeep_token');
-        const endpoint = searchType() === 'news' ? '/api/v1/search/news' : '/api/v1/search/web';
-        
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-          body: JSON.stringify({ query, count: 8 }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.results && data.results.length > 0) {
-            setSearchResults(data.results);
-            return;
-          }
-        }
+        console.warn('Demo API failed, falling back to mock results...');
       }
 
       // If all APIs fail or return no results, show appropriate message
@@ -148,14 +171,14 @@ export const BrowserSearch = () => {
 
   const bookmarkResult = async (result: BraveSearchResult) => {
     // If in demo mode, just show success message
-    if (isDemoMode()) {
+    if (isDemo()) {
       // In demo mode, just show success without actual API call
       console.log('Demo mode: Bookmark created for', result.title);
       return;
     }
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const API_BASE_URL = getApiBaseUrl();
       const bookmarkData = {
         title: result.title,
         url: result.url,

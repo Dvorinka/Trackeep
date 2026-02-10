@@ -9,19 +9,7 @@ import {
   getMockTimeEntries, 
   getMockVideos, 
   getMockLearningPaths, 
-  getMockCalendarEvents, 
-  getMockActivities, 
-  getMockStats,
-  getPopularTags,
-  type MockDocument,
-  type MockBookmark,
-  type MockTask,
-  type MockNote,
-  type MockTimeEntry,
-  type MockVideo,
-  type MockLearningPath,
-  type MockCalendarEvent,
-  type MockActivity
+  getMockStats
 } from './mockData';
 
 // Check if we're in demo mode
@@ -250,7 +238,7 @@ export class DemoModeApiClient {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+  async upload<T>(_endpoint: string, formData: FormData): Promise<T> {
     // For demo mode, simulate file upload
     const file = formData.get('file') as File;
     return {

@@ -157,7 +157,7 @@ export const Youtube = () => {
     );
   };
 
-  // Check if we're in demo mode
+  // Check if we're in demo mode (for display purposes only)
   const isDemoMode = () => {
     const demoMode = localStorage.getItem('demoMode') === 'true' || 
            document.title.includes('Demo Mode') ||
@@ -178,38 +178,9 @@ export const Youtube = () => {
     return match ? match[1] : null;
   };
 
-  // Get video info from YouTube API using video ID
+  // Get video info from YouTube API using video ID (always use real data)
   const getVideoInfo = async (videoId: string) => {
     try {
-      if (isDemoMode()) {
-        // Use mock data in demo mode
-        const mockVideos = getMockVideos();
-        const mockVideo = mockVideos.find(v => v.id === videoId);
-        if (mockVideo) {
-          return {
-            video_id: mockVideo.id,
-            channel_name: mockVideo.channel,
-            url: mockVideo.url,
-            title: mockVideo.title,
-            duration: mockVideo.duration,
-            published_at: mockVideo.publishedAt,
-            view_count: '1000',
-            category: mockVideo.category
-          };
-        }
-        // Fallback mock data
-        return {
-          video_id: videoId,
-          channel_name: 'Demo Channel',
-          url: `https://www.youtube.com/watch?v=${videoId}`,
-          title: `Demo Video ${videoId}`,
-          duration: '10:30',
-          published_at: '2024-01-15',
-          view_count: '1000',
-          category: 'Technology'
-        };
-      }
-
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/youtube/video-details`, {
         method: 'POST',
@@ -230,6 +201,7 @@ export const Youtube = () => {
 
       return await response.json();
     } catch (err) {
+      console.warn('Failed to get video info from API, using fallback:', err);
       // Return a fallback video object with basic info
       return {
         video_id: videoId,
@@ -477,32 +449,8 @@ export const Youtube = () => {
     setError('');
 
     try {
-      // Check if we're in demo mode first
-      if (isDemoMode()) {
-        console.log('Using demo mode for search');
-        const mockVideos = getMockVideos();
-        const filteredVideos = mockVideos
-          .filter(video => 
-            video.title.toLowerCase().includes(query.toLowerCase()) ||
-            video.description.toLowerCase().includes(query.toLowerCase()) ||
-            video.channel.toLowerCase().includes(query.toLowerCase())
-          )
-          .slice(0, 10)
-          .map((video) => ({
-            video_id: video.id,
-            channel_name: video.channel,
-            url: video.url,
-            title: video.title,
-            duration: video.duration,
-            published_at: video.publishedAt,
-            view_count: '1000',
-            category: video.category || 'General'
-          }));
-        
-        setVideos(filteredVideos);
-        setIsLoading(false);
-        return;
-      }
+      // Always use real data, no demo mode check
+      console.log('Searching YouTube with real data for:', query);
 
       // Check if the input is a YouTube URL
       const videoId = extractVideoId(query);
@@ -523,7 +471,7 @@ export const Youtube = () => {
         
         setVideos([video]);
       } else {
-        // It's a regular search query - use backend API for now (will be replaced with scraping service)
+        // It's a regular search query - use backend API
         try {
           const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
           const response = await fetch(`${API_BASE_URL}/youtube/search`, {
@@ -553,54 +501,13 @@ export const Youtube = () => {
           }
         } catch (apiError) {
           console.warn('Backend search API failed:', apiError);
-          
-          // Fallback to demo mode
-          console.log('Using demo mode fallback for search');
-          const mockVideos = getMockVideos();
-          const filteredVideos = mockVideos
-            .filter(video => 
-              video.title.toLowerCase().includes(query.toLowerCase()) ||
-              video.description.toLowerCase().includes(query.toLowerCase()) ||
-              video.channel.toLowerCase().includes(query.toLowerCase())
-            )
-            .slice(0, 10)
-            .map((video) => ({
-              video_id: video.id,
-              channel_name: video.channel,
-              url: video.url,
-              title: video.title,
-              duration: video.duration,
-              published_at: video.publishedAt,
-              view_count: '1000',
-              category: video.category || 'General'
-            }));
-          
-          setVideos(filteredVideos);
+          throw new Error('Failed to search YouTube. Please try again.');
         }
       }
     } catch (err) {
-      console.warn('Search failed, falling back to demo mode:', err);
-      // Fallback to demo mode
-      const mockVideos = getMockVideos();
-      const filteredVideos = mockVideos
-        .filter(video => 
-          video.title.toLowerCase().includes(query.toLowerCase()) ||
-          video.description.toLowerCase().includes(query.toLowerCase()) ||
-          video.channel.toLowerCase().includes(query.toLowerCase())
-        )
-        .slice(0, 10)
-        .map((video) => ({
-          video_id: video.id,
-          channel_name: video.channel,
-          url: video.url,
-          title: video.title,
-          duration: video.duration,
-          published_at: video.publishedAt,
-          view_count: '1000',
-          category: video.category || 'General'
-        }));
-      
-      setVideos(filteredVideos);
+      console.error('Search failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to search YouTube');
+      setTimeout(() => setError(''), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -626,20 +533,7 @@ export const Youtube = () => {
 
   const handleSaveVideo = async (video: YouTubeVideo) => {
     try {
-      if (isDemoMode()) {
-        // Simulate save in demo mode
-        console.log('Video saved (demo mode):', video);
-        setSavedVideos((prev) => {
-          if (prev.some((v) => v.video_id === video.video_id)) {
-            return prev;
-          }
-          return [video, ...prev];
-        });
-        setSuccessMessage('Video saved successfully!');
-        setTimeout(() => setSuccessMessage(''), 3000);
-        return;
-      }
-
+      // Always try to save to backend, no demo mode check
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const bookmarkData = {
         url: video.url,
@@ -668,8 +562,16 @@ export const Youtube = () => {
       setSuccessMessage('Video saved successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save video');
-      setTimeout(() => setError(''), 3000);
+      console.warn('Failed to save video to backend:', err);
+      // Fallback: simulate save locally
+      setSavedVideos((prev) => {
+        if (prev.some((v) => v.video_id === video.video_id)) {
+          return prev;
+        }
+        return [video, ...prev];
+      });
+      setSuccessMessage('Video saved locally!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     }
   };
 
@@ -703,7 +605,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class={`w-4 h-4 ${activeTab() === 'search' ? 'text-black' : 'text-white'}`} 
+                class="w-4 h-4 text-white" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -719,7 +621,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class={`w-4 h-4 ${activeTab() === 'predefined' ? 'text-black' : 'text-white'}`} 
+                class="w-4 h-4 text-white" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -735,7 +637,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class={`w-4 h-4 ${activeTab() === 'bookmarked' ? 'text-black' : 'text-white'}`} 
+                class="w-4 h-4 text-white" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -1083,7 +985,7 @@ export const Youtube = () => {
         {/* Channel Editor Modal */}
         <Show when={showChannelEditor()}>
           <div 
-            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowChannelEditor(false);

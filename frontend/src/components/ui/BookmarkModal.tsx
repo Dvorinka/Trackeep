@@ -55,7 +55,7 @@ export const BookmarkModal = (props: BookmarkModalProps) => {
     <>
       {/* Backdrop */}
       {props.isOpen && (
-        <div class="fixed inset-0 bg-black/50 z-40" onClick={props.onClose} />
+        <div class="fixed inset-0 bg-black/50 z-40 mt-0" onClick={props.onClose} />
       )}
 
       {/* Modal */}

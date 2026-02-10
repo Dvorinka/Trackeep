@@ -124,6 +124,13 @@ export const TimeTracking = () => {
 
   return (
     <div class="p-6 mt-4 pb-32 max-w-5xl mx-auto space-y-6">
+      {/* Simple loading indicator */}
+      {loading() && (
+        <div class="text-center text-sm text-muted-foreground py-2">
+          Loading time entries...
+        </div>
+      )}
+      
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Timer Component */}
         <div>

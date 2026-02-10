@@ -1,38 +1,28 @@
 {
   "name": "trackeep-landing",
-  "version": "1.0.0",
-  "description": "Trackeep Landing Page - Your Self-Hosted Productivity & Knowledge Hub",
   "type": "module",
+  "version": "0.0.1",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
-    "format": "prettier --write src/"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "build:check": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.0",
-    "@vueuse/core": "^10.7.0"
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/starlight": "^0.25.1",
+    "@astrojs/tailwind": "^5.1.2",
+    "@astrojs/vercel": "^7.8.2",
+    "astro": "^4.16.12",
+    "sharp": "^0.33.5",
+    "tailwindcss": "^3.4.15"
   },
   "devDependencies": {
-    "@iconify-json/ph": "^1.1.0",
-    "@types/node": "^20.10.0",
-    "@unocss/preset-uno": "^0.58.0",
-    "@unocss/preset-web-fonts": "^0.58.0",
-    "@unocss/transformer-directives": "^0.58.0",
-    "@vitejs/plugin-vue": "^5.0.0",
-    "typescript": "^5.3.0",
-    "unocss": "^0.58.0",
-    "vite": "^5.0.0",
-    "vue-tsc": "^1.8.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/trackeep/trackeep.git"
-  },
-  "license": "MIT"
+    "@types/node": "^20.17.6",
+    "prettier": "^3.3.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.6.3"
+  }
 }

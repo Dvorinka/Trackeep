@@ -1,0 +1,640 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for Trackkeep
+---
+
+This comprehensive troubleshooting guide helps you resolve common issues with Trackkeep, from installation problems to performance optimization.
+
+## Quick Diagnostics
+
+### Health Check
+
+Run the built-in health check to assess your Trackkeep installation:
+
+```bash
+# Check overall system health
+curl https://your-domain.com/health
+
+# Detailed health information
+curl https://your-domain.com/health/detailed
+
+# Component-specific checks
+curl https://your-domain.com/health/database
+curl https://your-domain.com/health/redis
+curl https://your-domain.com/health/storage
+```
+
+### Diagnostic Tool
+
+Use the built-in diagnostic tool:
+
+```bash
+# Run comprehensive diagnostics
+trackkeep doctor
+
+# Check specific components
+trackkeep doctor --database
+trackkeep doctor --storage
+trackkeep doctor --network
+
+# Generate diagnostic report
+trackkeep doctor --report > diagnostics.json
+```
+
+## Installation Issues
+
+### Database Connection Failed
+
+**Symptoms:**
+- Error: "Failed to connect to database"
+- Application won't start
+- 502 Bad Gateway errors
+
+**Common Causes:**
+- PostgreSQL not running
+- Incorrect database credentials
+- Network connectivity issues
+- Database not created
+
+**Solutions:**
+
+1. **Check PostgreSQL Status:**
+```bash
+# Docker Compose
+docker-compose ps postgres
+docker-compose logs postgres
+
+# System PostgreSQL
+sudo systemctl status postgresql
+sudo systemctl start postgresql
+```
+
+2. **Verify Database Credentials:**
+```bash
+# Test connection
+psql -h localhost -U trackkeep -d trackkeep
+
+# Check environment variables
+echo $DATABASE_URL
+```
+
+3. **Create Database:**
+```sql
+-- Connect to PostgreSQL
+CREATE DATABASE trackkeep;
+CREATE USER trackkeep WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE trackkeep TO trackkeep;
+```
+
+4. **Fix Docker Issues:**
+```bash
+# Restart database container
+docker-compose restart postgres
+
+# Rebuild containers
+docker-compose down
+docker-compose up -d
+```
+
+### Port Already in Use
+
+**Symptoms:**
+- Error: "Port 8080 is already in use"
+- Application fails to start
+- Port binding errors
+
+**Solutions:**
+
+1. **Find Process Using Port:**
+```bash
+# Find process on port 8080
+sudo lsof -i :8080
+sudo netstat -tulpn | grep :8080
+```
+
+2. **Kill Process:**
+```bash
+# Kill process by PID
+sudo kill -9 <PID>
+
+# Or use fuser
+sudo fuser -k 8080/tcp
+```
+
+3. **Change Port:**
+```env
+# In .env file
+PORT=8081
+```
+
+### Permission Denied
+
+**Symptoms:**
+- Error: "Permission denied"
+- Cannot write to storage directory
+- File upload failures
+
+**Solutions:**
+
+1. **Check Directory Permissions:**
+```bash
+# Check current permissions
+ls -la /app/data
+ls -la /app/logs
+
+# Fix permissions
+sudo chown -R trackkeep:trackkeep /app/data
+sudo chmod -R 755 /app/data
+```
+
+2. **Docker Permission Issues:**
+```bash
+# Fix Docker socket permissions
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Or run with sudo
+sudo docker-compose up -d
+```
+
+## Performance Issues
+
+### Slow Response Times
+
+**Symptoms:**
+- Pages loading slowly (>5 seconds)
+- API requests timing out
+- High CPU usage
+
+**Diagnostics:**
+```bash
+# Check system resources
+top
+htop
+iostat -x 1
+
+# Check application metrics
+curl https://your-domain.com/metrics
+```
+
+**Solutions:**
+
+1. **Database Optimization:**
+```sql
+-- PostgreSQL optimizations
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+ALTER SYSTEM SET work_mem = '4MB';
+SELECT pg_reload_conf();
+```
+
+2. **Enable Caching:**
+```env
+# Redis caching
+REDIS_URL=redis://localhost:6379
+CACHE_ENABLED=true
+CACHE_TTL=3600
+```
+
+3. **Increase Resources:**
+```yaml
+# docker-compose.yml
+services:
+  trackkeep:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+```
+
+### High Memory Usage
+
+**Symptoms:**
+- Out of memory errors
+- Container restarts
+- System swapping
+
+**Solutions:**
+
+1. **Monitor Memory Usage:**
+```bash
+# Check memory usage
+docker stats
+free -h
+ps aux --sort=-%mem | head
+```
+
+2. **Optimize Configuration:**
+```env
+# Reduce memory usage
+GOGC=50
+GOMAXPROCS=4
+```
+
+3. **Add Swap Space:**
+```bash
+# Create swap file
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
+
+### Database Slow Queries
+
+**Symptoms:**
+- Database queries taking >1 second
+- High database CPU usage
+- Timeouts during peak usage
+
+**Diagnostics:**
+```sql
+-- Enable query logging
+ALTER SYSTEM SET log_min_duration_statement = 1000;
+ALTER SYSTEM SET log_statement = 'all';
+SELECT pg_reload_conf();
+
+-- Find slow queries
+SELECT query, mean_time, calls 
+FROM pg_stat_statements 
+ORDER BY mean_time DESC 
+LIMIT 10;
+```
+
+**Solutions:**
+
+1. **Add Indexes:**
+```sql
+-- Common query indexes
+CREATE INDEX CONCURRENTLY idx_bookmarks_user_created 
+ON bookmarks(user_id, created_at DESC);
+
+CREATE INDEX CONCURRENTLY idx_tasks_status_due 
+ON tasks(status, due_date);
+```
+
+2. **Optimize Queries:**
+```sql
+-- Use EXPLAIN ANALYZE
+EXPLAIN ANALYZE SELECT * FROM bookmarks WHERE user_id = $1;
+
+-- Check query plan
+```
+
+3. **Connection Pooling:**
+```env
+# PgBouncer configuration
+DATABASE_URL=postgres://trackkeep:pass@localhost:6432/trackkeep
+```
+
+## Authentication Issues
+
+### Login Failures
+
+**Symptoms:**
+- "Invalid credentials" error
+- Cannot log in with correct password
+- Session expiration issues
+
+**Solutions:**
+
+1. **Check User Account:**
+```sql
+-- Verify user exists
+SELECT id, email, active FROM users WHERE email = 'user@example.com';
+
+-- Reset password
+UPDATE users SET password_hash = crypt('new_password', gen_salt('bf')) 
+WHERE email = 'user@example.com';
+```
+
+2. **Session Configuration:**
+```env
+# Session settings
+SESSION_TIMEOUT=24h
+SESSION_SECRET=your-secret-key
+COOKIE_SECURE=true
+```
+
+3. **Clear Sessions:**
+```bash
+# Clear Redis sessions
+redis-cli FLUSHDB
+
+# Or clear specific sessions
+redis-cli DEL "session:*"
+```
+
+### 2FA Issues
+
+**Symptoms:**
+- 2FA codes not working
+- Cannot enable/disable 2FA
+- Lost 2FA device
+
+**Solutions:**
+
+1. **Reset 2FA:**
+```sql
+-- Disable 2FA for user
+UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL 
+WHERE email = 'user@example.com';
+```
+
+2. **Backup Codes:**
+```bash
+# Generate new backup codes
+trackkeep admin:2fa-backup-codes user@example.com
+```
+
+## File Storage Issues
+
+### Upload Failures
+
+**Symptoms:**
+- File upload errors
+- "File too large" messages
+- Storage quota exceeded
+
+**Solutions:**
+
+1. **Check Storage Configuration:**
+```env
+# Storage settings
+STORAGE_TYPE=local
+STORAGE_PATH=/app/data/files
+MAX_FILE_SIZE=100MB
+STORAGE_QUOTA=10GB
+```
+
+2. **Check Disk Space:**
+```bash
+# Check available space
+df -h
+du -sh /app/data/files
+
+# Clean up old files
+find /app/data/files -type f -mtime +30 -delete
+```
+
+3. **Fix Permissions:**
+```bash
+# Fix storage permissions
+sudo chown -R trackkeep:trackkeep /app/data/files
+sudo chmod -R 755 /app/data/files
+```
+
+### S3/Cloud Storage Issues
+
+**Symptoms:**
+- Cannot connect to S3
+- Upload timeouts
+- Access denied errors
+
+**Solutions:**
+
+1. **Verify Credentials:**
+```bash
+# Test S3 connection
+aws s3 ls s3://your-bucket
+
+# Check credentials
+aws configure list
+```
+
+2. **Fix Configuration:**
+```env
+# S3 settings
+S3_BUCKET=your-bucket
+S3_REGION=us-east-1
+S3_ACCESS_KEY=your-key
+S3_SECRET_KEY=your-secret
+S3_ENDPOINT=https://s3.amazonaws.com
+```
+
+## Network Issues
+
+### SSL/TLS Problems
+
+**Symptoms:**
+- SSL certificate errors
+- HTTPS not working
+- Mixed content warnings
+
+**Solutions:**
+
+1. **Check Certificate:**
+```bash
+# Verify certificate
+openssl x509 -in /etc/ssl/certs/cert.pem -text -noout
+
+# Check certificate chain
+openssl s_client -connect your-domain.com:443
+```
+
+2. **Renew Certificate:**
+```bash
+# Let's Encrypt renewal
+sudo certbot renew
+
+# Force renewal
+sudo certbot renew --force-renewal
+```
+
+3. **Fix Nginx Configuration:**
+```nginx
+# Ensure proper SSL settings
+ssl_certificate /etc/ssl/certs/cert.pem;
+ssl_certificate_key /etc/ssl/certs/key.pem;
+ssl_protocols TLSv1.2 TLSv1.3;
+```
+
+### CORS Issues
+
+**Symptoms:**
+- CORS errors in browser
+- API requests blocked
+- Cross-origin errors
+
+**Solutions:**
+
+1. **Configure CORS:**
+```env
+# CORS settings
+CORS_ORIGINS=https://your-domain.com,https://app.your-domain.com
+CORS_METHODS=GET,POST,PUT,DELETE,OPTIONS
+CORS_HEADERS=Content-Type,Authorization
+```
+
+2. **Nginx CORS Headers:**
+```nginx
+# Add CORS headers
+add_header Access-Control-Allow-Origin "https://your-domain.com";
+add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+add_header Access-Control-Allow-Headers "Content-Type, Authorization";
+```
+
+## Mobile App Issues
+
+### Sync Problems
+
+**Symptoms:**
+- Mobile app not syncing
+- Data inconsistency
+- Offline mode issues
+
+**Solutions:**
+
+1. **Check API Endpoints:**
+```bash
+# Test mobile API
+curl -I https://your-domain.com/api/v1/mobile/status
+
+# Check mobile configuration
+curl https://your-domain.com/api/v1/mobile/config
+```
+
+2. **Reset Sync:**
+```bash
+# Clear mobile sync data
+redis-cli DEL "mobile_sync:*"
+
+# Reset user sync
+trackkeep admin:mobile-sync-reset user@example.com
+```
+
+### Push Notifications
+
+**Symptoms:**
+- Not receiving notifications
+- Push token errors
+- APNS/FCM failures
+
+**Solutions:**
+
+1. **Check Push Configuration:**
+```env
+# Push notification settings
+FCM_SERVER_KEY=your-fcm-key
+APNS_KEY_ID=your-apns-key
+APNS_TEAM_ID=your-team-id
+```
+
+2. **Test Push Service:**
+```bash
+# Test FCM
+curl -X POST https://fcm.googleapis.com/fcm/send \
+  -H "Authorization: key=$FCM_SERVER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"to":"device_token","notification":{"title":"Test","body":"Test message"}}'
+```
+
+## AI Features Issues
+
+### AI Not Working
+
+**Symptoms:**
+- AI features disabled
+- Slow AI responses
+- Poor AI quality
+
+**Solutions:**
+
+1. **Check AI Configuration:**
+```env
+# AI settings
+AI_PROVIDER=openai
+OPENAI_API_KEY=your-key
+OPENAI_MODEL=gpt-3.5-turbo
+```
+
+2. **Test AI Service:**
+```bash
+# Test AI endpoint
+curl -X POST https://your-domain.com/api/v1/ai/test \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Test input"}'
+```
+
+3. **Local AI Issues:**
+```bash
+# Check local AI model
+trackkeep ai status
+trackkeep ai test
+
+# Rebuild AI models
+trackkeep ai rebuild
+```
+
+## Getting Help
+
+### Support Channels
+
+1. **Documentation**: [trackkeep.org/docs](https://trackkeep.org/docs)
+2. **Community**: [discord.gg/trackkeep](https://discord.gg/trackkeep)
+3. **Issues**: [github.com/Dvorinka/Trackkeep/issues](https://github.com/Dvorinka/Trackkeep/issues)
+4. **Email**: [support@trackkeep.org](mailto:support@trackkeep.org)
+
+### Reporting Issues
+
+When reporting issues, include:
+
+1. **System Information:**
+```bash
+# Generate system report
+trackkeep doctor --report > system-info.json
+```
+
+2. **Logs:**
+```bash
+# Application logs
+docker-compose logs trackkeep --tail=100
+
+# Database logs
+docker-compose logs postgres --tail=100
+```
+
+3. **Configuration:**
+```bash
+# Sanitized configuration
+trackkeep config show --hide-secrets
+```
+
+### Debug Mode
+
+Enable debug mode for detailed logging:
+
+```env
+# Debug settings
+DEBUG=true
+LOG_LEVEL=debug
+LOG_FORMAT=json
+```
+
+### Performance Monitoring
+
+Set up monitoring for proactive issue detection:
+
+```yaml
+# monitoring/docker-compose.yml
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+```
+
+---
+
+Still having issues? Don't hesitate to reach out to our [community](https://discord.gg/trackkeep) or create a [GitHub issue](https://github.com/Dvorinka/Trackkeep/issues) with detailed information about your problem.

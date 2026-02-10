@@ -771,7 +771,7 @@ export function Calendar() {
       {/* Event Creation Modal */}
       <Show when={showEventModal()}>
         <div 
-          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
           onClick={(e) => {
             // Close modal only when clicking the backdrop, not the modal content
             if (e.target === e.currentTarget) {
@@ -938,7 +938,7 @@ export function Calendar() {
       {/* Task Detail Modal */}
       <Show when={showTaskDetailModal() && selectedTask()}>
         <div 
-          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowTaskDetailModal(false);

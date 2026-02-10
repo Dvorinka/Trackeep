@@ -1,0 +1,612 @@
+<html lang="en">
+  <head data-capo="">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Papra - The document archiving platform</title>
+    <link rel="preconnect" href="https://jasmine.papra.app">
+    <script type="text/javascript" crossorigin="anonymous" async="" src="https://jasmine.papra.app/static/array.js"></script>
+    <script>
+      (function() {
+        const apiKey = "phc_gYxH8GEgu7w2H8cjMu3fFthDbmZfvR0MJFGJSsmHLYX";
+        const apiHost = "https://jasmine.papra.app";
+        ! function(t, e) {
+          var o, n, p, r;
+          e.__SV || (window.posthog = e, e._i = [], e.init = function(i, s, a) {
+            function g(t, e) {
+              var o = e.split(".");
+              2 == o.length && (t = t[o[0]], e = o[1]), t[e] = function() {
+                t.push([e].concat(Array.prototype.slice.call(arguments, 0)))
+              }
+            }(p = t.createElement("script")).type = "text/javascript", p.crossOrigin = "anonymous", p.async = !0, p.src = s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js", (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r);
+            var u = e;
+            for (void 0 !== a ? u = e[a] = [] : a = "posthog", u.people = u.people || [], u.toString = function(t) {
+                var e = "posthog";
+                return "posthog" !== a && (e += "." + a), t || (e += " (stub)"), e
+              }, u.people.toString = function() {
+                return u.toString(1) + ".people (stub)"
+              }, o = "init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "), n = 0; n < o.length; n++) g(u, o[n]);
+            e._i.push([i, s, a])
+          }, e.__SV = 1)
+        }(document, window.posthog || []);
+        posthog.init(apiKey, {
+          api_host: apiHost,
+          person_profiles: 'identified_only'
+        })
+      })();
+    </script>
+    <link rel="stylesheet" href="/_astro/contact.Kp0hWjp4.css">
+    <link rel="stylesheet" href="/_astro/papra-vs-paperless-ngx.BOt9yUyr.css">
+    <meta name="generator" content="Astro v5.7.2">
+    <meta name="theme-color" content="#dbfd85">
+    <meta name="description" content="Papra is an open-source platform to organize, secure, and archive all your documents, effortlessly. Start digitizing your life today!">
+    <meta name="author" content="Corentin Thomasset">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="sitemap" href="/sitemap-index.xml">
+    <link rel="author" href="humans.txt">
+    <link rel="canonical" href="https://papra.app/en/">
+    <link rel="alternate" hreflang="x-default" href="https://papra.app/en/">
+    <link rel="alternate" hreflang="en" href="https://papra.app/en/">
+    <link rel="alternate" hreflang="fr" href="https://papra.app/fr/">
+    <meta property="og:title" content="Papra - The document archiving platform">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://papra.app/en/">
+    <meta property="og:locale" content="en">
+    <meta property="og:description" content="Papra is an open-source platform to organize, secure, and archive all your documents, effortlessly. Start digitizing your life today!">
+    <meta property="og:site_name" content="Papra">
+    <meta property="og:image" content="https://papra.app/og/papra.png">
+    <meta property="og:image:alt" content="Papra - The document archiving platform">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Papra - The document archiving platform">
+    <meta name="twitter:description" content="Papra is an open-source platform to organize, secure, and archive all your documents, effortlessly. Start digitizing your life today!">
+    <meta name="twitter:image" content="https://papra.app/og/papra.png">
+    <meta name="twitter:image:alt" content="Papra - The document archiving platform">
+    <meta name="twitter:site" content="@cthmsst">
+    <meta name="twitter:creator" content="@cthmsst">
+    <meta name="twitter:url" content="https://papra.app/en/">
+    <meta name="robots" content="max-image-preview:large">
+    <link rel="alternate" type="application/rss+xml" title="Papra Blog" href="https://papra.app/rss.xml">
+    <meta name="fediverse:creator" content="@papra@mastodon.social">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Papra",
+        "operatingSystem": "Web, Android, iOS",
+        "applicationCategory": "Productivity",
+        "description": "Papra is an open-source platform to organize, secure, and archive all your documents, effortlessly. Start digitizing your life today!",
+        "url": "https://papra.app",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Papra",
+          "url": "https://papra.app"
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-background font-sans antialiased min-h-screen text-foreground text-sm" data-kb-theme="dark" cz-shortcut-listen="true">
+    <div class="relative overflow-hidden pb-300px bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-[size:48px_48px]">
+      <div class="z-9 bg-gradient-to-b from-background to-transparent w-full h-full absolute top-0 left-0"></div>
+      <div class="z-10 bg-primary w-80% max-w-1000px h-400px rounded-xl blur-64 op-20 absolute bottom--100px left-50% -translate-x-50%"></div>
+      <nav class="z-100 border-0 border-b md:max-w-4xl pl-4 pr-3 py-4 mx-auto flex items-center justify-between md:py-2 md:border-1px md:rounded-full md:mt-4 fixed top-0 left-0 right-0 bg-background bg-op-40 backdrop-blur-sm shadow-lg undefined">
+        <a href="/en" class="text-lg font-bold flex items-center group">
+          <div class="i-tabler-file-text size-6 group-hover:rotate-25deg text-primary transition transform rotate-12deg"></div>
+          <span class="ml-2">Papra</span>
+        </a>
+        <div class="items-center gap-6 hidden md:flex">
+          <a href="https://demo.papra.app" class="text-sm font-bold hover:text-primary transition" target="_blank" rel="noopener"> Demo </a>
+          <a href="https://docs.papra.app" class="text-sm font-bold hover:text-primary transition" target="_blank" rel="noopener"> Docs </a>
+          <a href="/blog" class="text-sm font-bold hover:text-primary transition"> Blog </a>
+          <a href="https://docs.papra.app/self-hosting/using-docker/" class="text-sm font-bold hover:text-primary transition" target="_blank" rel="noopener"> Self-host </a>
+          <a href="/en/pricing" class="text-sm font-bold hover:text-primary transition"> Pricing </a>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <a href="https://github.com/papra-hq/papra" target="_blank" rel="noopener noreferrer" class=" hover:text-primary transition" aria-label="GitHub">
+              <div class="size-5 i-tabler-brand-github"></div>
+            </a>
+            <a href="https://papra.app/discord" target="_blank" rel="noopener noreferrer" class=" hover:text-primary transition" aria-label="Discord">
+              <div class="size-5 i-tabler-brand-discord"></div>
+            </a>
+            <a href="https://bsky.app/profile/papra.app" target="_blank" rel="noopener noreferrer" class=" hover:text-primary transition" aria-label="Bluesky">
+              <div class="size-5 i-tabler-brand-bluesky"></div>
+            </a>
+            <a href="https://mastodon.social/@papra" target="_blank" rel="noopener noreferrer" class=" hover:text-primary transition" aria-label="Mastodon">
+              <div class="size-5 i-tabler-brand-mastodon"></div>
+            </a>
+            <a href="https://x.com/papra_app" target="_blank" rel="noopener noreferrer" class=" hover:text-primary transition" aria-label="X / Twitter">
+              <div class="size-5 i-tabler-brand-x"></div>
+            </a>
+          </div>
+          <a class="flex gap-1.5 items-center bg-primary font-bold rounded py-1 px-3 rounded-xl text-primary-foreground text-sm transition hover:bg-primary/80" href="https://dashboard.papra.app" target="_blank"> Sign In <div class="i-tabler-arrow-right size-4"></div>
+          </a>
+        </div>
+      </nav>
+      <div class="max-w-3xl mx-auto pt-20 pb-32 px-4 mt-24 text-center z-50 relative">
+        <h1 class="text-4xl font-bold mb-4 text-pretty">Your Solution to Document Chaos</h1>
+        <p class="text-lg text-muted-foreground">Papra is an open-source document management platform designed to help you organize, secure, and archive your files effortlessly.</p>
+        <div class="flex items-center justify-center gap-2 mt-8">
+          <a href="https://demo.papra.app" class="border text-sm font-bold rounded py-2 px-4 rounded-xl hover:border-primary hover:text-primary transition" target="_blank">Live Demo</a>
+          <a href="https://dashboard.papra.app" class="text-sm flex items-center gap-1.5 bg-primary hover:bg-primary/80 font-bold rounded py-2 px-4 rounded-xl text-primary-foreground transition"> Get started <div class="i-tabler-arrow-right size-5"></div>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="bg-card border-t">
+      <img src="/_astro/papra-screenshot.FEDSAg5M_1H1VpW.webp" alt="Papra Screenshot" loading="eager" width="1616" height="1020" decoding="async" class="mx-auto max-w-1000px w-full relative z-50 mt--300px">
+    </div>
+    <div class="pt-32 pb-48 bg-card p-6 relative overflow-hidden">
+      <!-- <div class="z-10 bg-primary w-90% max-w-1000px h-60px rounded-full blur-64 op-15 absolute bottom--50px left-50% -translate-x-50% "></div> -->
+      <h2 class="text-3xl font-semibold text-pretty mb-2 text-center">Features</h2>
+      <p class="text-base text-muted-foreground text-center max-w-500px mx-auto mb-24"> Manage your documents with ease. Papra offers a range of features to help you organize, search, and access your documents effortlessly. </p>
+      <div class="max-w-1000px mx-auto flex flex-col sm:flex-row gap-4 items-start">
+        <div class="flex flex-col gap-4 w-full">
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="grid grid-cols-8 grid-rows-2 gap-4 p-6 overflow-hidden mb--150px">
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-invoice"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-invoice"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-lambda"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-text"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-dollar"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-description"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-euro"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-chart"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-description"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-lambda"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-euro"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-code"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-text"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-code"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-code-2"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-rss"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-dollar"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-analytics"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-3d"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-rss"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-music"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-text"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-3d"></div>
+                <div class="size-8 sm:size-10 text-muted text-center i-tabler-file-code"></div>
+              </div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-archive"></div>
+              <h3 class="text-xl font-bold text-pretty">All your documents in one place</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> Say goodbye to scattered documents across different platforms. Papra helps you archive and organize all your documents in one place. </p>
+            </div>
+          </div>
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="flex items-center gap-2 p-6 pt-10 pb-4 justify-center">
+                <div class="border rounded-xl p-3 flex items-center justify-center">
+                  <span class="i-tabler-users size-6 text-muted-foreground"></span>
+                </div>
+                <div class="bg-muted-foreground h-3px w-20px rounded-full"></div>
+                <div class="border rounded-xl p-3 flex items-center justify-center border-primary border-2">
+                  <span class="i-tabler-user text-primary size-6"></span>
+                </div>
+                <div class="bg-muted-foreground h-3px w-20px rounded-full"></div>
+                <div class="border rounded-xl p-3 flex items-center justify-center">
+                  <span class="i-tabler-users size-6 text-muted-foreground"></span>
+                </div>
+              </div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-building-community"></div>
+              <h3 class="text-xl font-bold text-pretty">Organizations</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> Organize your documents into organizations. Organizations help you manage your documents and users, like a team or a company. </p>
+            </div>
+          </div>
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="mt-6"></div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-tag"></div>
+              <h3 class="text-xl font-bold text-pretty">Documents tagging</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> Organize your documents with tags. Tags help you categorize and filter your documents easily. Define tagging rules to automatically tag your documents. </p>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-4 w-full">
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="mb--180px flex items-start justify-center pt-6 relative" role="img" aria-label="Search feature illustration">
+                <div class="bg-background sm:min-w-64 border rounded-lg">
+                  <div class="px-4 py-2 flex items-center gap-2">
+                    <span class="i-tabler-search size-4 text-primary"></span>
+                    <span class="text-muted-foreground text-xs">Search for documents...</span>
+                  </div>
+                  <div class="border-t p-4 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-2">
+                      <span class="i-tabler-file-text size-4"></span> Phone invoice.pdf
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span class="i-tabler-file-analytics size-4"></span> Analytics report.pdf
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span class="i-tabler-file-code size-4"></span> Code snippets.txt
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span class="i-tabler-file size-4"></span> Document.docx
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-search"></div>
+              <h3 class="text-xl font-bold text-pretty">Search and find documents easily</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> With Papra's powerful search functionality, you can find any document in seconds. No more endless scrolling and searching. </p>
+            </div>
+          </div>
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="flex justify-center p-6">
+                <pre class="astro-code vitesse-dark text-xs bg-transparent!" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" role="presentation" data-language="bash">
+																																																		<code>
+																																																			<span class="line">
+																																																				<span style="color:#80A665">curl</span>
+																																																				<span style="color:#C99076"> -X</span>
+																																																				<span style="color:#C98A7D"> POST</span>
+																																																				<span style="color:#C98A7D"> https://api.papra.ai/v1/documents</span>
+																																																				<span style="color:#C99076"> \</span>
+																																																			</span>
+																																																			<span class="line">
+																																																				<span style="color:#C99076">  -H</span>
+																																																				<span style="color:#C98A7D77"> "</span>
+																																																				<span style="color:#C98A7D">Authorization: Bearer $PAPRA_API_KEY</span>
+																																																				<span style="color:#C98A7D77">"</span>
+																																																				<span style="color:#C99076"> \</span>
+																																																			</span>
+																																																			<span class="line">
+																																																				<span style="color:#C99076">  -H</span>
+																																																				<span style="color:#C98A7D77"> "</span>
+																																																				<span style="color:#C98A7D">Content-Type: multipart/form-data</span>
+																																																				<span style="color:#C98A7D77">"</span>
+																																																				<span style="color:#C99076"> \</span>
+																																																			</span>
+																																																			<span class="line">
+																																																				<span style="color:#C99076">  -F</span>
+																																																				<span style="color:#C98A7D77"> "</span>
+																																																				<span style="color:#C98A7D">file=@/path/to/your/file.pdf</span>
+																																																				<span style="color:#C98A7D77">"</span>
+																																																			</span>
+																																																		</code>
+																																																	</pre>
+              </div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-code"></div>
+              <h3 class="text-xl font-bold text-pretty">Developer friendly</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> Papra is built with customizability in mind. We provide a powerful API, webhooks, CLI and SDK to help you integrate Papra into your existing workflow. </p>
+            </div>
+          </div>
+          <div class="border rounded-xl bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
+            <div class="z-50">
+              <div class="flex items-center gap-4 p-6 pt-10 pb-4 justify-center">
+                <span class="i-tabler-file-text size-10 text-muted-foreground"></span>
+                <span class="i-tabler-arrow-right size-6 text-muted-foreground"></span>
+                <span class="i-tabler-mailbox size-10 text-primary"></span>
+              </div>
+            </div>
+            <div class="relative z-60 bg-gradient-to-t from-background via-background to-card to-opacity-0 p-6 pt-24 mt--24">
+              <div class="size-9 text-muted-foreground mb-4 i-tabler-mail"></div>
+              <h3 class="text-xl font-bold text-pretty">Email ingestion</h3>
+              <p class="text-muted-foreground text-base mt-2 leading-tight"> Generate a unique email address and forward your emails to Papra. We'll automatically save your email attachments as documents. </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <section class="py-32 border-t bg-background relative overflow-hidden">
+      <div class="z-10 bg-primary w-80% max-w-800px h-300px rounded-full blur-96 op-10 absolute top-50% left-50% -translate-x-50% -translate-y-50%"></div>
+      <div class="max-w-1200px mx-auto px-6 relative z-20">
+        <div class="text-center mb-24">
+          <h2 class="text-3xl sm:text-4xl font-bold mb-4">Built on Principles, Not Profit</h2>
+          <p class="text-lg text-muted-foreground max-w-2xl mx-auto">We're committed to building software the right way. <br> No shortcuts, no compromises. </p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-heart-handshake size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Ethical by Design</h3>
+            <p class="text-muted-foreground">No dark patterns, no manipulative tactics. We build software that respects you.</p>
+          </div>
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-building-bank size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Bootstrapped &amp; Independent</h3>
+            <p class="text-muted-foreground">No VC funding, no diluted financing, debt-free. We answer to our users, not investors.</p>
+          </div>
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-shield-lock size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Your Data is Yours</h3>
+            <p class="text-muted-foreground">We never sell your data. Period. Privacy is a right, not a feature.</p>
+          </div>
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-brand-open-source size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Fully Open Source</h3>
+            <p class="text-muted-foreground">Complete transparency. Audit our code, contribute, or self-host anytime.</p>
+          </div>
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-trees size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Environmentally Conscious</h3>
+            <p class="text-muted-foreground">We prioritize sustainability and eco-friendliness in our operations and product design.</p>
+          </div>
+          <div class="border rounded-xl p-6 bg-card group">
+            <div class="i-tabler-users size-10 text-primary mb-4 group-hover:scale-105 group-hover:rotate-12 transition transform"></div>
+            <h3 class="text-xl font-bold mb-1">Community-Driven</h3>
+            <p class="text-muted-foreground">Built with and for the community. Your feedback shapes our roadmap.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="bg-card py-64 border-t flex items-center justify-center gap-8 sm:gap-12 flex-col sm:flex-row relative overflow-hidden">
+      <div class="max-w-600px px-6 text-center sm:text-left">
+        <h2 class="text-2xl sm:text-4xl font-bold max-w-650px mx-auto">Papra is <span class="bg-primary text-primary-foreground px-3 py-1 rounded-md inline-block leading-tight">open-source</span>
+        </h2>
+        <p class="text-muted-foreground mx-auto mt-4 text-lg">The whole Papra ecosystem is proudly open-source and easily self-hostable. It's available on <a href="https://github.com/papra-hq/papra" class="text-primary hover:underline">GitHub</a> under the <a href="https://github.com/papra-hq/papra/blob/main/LICENSE" class="text-primary hover:underline">AGPL-3.0</a> license. </p>
+      </div>
+      <div class="flex items-center justify-center gap-2 mt-8">
+        <a href="https://github.com/papra-hq/papra" class="border text-sm font-bold rounded py-2 px-4 rounded-xl hover:border-primary hover:text-primary transition flex items-center gap-2 flex-shrink-0" target="_blank"> See on GitHub <div class="i-tabler-arrow-right size-5" aria-hidden="true"></div>
+        </a>
+      </div>
+    </div>
+    <div class="max-w-800px mx-auto px-6 py-42">
+      <h2 class="text-3xl font-semibold text-pretty mb-4 text-center">Frequently Asked Questions</h2>
+      <p class="text-muted-foreground text-lg text-center mb-24">Everything you need to know about Papra</p>
+      <div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="0" aria-expanded="false" aria-controls="faq-content-0">
+            <span class="font-semibold text-sm sm:text-base">What is Papra?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="0" id="faq-content-0">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Papra is an open-source document management platform designed to help you organize, secure, and archive your files effortlessly. It provides a centralized solution for managing all your documents in one place.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="1" aria-expanded="false" aria-controls="faq-content-1">
+            <span class="font-semibold text-sm sm:text-base">Is Papra really open-source?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="1" id="faq-content-1">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Yes! Papra is completely open-source and available under the AGPL-3.0 license. You can view the source code on GitHub and even self-host it if you prefer.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="2" aria-expanded="false" aria-controls="faq-content-2">
+            <span class="font-semibold text-sm sm:text-base">How does document organization work?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="2" id="faq-content-2">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Papra uses a combination of organizations, tags, and powerful search functionality to help you organize your documents. You can create organizations for teams or companies, add tags for categorization, and find documents quickly with our search feature.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="3" aria-expanded="false" aria-controls="faq-content-3">
+            <span class="font-semibold text-sm sm:text-base">Can I self-host Papra?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="3" id="faq-content-3">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Absolutely! Since Papra is open-source, you can self-host it on your own infrastructure. This gives you complete control over your data and allows you to customize the platform to your specific needs.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="4" aria-expanded="false" aria-controls="faq-content-4">
+            <span class="font-semibold text-sm sm:text-base">What file types does Papra support?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="4" id="faq-content-4">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Papra supports a wide range of document types including PDFs, text files, code files, invoices, spreadsheets, and many more. The platform is designed to handle various file formats commonly used in business and personal document management.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="5" aria-expanded="false" aria-controls="faq-content-5">
+            <span class="font-semibold text-sm sm:text-base">Are my documents secure?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="5" id="faq-content-5">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Yes! Papra uses industry-standard in-transit and at-rest encryption to protect your documents.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="6" aria-expanded="false" aria-controls="faq-content-6">
+            <span class="font-semibold text-sm sm:text-base">Are my data stored in Europe?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="6" id="faq-content-6">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Yes! Papra is hosted in Europe and all data is stored in Europe.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-x border-t first:rounded-t-lg last:border-b last:rounded-b-lg bg-background overflow-hidden">
+          <button class="w-full px-6 py-4 text-left flex items-center justify-between" data-faq-toggle="" data-faq-index="7" aria-expanded="false" aria-controls="faq-content-7">
+            <span class="font-semibold text-sm sm:text-base">How can I get started with Papra?</span>
+            <div class="i-tabler-chevron-down size-5 text-muted-foreground transition-transform duration-200" data-faq-icon="" aria-hidden="true"></div>
+          </button>
+          <div class="px-6 pb-0 max-h-0 overflow-hidden transition-all duration-300 ease-in-out" data-faq-content="" data-faq-index="7" id="faq-content-7">
+            <div class="pb-4">
+              <p class="text-muted-foreground leading-relaxed">Getting started with Papra is easy! Simply sign up for a free account, upload your documents, and start organizing them. You can also check out our documentation for more detailed instructions on how to use the platform.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript" crossorigin="anonymous" src="https://jasmine.papra.app/static/surveys.js?v=1.342.1"></script>
+    <script type="text/javascript" crossorigin="anonymous" src="https://jasmine.papra.app/array/phc_gYxH8GEgu7w2H8cjMu3fFthDbmZfvR0MJFGJSsmHLYX/config.js"></script>
+    <script type="text/javascript" crossorigin="anonymous" src="https://jasmine.papra.app/static/exception-autocapture.js?v=1.342.1"></script>
+    <script type="text/javascript" crossorigin="anonymous" src="https://jasmine.papra.app/static/web-vitals.js?v=1.342.1"></script>
+    <script type="text/javascript" crossorigin="anonymous" src="https://jasmine.papra.app/static/dead-clicks-autocapture.js?v=1.342.1"></script>
+    <script type="module">
+      function r(e, t, a) {
+        e.setAttribute("aria-expanded", "true"), t.style.maxHeight = `${t.scrollHeight}px`, a.style.transform = "rotate(180deg)"
+      }
+
+      function i(e, t, a) {
+        e.setAttribute("aria-expanded", "false"), t.style.maxHeight = "0", a.style.transform = "rotate(0deg)"
+      }
+
+      function c(e) {
+        const t = e.currentTarget,
+          a = t.getAttribute("data-faq-index"),
+          n = document.querySelector(`[data-faq-content][data-faq-index="${a}"]`),
+          o = t.querySelector("[data-faq-icon]");
+        t.getAttribute("aria-expanded") === "true" ? i(t, n, o) : r(t, n, o)
+      }
+
+      function d() {
+        document.querySelectorAll("[data-faq-toggle]").forEach(t => {
+          t.addEventListener("click", c)
+        })
+      }
+      document.addEventListener("DOMContentLoaded", d);
+      document.addEventListener("astro:page-load", d);
+    </script>
+    <div class="bg-card py-32 px-6">
+      <div class="max-w-1200px mx-auto px-6 border rounded-xl bg-background pt-32 pb-24 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-[size:48px_48px] px-6 z-20">
+        <h2 class="text-2xl sm:text-4xl font-bold text-center text-pretty max-w-800px mx-auto text-pretty">Stop searching. Start finding. <br> Organize your documents with Papra. </h2>
+        <div class="flex mt-4 items-center justify-center">
+          <a href="https://dashboard.papra.app" class="font-semibold text-background px-4 py-2 hover:bg-primary/80 rounded-lg bg-primary transition mt-8 inline-block flex items-center"> Get Started <div class="i-tabler-arrow-right ml-2 size-5" aria-hidden="true"></div>
+          </a>
+        </div>
+      </div>
+    </div>
+    <footer class="bg-card border-t border-border py-8 text-muted-foreground">
+      <div class="max-w-1200px mx-auto p-4">
+        <div class="flex justify-between flex-col md:flex-row gap-10">
+          <div class="">
+            <a href="/en" class="text-xl font-bold flex items-center group mb-2">
+              <div class="i-tabler-file-text size-7 text-primary group-hover:rotate-25deg transition transform rotate-12deg"></div>
+              <span class="ml-2 text-foreground group-hover:text-foreground/80 transition">Papra</span>
+            </a>
+            <div class="flex gap-2">
+              <a href="https://github.com/papra-hq/papra" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Papra GitHub repository">
+                <div class="i-tabler-brand-github text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://papra.app/discord" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Papra Discord community">
+                <div class="i-tabler-brand-discord text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://bsky.app/profile/papra.app" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Bluesky profile">
+                <div class="i-tabler-brand-bluesky text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://mastodon.social/@papra" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Papra Mastodon profile">
+                <div class="i-tabler-brand-mastodon text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://x.com/papra_app" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Papra X profile">
+                <div class="i-tabler-brand-x text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://www.reddit.com/r/Papra/" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="r/papra community">
+                <div class="i-tabler-brand-reddit text-2xl" aria-hidden="true"></div>
+              </a>
+              <a href="https://www.linkedin.com/company/papra-hq" class="hover:text-primary transition" target="_blank" rel="noopener noreferrer" aria-label="Papra LinkedIn profile">
+                <div class="i-tabler-brand-linkedin text-2xl" aria-hidden="true"></div>
+              </a>
+            </div>
+            <p class="mt-4 text-sm max-w-250px">Papra is made and hosted in Europe with <span class="i-tabler-heart-filled size-3.5 mb--0.3 text-primary inline-block"></span> by <a href="https://corentin.tech" class="text-primary border-b hover:border-b-primary transition">Corentin Thomasset</a>. </p>
+            <div class="mt-6">
+              <div class="relative language-picker">
+                <button type="button" class="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2 text-sm hover:border-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition cursor-pointer" aria-haspopup="true">
+                  <div class="i-tabler-language size-5" role="img" aria-hidden="true"></div>
+                  <span>English</span>
+                  <div class="i-tabler-chevron-down size-4 transition-transform language-picker-chevron" aria-hidden="true"></div>
+                </button>
+                <div class="language-picker-menu absolute bottom-full left-0 mb-2 hidden bg-background border border-border rounded-md shadow-lg overflow-hidden min-w-full">
+                  <a href="/en/" class="block px-3 py-2 text-sm hover:bg-muted transition outline-none focus:bg-muted focus:ring-2 focus:ring-primary focus:ring-inset bg-primary/10 text-primary font-semibold" aria-current="page"> English </a>
+                  <a href="/fr/" class="block px-3 py-2 text-sm hover:bg-muted transition outline-none focus:bg-muted focus:ring-2 focus:ring-primary focus:ring-inset"> Français </a>
+                </div>
+              </div>
+              <script type="module">
+                document.addEventListener("DOMContentLoaded", () => {
+                  document.querySelectorAll(".language-picker").forEach(n => {
+                    const s = n.querySelector("button"),
+                      a = n.querySelector(".language-picker-menu"),
+                      o = n.querySelector(".language-picker-chevron");
+                    if (!s || !a || !o) return;
+                    let e = !1;
+                    const r = () => {
+                        e = !e, a.classList.toggle("hidden", !e), o.classList.toggle("rotate-180", e), s.setAttribute("aria-expanded", String(e))
+                      },
+                      c = () => {
+                        e && (e = !1, a.classList.add("hidden"), o.classList.remove("rotate-180"), s.setAttribute("aria-expanded", "false"))
+                      };
+                    s.addEventListener("click", t => {
+                      t.stopPropagation(), r()
+                    }), document.addEventListener("click", t => {
+                      n.contains(t.target) || c()
+                    }), document.addEventListener("keydown", t => {
+                      t.key === "Escape" && c()
+                    })
+                  })
+                });
+              </script>
+            </div>
+          </div>
+          <div class="grid gap-6 grid-cols-1 sm:grid-cols-4">
+            <div>
+              <div class="text-foreground font-semibold">Community</div>
+              <div class="mt-2">
+                <a href="https://github.com/papra-hq/papra" class="block hover:text-primary transition py-0.75 font-medium"> Papra GitHub repository </a>
+                <a href="https://papra.app/discord" class="block hover:text-primary transition py-0.75 font-medium"> Papra Discord community </a>
+                <a href="https://bsky.app/profile/papra.app" class="block hover:text-primary transition py-0.75 font-medium"> Bluesky profile </a>
+                <a href="https://mastodon.social/@papra" class="block hover:text-primary transition py-0.75 font-medium"> Papra Mastodon profile </a>
+                <a href="https://x.com/papra_app" class="block hover:text-primary transition py-0.75 font-medium"> Papra X profile </a>
+                <a href="https://www.reddit.com/r/Papra/" class="block hover:text-primary transition py-0.75 font-medium"> r/papra community </a>
+                <a href="https://www.linkedin.com/company/papra-hq" class="block hover:text-primary transition py-0.75 font-medium"> Papra LinkedIn profile </a>
+              </div>
+            </div>
+            <div>
+              <div class="text-foreground font-semibold">Papra</div>
+              <div class="mt-2">
+                <a href="/en/pricing" class="block hover:text-primary transition py-0.75 font-medium"> Pricing </a>
+                <a href="/blog" class="block hover:text-primary transition py-0.75 font-medium"> Blog </a>
+                <a href="https://demo.papra.app" class="block hover:text-primary transition py-0.75 font-medium"> Demo app </a>
+                <a href="https://docs.papra.app" class="block hover:text-primary transition py-0.75 font-medium"> Documentation </a>
+                <a href="https://docs.papra.app/self-hosting/using-docker/" class="block hover:text-primary transition py-0.75 font-medium"> Self-host </a>
+                <a href="https://github.com/orgs/papra-hq/projects/2" class="block hover:text-primary transition py-0.75 font-medium"> Roadmap </a>
+                <a href="/llms.txt" class="block hover:text-primary transition py-0.75 font-medium" target="_blank"> LLMs.txt </a>
+                <a href="/humans.txt" class="block hover:text-primary transition py-0.75 font-medium" target="_blank"> Humans.txt </a>
+              </div>
+            </div>
+            <div>
+              <div class="text-foreground font-semibold">Open Source</div>
+              <div class="mt-2">
+                <a href="https://github.com/papra-hq/papra" class="block hover:text-primary transition py-0.75 font-medium"> Repository </a>
+                <a href="https://github.com/papra-hq/papra/blob/main/CONTRIBUTING.md" class="block hover:text-primary transition py-0.75 font-medium"> Contributing </a>
+                <a href="https://github.com/papra-hq/papra/blob/main/CODE_OF_CONDUCT.md" class="block hover:text-primary transition py-0.75 font-medium"> Code of Conduct </a>
+                <a href="https://github.com/papra-hq/papra/blob/main/LICENSE" class="block hover:text-primary transition py-0.75 font-medium"> License </a>
+                <a href="https://github.com/papra-hq/papra-website" class="block hover:text-primary transition py-0.75 font-medium"> This website </a>
+              </div>
+            </div>
+            <div>
+              <div class="text-foreground font-semibold">Legal</div>
+              <div class="mt-2">
+                <a href="/terms-of-service" class="block hover:text-primary transition py-0.75 font-medium"> Terms of Service </a>
+                <a href="/privacy" class="block hover:text-primary transition py-0.75 font-medium"> Privacy Policy </a>
+                <a href="/en/contact" class="block hover:text-primary transition py-0.75 font-medium"> Contact </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-8 border-t border-border pt-4">© 2026 Papra. All rights reserved.</div>
+      </div>
+    </footer>
+    <protonpass-root-c1e8 data-protonpass-role="root" data-protonpass-theme="os"></protonpass-root-c1e8>
+  </body>
+</html>

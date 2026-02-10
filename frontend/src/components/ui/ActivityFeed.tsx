@@ -1,7 +1,4 @@
-import { createSignal, For, onMount, createEffect, Show } from 'solid-js';
-import { useDebounce } from '@/hooks/useDebounce';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { cn } from '@/lib/utils';
+import { createSignal, For, onMount, createEffect } from 'solid-js';
 import { 
   IconBookmark, 
   IconChecklist, 
@@ -42,10 +39,6 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
   const [activities, setActivities] = createSignal<ActivityItem[]>([]);
   const [filter, setFilter] = createSignal<'all' | 'trackeep' | 'github'>('all');
   const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  
-  // Debounce filter changes to prevent excessive re-renders
-  const debouncedFilter = useDebounce(filter, 300);
 
   const getActivityIcon = (type: string) => {
     switch (type) {

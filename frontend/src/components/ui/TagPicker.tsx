@@ -1,5 +1,5 @@
 import { createSignal, For, Show, createEffect } from 'solid-js';
-import { IconTag, IconX, IconChevronDown } from '@tabler/icons-solidjs';
+import { IconTag, IconX } from '@tabler/icons-solidjs';
 
 interface TagPickerProps {
   availableTags: string[];

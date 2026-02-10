@@ -2,6 +2,11 @@ import { defineConfig, loadEnv } from 'vite'
 import solid from 'vite-plugin-solid'
 import UnoCSS from 'unocss/vite'
 import path from 'path'
+import { readFileSync } from 'fs'
+
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, './package.json'), 'utf8'))
+const version = packageJson.version
 
 export default defineConfig(({ mode }) => {
   // Load env file from parent directory
@@ -9,6 +14,10 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [solid(), UnoCSS()],
+    define: {
+      // Make version available at build time
+      __APP_VERSION__: JSON.stringify(version)
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

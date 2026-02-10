@@ -39,6 +39,9 @@ export function UpdateChecker(props: UpdateCheckerProps) {
       setUpdateInfo(response.updateInfo || null);
       setCurrentVersion(response.currentVersion);
       
+      // Save last check time
+      localStorage.setItem('lastUpdateCheck', Date.now().toString());
+      
       if (response.updateAvailable && response.updateInfo) {
         setUpdateStatus(prev => ({ ...prev, available: true }));
       }
@@ -96,14 +99,22 @@ export function UpdateChecker(props: UpdateCheckerProps) {
   };
 
   onMount(() => {
-    // Check for updates on component mount
-    checkForUpdates();
-    
     // Set current version
     setCurrentVersion(updateService.getCurrentVersion());
     
-    // Check for updates periodically (every 30 minutes)
-    const intervalId = setInterval(checkForUpdates, 30 * 60 * 1000);
+    // Check for updates periodically (every 24 hours)
+    const intervalId = setInterval(checkForUpdates, 24 * 60 * 60 * 1000);
+    
+    // Check if last check was more than 24 hours ago
+    const lastCheckTime = localStorage.getItem('lastUpdateCheck');
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    
+    if (!lastCheckTime || (now - parseInt(lastCheckTime)) > twentyFourHours) {
+      // Check for updates on component mount if it's been more than 24 hours
+      checkForUpdates();
+      localStorage.setItem('lastUpdateCheck', now.toString());
+    }
     
     onCleanup(() => {
       clearInterval(intervalId);
@@ -134,7 +145,13 @@ export function UpdateChecker(props: UpdateCheckerProps) {
 
   return (
     <>
-      <div class={`flex items-center gap-2 ${props.class || ''}`}>
+      <div class={`flex flex-col gap-2 ${props.class || ''}`}>
+        {/* Current Version Display */}
+        <div class="text-xs text-muted-foreground px-2 text-center">
+          Version {currentVersion()}
+        </div>
+        
+        {/* Check Updates Button */}
         <button
           onClick={() => updateAvailable() ? setShowUpdateModal(true) : checkForUpdates()}
           class="group inline-flex rounded-md text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-9 px-4 py-2 justify-start items-center gap-2 truncate relative overflow-hidden w-full"
