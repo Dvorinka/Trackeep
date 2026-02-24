@@ -1,4 +1,4 @@
-import { createSignal, For, Show, onMount, onCleanup } from 'solid-js';
+import { createSignal, For, Show, onMount } from 'solid-js';
 import { IconSearch, IconFileText, IconBookmark, IconChecklist, IconNotebook, IconFolder } from '@tabler/icons-solidjs';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -146,10 +146,27 @@ export const QuickSearch = () => {
 
   onMount(() => {
     document.addEventListener('keydown', handleGlobalKeyDown);
-  });
-
-  onCleanup(() => {
-    document.removeEventListener('keydown', handleGlobalKeyDown);
+    
+    // Add click outside listener
+    const handleClickOutside = (e: MouseEvent) => {
+      if (isOpen()) {
+        const target = e.target as HTMLElement;
+        // Check if click is outside the search modal
+        if (!target.closest('.quick-search-modal')) {
+          setIsOpen(false);
+          setSearchQuery('');
+          setSearchResults([]);
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+      document.removeEventListener('click', handleClickOutside);
+    };
   });
 
   return (
@@ -167,8 +184,15 @@ export const QuickSearch = () => {
 
       {/* Search Modal */}
       <Show when={isOpen()}>
-        <div class="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/50 backdrop-blur-sm">
-          <div class="w-full max-w-2xl mx-4">
+        <div class="fixed inset-0 z-[70] flex items-start justify-center pt-20 bg-black/50 backdrop-blur-sm quick-search-modal" onClick={(e) => {
+          // Close if clicking on the backdrop
+          if (e.target === e.currentTarget) {
+            setIsOpen(false);
+            setSearchQuery('');
+            setSearchResults([]);
+          }
+        }}>
+          <div class="w-full max-w-2xl mx-4" onClick={(e) => e.stopPropagation()}>
             <Card class="p-4 shadow-2xl">
               {/* Search Input */}
               <div class="flex items-center gap-3 mb-4">

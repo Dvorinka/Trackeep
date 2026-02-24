@@ -4,12 +4,13 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -277,6 +278,15 @@ func main() {
 			courses.DELETE("/:id", deleteCourse) // Admin only
 			courses.GET("/:id/resources", getCourseResources)
 			courses.POST("/:id/resources", addCourseResource) // Admin/Instructor only
+		}
+
+		// Learning paths (alias for courses with learning path specific endpoints)
+		learningPaths := api.Group("/learning-paths")
+		{
+			learningPaths.GET("", getLearningPaths)
+			learningPaths.GET("/categories", getLearningPathCategories)
+			learningPaths.POST("/:id/enroll", enrollInLearningPath)
+			learningPaths.GET("/:id", getLearningPath)
 		}
 
 		// User progress
@@ -781,14 +791,14 @@ func generateJWTWithEmailToken(userSession map[string]interface{}) string {
 
 func generateRandomString(length int) string {
 	bytes := make([]byte, length)
-	rand.Read(bytes)
+	cryptorand.Read(bytes)
 	return hex.EncodeToString(bytes)
 }
 
 func generateVerificationCode() string {
 	// Generate 6-digit verification code
 	codeBytes := make([]byte, 3)
-	rand.Read(codeBytes)
+	cryptorand.Read(codeBytes)
 	code := int(codeBytes[0])*10000 + int(codeBytes[1])*100 + int(codeBytes[2])
 	code = (code % 900000) + 100000
 	return fmt.Sprintf("%06d", code)
@@ -986,6 +996,210 @@ func addCourseResource(c *gin.Context) {
 	nextResourceID++
 
 	c.JSON(http.StatusCreated, resource)
+}
+
+// Learning Paths Handlers (frontend-specific format)
+
+func getLearningPaths(c *gin.Context) {
+	// Get query parameters
+	search := c.Query("search")
+	category := c.Query("category")
+	difficulty := c.Query("difficulty")
+
+	var learningPaths []gin.H
+
+	for _, course := range courses {
+		if !course.IsActive {
+			continue
+		}
+
+		// Apply filters
+		if search != "" && !containsIgnoreCase(course.Title, search) && !containsIgnoreCase(course.Description, search) {
+			continue
+		}
+		if category != "" && !containsIgnoreCase(course.Category, category) {
+			continue
+		}
+		if difficulty != "" && !containsIgnoreCase(course.Difficulty, difficulty) {
+			continue
+		}
+
+		// Convert to frontend format
+		resources := courseResources[course.ID]
+		tags := make([]gin.H, len(course.Tags))
+		for i, tag := range course.Tags {
+			tags[i] = gin.H{
+				"name":  tag,
+				"color": "#3b82f6", // Blue color for all tags
+			}
+		}
+
+		modules := make([]gin.H, len(resources))
+		for i, resource := range resources {
+			modules[i] = gin.H{
+				"id":          fmt.Sprintf("module_%d", resource.ID),
+				"title":       resource.Title,
+				"description": resource.Description,
+				"completed":   false,
+				"resources": []gin.H{
+					{
+						"type":  string(resource.Type),
+						"title": resource.Title,
+						"url":   resource.URL,
+					},
+				},
+			}
+		}
+
+		learningPath := gin.H{
+			"id":               course.ID,
+			"title":            course.Title,
+			"description":      course.Description,
+			"category":         course.Category,
+			"difficulty":       course.Difficulty,
+			"duration":         fmt.Sprintf("%d hours", course.Duration),
+			"thumbnail":        course.Thumbnail,
+			"is_featured":      course.ID <= 2, // First 2 courses are featured
+			"enrollment_count": rand.Intn(2000) + 200,
+			"rating":           4.0 + rand.Float64(),
+			"review_count":     rand.Intn(200) + 20,
+			"creator": gin.H{
+				"username":  "instructor",
+				"full_name": "Expert Instructor",
+			},
+			"tags":      tags,
+			"modules":   modules,
+			"createdAt": course.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+
+		learningPaths = append(learningPaths, learningPath)
+	}
+
+	c.JSON(http.StatusOK, learningPaths)
+}
+
+func getLearningPathCategories(c *gin.Context) {
+	categories := []string{
+		"Web Development",
+		"Mobile Development",
+		"Programming",
+		"DevOps",
+		"Data Science",
+		"Design",
+		"Business",
+		"Cybersecurity",
+	}
+	c.JSON(http.StatusOK, gin.H{"categories": categories})
+}
+
+func enrollInLearningPath(c *gin.Context) {
+	pathID := parseInt(c.Param("id"))
+	userID := getUserIDFromToken(c)
+
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Check if course exists
+	course, exists := courses[pathID]
+	if !exists || !course.IsActive {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Learning path not found"})
+		return
+	}
+
+	// Create or update progress
+	key := fmt.Sprintf("%d_%d", userID, pathID)
+	progress, exists := userProgress[key]
+	if !exists {
+		progress = UserProgress{
+			UserID:       userID,
+			CourseID:     pathID,
+			Status:       "in_progress",
+			Progress:     0.0,
+			StartedAt:    time.Now(),
+			LastAccessed: time.Now(),
+		}
+	} else {
+		progress.Status = "in_progress"
+		progress.LastAccessed = time.Now()
+	}
+
+	userProgress[key] = progress
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Successfully enrolled in learning path",
+		"enrolled": true,
+		"progress": progress,
+	})
+}
+
+func getLearningPath(c *gin.Context) {
+	pathID := parseInt(c.Param("id"))
+
+	course, exists := courses[pathID]
+	if !exists || !course.IsActive {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Learning path not found"})
+		return
+	}
+
+	// Get resources
+	resources := courseResources[pathID]
+	course.Resources = resources
+
+	// Convert to frontend format
+	tags := make([]gin.H, len(course.Tags))
+	for i, tag := range course.Tags {
+		tags[i] = gin.H{
+			"name":  tag,
+			"color": "#3b82f6",
+		}
+	}
+
+	modules := make([]gin.H, len(resources))
+	for i, resource := range resources {
+		modules[i] = gin.H{
+			"id":          fmt.Sprintf("module_%d", resource.ID),
+			"title":       resource.Title,
+			"description": resource.Description,
+			"completed":   false,
+			"resources": []gin.H{
+				{
+					"type":  string(resource.Type),
+					"title": resource.Title,
+					"url":   resource.URL,
+				},
+			},
+		}
+	}
+
+	learningPath := gin.H{
+		"id":               course.ID,
+		"title":            course.Title,
+		"description":      course.Description,
+		"category":         course.Category,
+		"difficulty":       course.Difficulty,
+		"duration":         fmt.Sprintf("%d hours", course.Duration),
+		"thumbnail":        course.Thumbnail,
+		"is_featured":      course.ID <= 2,
+		"enrollment_count": rand.Intn(2000) + 200,
+		"rating":           4.0 + rand.Float64(),
+		"review_count":     rand.Intn(200) + 20,
+		"creator": gin.H{
+			"username":  "instructor",
+			"full_name": "Expert Instructor",
+		},
+		"tags":      tags,
+		"modules":   modules,
+		"createdAt": course.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+
+	c.JSON(http.StatusOK, learningPath)
+}
+
+// Helper function for case-insensitive contains
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
 // User Progress Handlers

@@ -7,19 +7,16 @@ import {
   Alert,
 } from 'react-native';
 import {
-  Text,
   Card,
   Title,
   Paragraph,
   TextInput,
   Button,
-  ActivityIndicator,
   HelperText,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useServerConfig } from '../services/ServerConfigContext';
 import { updateAPIBaseURL } from '../services/api';
-import { useNavigation } from '@react-navigation/native';
 
 interface ServerConfig {
   baseUrl: string;
@@ -37,7 +34,6 @@ const ServerSetupScreen: React.FC = () => {
   const [errors, setErrors] = useState<Partial<ServerConfig>>({});
   
   const { setConfig: saveConfig } = useServerConfig();
-  const navigation = useNavigation();
 
   const validateConfig = (): boolean => {
     const newErrors: Partial<ServerConfig> = {};

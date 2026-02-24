@@ -1,4 +1,4 @@
-import { createSignal, onMount, For, Show } from 'solid-js';
+import { createSignal, createEffect, onMount, For, Show } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
@@ -73,6 +73,8 @@ const renderMarkdownPreviewHtml = (content: string, maxBlocks = 4): string => {
     .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
     .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-xs">$1<\/code>')
     .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2<\/code><\/pre>')
+    .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="this.parentElement.nextElementSibling.textContent=this.checked?\'x\':\' \'"><span class="text-xs">$1</span></div>')
+    .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="this.parentElement.nextElementSibling.textContent=this.checked?\'x\':\' \'"><span class="text-xs">$1</span></div>')
     .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1<\/li>')
     .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1<\/li>')
     .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-3 italic text-[#aaa] mb-2">$1<\/blockquote>')
@@ -89,6 +91,8 @@ const renderPlainTextPreviewHtml = (content: string): string => {
     .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1<\/a>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1<\/strong>')
     .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
+    .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked"><span class="text-xs">$1</span></div>')
+    .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked"><span class="text-xs">$1</span></div>')
     .split('\n')
     .slice(0, 6)
     .map((line) => (line ? line : '<br \/>'))
@@ -313,8 +317,86 @@ export const Notes = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Add this function to handle checkbox changes
+  const updateNoteCheckbox = (noteId: number, checkboxIndex: number, isChecked: boolean) => {
+    setNotes(prev => prev.map(note => {
+      if (note.id === noteId) {
+        const lines = note.content.split('\n');
+        let checkboxCount = 0;
+        
+        const updatedLines = lines.map(line => {
+          const uncheckedMatch = line.match(/^- \[ \] (.*)$/);
+          const checkedMatch = line.match(/^- \[x\] (.*)$/);
+          
+          if (uncheckedMatch || checkedMatch) {
+            if (checkboxCount === checkboxIndex) {
+              const text = uncheckedMatch ? uncheckedMatch[1] : (checkedMatch ? checkedMatch[1] : '');
+              return isChecked ? `- [x] ${text}` : `- [ ] ${text}`;
+            }
+            checkboxCount++;
+          }
+          return line;
+        });
+        
+        return {
+          ...note,
+          content: updatedLines.join('\n'),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return note;
+    }));
+  };
+
+  // Handler for updating note content from ViewNoteModal
+  const handleUpdateNoteContent = (noteId: number, content: string) => {
+    setNotes(prev => prev.map(note => 
+      note.id === noteId 
+        ? { ...note, content, updatedAt: new Date().toISOString() }
+        : note
+    ));
+  };
+
+  // Make the function available globally for checkbox onchange handlers
+  createEffect(() => {
+    (window as any).updateNoteContent = (checkbox: HTMLInputElement) => {
+      const noteElement = checkbox.closest('[data-note-id]');
+      if (noteElement) {
+        const noteId = parseInt(noteElement.getAttribute('data-note-id') || '0');
+        const checkboxElements = noteElement.querySelectorAll('input[type="checkbox"]');
+        const checkboxIndex = Array.from(checkboxElements).indexOf(checkbox);
+        updateNoteCheckbox(noteId, checkboxIndex, checkbox.checked);
+      }
+    };
+  });
+
   return (
     <div class="p-6 space-y-6">
+      <style>
+        {`
+          .note-checkbox {
+            width: 16px !important;
+            height: 16px !important;
+            cursor: pointer !important;
+            accent-color: #3b82f6 !important;
+            border: 2px solid #4b5563 !important;
+            border-radius: 3px !important;
+            transition: all 0.2s ease !important;
+          }
+          .note-checkbox:hover {
+            border-color: #3b82f6 !important;
+            transform: scale(1.1) !important;
+          }
+          .note-checkbox:checked {
+            background-color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+          }
+          .note-checkbox:focus {
+            outline: 2px solid #3b82f6 !important;
+            outline-offset: 2px !important;
+          }
+        `}
+      </style>
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-[#fafafa]">Notes</h1>
         <Button onClick={() => setShowAddModal(true)}>
@@ -356,6 +438,7 @@ export const Notes = () => {
         <div class="space-y-4">
           {filteredNotes().map((note) => (
             <Card 
+              data-note-id={note.id}
               class={`p-6 cursor-pointer transition-all hover:shadow-lg hover:bg-[#1a1a1a] ${note.pinned ? 'border-l-4 border-l-primary' : ''}`}
               onClick={() => viewNote(note)}
             >
@@ -458,6 +541,8 @@ export const Notes = () => {
                               .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
                               .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-xs">$1</code>')
                               .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2</code></pre>')
+                              .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
+                              .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
                               .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
                               .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
                               .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-3 italic text-[#aaa] mb-2">$1</blockquote>')
@@ -466,6 +551,8 @@ export const Notes = () => {
                             : note.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
                               .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
                               .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                              .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
+                              .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
                               .split('\n').map((line) => line ? `<p class="mb-2">${line}</p>` : '<br />').join('')
                       }
                     />
@@ -570,6 +657,7 @@ export const Notes = () => {
         onDelete={deleteNote}
         onCopyContent={copyNoteContent}
         onExportNote={exportNote}
+        onUpdateNote={handleUpdateNoteContent}
       />
     </div>
   );

@@ -1,0 +1,31 @@
+{
+  "languages": {},
+  "review_max_age_days": 30,
+  "holistic_max_age_days": 30,
+  "generate_scorecard": true,
+  "badge_path": "scorecard.png",
+  "exclude": [],
+  "ignore": [
+    "test_coverage::frontend/src/pages/Login.tsx",
+    "test_coverage::frontend/src/App.tsx"
+  ],
+  "ignore_metadata": {
+    "test_coverage::frontend/src/pages/Login.tsx": {
+      "note": "Login page - test coverage is separate effort, permanently ignore",
+      "added_at": "2026-02-18T13:23:38+00:00"
+    },
+    "test_coverage::frontend/src/App.tsx": {
+      "note": "Main App component - test coverage is separate effort, permanently ignore",
+      "added_at": "2026-02-18T13:26:59+00:00"
+    }
+  },
+  "zone_overrides": {},
+  "review_dimensions": [],
+  "review_allow_custom_dimensions": false,
+  "review_custom_dimensions": [],
+  "large_files_threshold": 0,
+  "props_threshold": 0,
+  "finding_noise_budget": 10,
+  "finding_noise_global_budget": 0,
+  "target_strict_score": 95
+}

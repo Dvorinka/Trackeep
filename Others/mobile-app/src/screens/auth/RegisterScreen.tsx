@@ -9,7 +9,6 @@ import {
 import {
   TextInput,
   Button,
-  Text,
   Card,
   Title,
   Paragraph,

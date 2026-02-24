@@ -21,6 +21,10 @@
   <a href="#contributing">Contributing</a>
 </p>
 
+<p align="center">
+  <img src="./scorecard.png" alt="Code Quality Score" width="100%">
+</p>
+
 ## Introduction
 
 I built Trackeep because I was tired of juggling a dozen different apps for my digital life. You know how it is – bookmarks in one place, tasks in another, random notes scattered everywhere, and that great article you meant to read somewhere in your browser history.

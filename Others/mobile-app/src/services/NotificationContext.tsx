@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import PushNotification from 'react-native-push-notification';
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 interface Notification {

@@ -204,6 +204,40 @@ export class DemoModeApiClient {
       } as T;
     }
 
+    // Updates endpoint
+    if (endpoint.includes('/updates/check')) {
+      return {
+        updateAvailable: true,
+        currentVersion: '1.0.0',
+        latestVersion: '1.0.1',
+        updateInfo: {
+          version: '1.0.1',
+          releaseNotes: '• New AI features added\n• Performance improvements\n• Bug fixes and security patches\n• Enhanced user interface',
+          downloadUrl: 'https://github.com/trackeep/trackeep/releases/latest',
+          mandatory: false,
+          size: '~25MB'
+        }
+      } as T;
+    }
+
+    if (endpoint.includes('/updates/install')) {
+      return {
+        message: 'Update started',
+        version: '1.0.1'
+      } as T;
+    }
+
+    if (endpoint.includes('/updates/progress')) {
+      return {
+        available: true,
+        downloading: false,
+        installing: false,
+        completed: false,
+        error: '',
+        progress: 0
+      } as T;
+    }
+
     // Auth endpoints
     if (endpoint.includes('/auth/login-totp')) {
       return {

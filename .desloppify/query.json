@@ -1,0 +1,742 @@
+{
+  "command": "status",
+  "overall_score": 75.0,
+  "objective_score": 100.0,
+  "strict_score": 59.3,
+  "strict_all_detected": 59.1,
+  "dimension_scores": {
+    "File health": {
+      "score": 100.0,
+      "strict": 87.6,
+      "checks": 143,
+      "issues": 0,
+      "tier": 3,
+      "detectors": {
+        "structural": {
+          "potential": 143,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        }
+      }
+    },
+    "Code quality": {
+      "score": 100.0,
+      "strict": 67.2,
+      "checks": 1211,
+      "issues": 0,
+      "tier": 3,
+      "detectors": {
+        "unused": {
+          "potential": 143,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "logs": {
+          "potential": 143,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "exports": {
+          "potential": 305,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "deprecated": {
+          "potential": 2,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "props": {
+          "potential": 76,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "smells": {
+          "potential": 143,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "react": {
+          "potential": 14,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "orphaned": {
+          "potential": 146,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "flat_dirs": {
+          "potential": 25,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "naming": {
+          "potential": 23,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "facade": {
+          "potential": 146,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "patterns": {
+          "potential": 3,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "single_use": {
+          "potential": 42,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        }
+      }
+    },
+    "Duplication": {
+      "score": 100.0,
+      "strict": 99.4,
+      "checks": 288,
+      "issues": 0,
+      "tier": 3,
+      "detectors": {
+        "dupes": {
+          "potential": 288,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        }
+      }
+    },
+    "Test health": {
+      "score": 100.0,
+      "strict": 48.6,
+      "checks": 2246,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "test_coverage": {
+          "potential": 2109,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "subjective_review": {
+          "potential": 137,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        }
+      }
+    },
+    "Security": {
+      "score": 100.0,
+      "strict": 98.6,
+      "checks": 289,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "security": {
+          "potential": 143,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        },
+        "cycles": {
+          "potential": 146,
+          "pass_rate": 1.0,
+          "issues": 0,
+          "weighted_failures": 0.0
+        }
+      }
+    },
+    "Naming Quality": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "Error Consistency": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "Abstraction Fit": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "Logic Clarity": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "AI Generated Debt": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "Type Safety": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    },
+    "Contract Coherence": {
+      "score": 0.0,
+      "strict": 0.0,
+      "checks": 10,
+      "issues": 0,
+      "tier": 4,
+      "detectors": {
+        "subjective_assessment": {
+          "potential": 10,
+          "pass_rate": 0.0,
+          "issues": 0,
+          "weighted_failures": 10.0
+        }
+      }
+    }
+  },
+  "stats": {
+    "total": 873,
+    "open": 0,
+    "fixed": 20,
+    "auto_resolved": 1,
+    "wontfix": 768,
+    "false_positive": 84,
+    "by_tier": {
+      "1": {
+        "open": 0,
+        "fixed": 17,
+        "auto_resolved": 0,
+        "wontfix": 8,
+        "false_positive": 0
+      },
+      "2": {
+        "open": 0,
+        "fixed": 3,
+        "auto_resolved": 1,
+        "wontfix": 376,
+        "false_positive": 26
+      },
+      "3": {
+        "open": 0,
+        "fixed": 0,
+        "auto_resolved": 0,
+        "wontfix": 245,
+        "false_positive": 58
+      },
+      "4": {
+        "open": 0,
+        "fixed": 0,
+        "auto_resolved": 0,
+        "wontfix": 139,
+        "false_positive": 0
+      }
+    }
+  },
+  "scan_count": 10,
+  "last_scan": "2026-02-18T13:28:26+00:00",
+  "by_tier": {
+    "1": {
+      "open": 0,
+      "fixed": 17,
+      "auto_resolved": 0,
+      "wontfix": 8,
+      "false_positive": 0
+    },
+    "2": {
+      "open": 0,
+      "fixed": 3,
+      "auto_resolved": 1,
+      "wontfix": 376,
+      "false_positive": 26
+    },
+    "3": {
+      "open": 0,
+      "fixed": 0,
+      "auto_resolved": 0,
+      "wontfix": 245,
+      "false_positive": 58
+    },
+    "4": {
+      "open": 0,
+      "fixed": 0,
+      "auto_resolved": 0,
+      "wontfix": 139,
+      "false_positive": 0
+    }
+  },
+  "ignores": [
+    "test_coverage::frontend/src/pages/Login.tsx",
+    "test_coverage::frontend/src/App.tsx"
+  ],
+  "suppression": {
+    "last_ignored": 1,
+    "last_raw_findings": 853,
+    "last_suppressed_pct": 0.1,
+    "last_ignore_patterns": 2,
+    "recent_scans": 5,
+    "recent_ignored": 1,
+    "recent_raw_findings": 4265,
+    "recent_suppressed_pct": 0.0
+  },
+  "detector_transparency": {
+    "rows": [
+      {
+        "detector": "exports",
+        "visible": 305,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 305
+      },
+      {
+        "detector": "smells",
+        "visible": 215,
+        "suppressed": 0,
+        "excluded": 1,
+        "total_detected": 216
+      },
+      {
+        "detector": "subjective_review",
+        "visible": 138,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 138
+      },
+      {
+        "detector": "test_coverage",
+        "visible": 49,
+        "suppressed": 1,
+        "excluded": 0,
+        "total_detected": 50
+      },
+      {
+        "detector": "structural",
+        "visible": 25,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 25
+      },
+      {
+        "detector": "security",
+        "visible": 18,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 18
+      },
+      {
+        "detector": "logs",
+        "visible": 6,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 6
+      },
+      {
+        "detector": "dupes",
+        "visible": 3,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 3
+      },
+      {
+        "detector": "deprecated",
+        "visible": 0,
+        "suppressed": 0,
+        "excluded": 2,
+        "total_detected": 2
+      },
+      {
+        "detector": "flat_dirs",
+        "visible": 2,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 2
+      },
+      {
+        "detector": "unused",
+        "visible": 2,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 2
+      },
+      {
+        "detector": "cycles",
+        "visible": 1,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 1
+      },
+      {
+        "detector": "react",
+        "visible": 1,
+        "suppressed": 0,
+        "excluded": 0,
+        "total_detected": 1
+      }
+    ],
+    "totals": {
+      "visible": 765,
+      "suppressed": 1,
+      "excluded": 3,
+      "detectors": 13
+    }
+  },
+  "potentials": {
+    "typescript": {
+      "logs": 143,
+      "unused": 143,
+      "exports": 305,
+      "deprecated": 2,
+      "structural": 143,
+      "flat_dirs": 25,
+      "props": 76,
+      "single_use": 42,
+      "coupling": 0,
+      "cycles": 146,
+      "orphaned": 146,
+      "patterns": 3,
+      "naming": 23,
+      "facade": 146,
+      "test_coverage": 2109,
+      "smells": 143,
+      "react": 14,
+      "security": 143,
+      "subjective_review": 137,
+      "dupes": 288
+    }
+  },
+  "codebase_metrics": {
+    "typescript": {
+      "total_files": 151,
+      "total_loc": 40054,
+      "total_directories": 25
+    }
+  },
+  "strict_target": {
+    "target": 95.0,
+    "current": 59.3,
+    "gap": 35.7,
+    "state": "below",
+    "warning": null
+  },
+  "narrative": {
+    "phase": "stagnation",
+    "headline": "All T1 and T2 items cleared!",
+    "dimensions": {
+      "lowest_dimensions": [
+        {
+          "name": "Naming Quality",
+          "strict": 0.0,
+          "issues": 0,
+          "impact": 0.0,
+          "subjective": true,
+          "impact_description": "re-review to improve"
+        },
+        {
+          "name": "Error Consistency",
+          "strict": 0.0,
+          "issues": 0,
+          "impact": 0.0,
+          "subjective": true,
+          "impact_description": "re-review to improve"
+        },
+        {
+          "name": "Abstraction Fit",
+          "strict": 0.0,
+          "issues": 0,
+          "impact": 0.0,
+          "subjective": true,
+          "impact_description": "re-review to improve"
+        }
+      ],
+      "biggest_gap_dimensions": [
+        {
+          "name": "Test health",
+          "lenient": 100.0,
+          "strict": 48.6,
+          "gap": 51.4,
+          "wontfix_count": 187
+        },
+        {
+          "name": "Code quality",
+          "lenient": 100.0,
+          "strict": 67.2,
+          "gap": 32.8,
+          "wontfix_count": 534
+        },
+        {
+          "name": "File health",
+          "lenient": 100.0,
+          "strict": 87.6,
+          "gap": 12.4,
+          "wontfix_count": 25
+        }
+      ],
+      "stagnant_dimensions": [
+        {
+          "name": "File health",
+          "strict": 87.6,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Code quality",
+          "strict": 67.2,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Duplication",
+          "strict": 99.4,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Security",
+          "strict": 98.6,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Naming Quality",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Error Consistency",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Abstraction Fit",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Logic Clarity",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "AI Generated Debt",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Type Safety",
+          "strict": 0.0,
+          "stuck_scans": 5
+        },
+        {
+          "name": "Contract Coherence",
+          "strict": 0.0,
+          "stuck_scans": 5
+        }
+      ]
+    },
+    "actions": [
+      {
+        "priority": 1,
+        "type": "debt_review",
+        "detector": null,
+        "description": "7.8 pts of wontfix debt \u2014 review stale decisions",
+        "command": "desloppify show --status wontfix",
+        "gap": 7.8,
+        "lane": "debt_review"
+      }
+    ],
+    "strategy": {
+      "fixer_leverage": {
+        "auto_fixable_count": 0,
+        "total_count": 0,
+        "coverage": 0.0,
+        "impact_ratio": 0.0,
+        "recommendation": "none"
+      },
+      "lanes": {
+        "debt_review": {
+          "actions": [
+            1
+          ],
+          "file_count": 0,
+          "total_impact": 0.0,
+          "automation": "manual",
+          "run_first": false
+        }
+      },
+      "can_parallelize": false,
+      "hint": "Try a different dimension to break the plateau."
+    },
+    "tools": {
+      "fixers": [],
+      "move": {
+        "available": true,
+        "relevant": false,
+        "reason": null,
+        "usage": "desloppify move <source> <dest> [--dry-run]"
+      },
+      "plan": {
+        "command": "desloppify plan",
+        "description": "Generate prioritized markdown cleanup plan"
+      },
+      "badge": {
+        "generated": true,
+        "in_readme": true,
+        "path": "scorecard.png",
+        "recommendation": null
+      }
+    },
+    "debt": {
+      "overall_gap": 7.8,
+      "wontfix_count": 768,
+      "worst_dimension": "Test health",
+      "worst_gap": 51.4,
+      "trend": "stable"
+    },
+    "milestone": "All T1 and T2 items cleared!",
+    "primary_action": {
+      "priority": 1,
+      "type": "debt_review",
+      "detector": null,
+      "command": "desloppify show --status wontfix",
+      "description": "7.8 pts of wontfix debt \u2014 review stale decisions",
+      "impact": null,
+      "lane": "debt_review",
+      "count": null
+    },
+    "why_now": "Progress is plateaued, so the top action is the best chance to break the plateau.",
+    "verification_step": {
+      "command": "desloppify show --status wontfix",
+      "reason": "Re-check stale wontfix decisions before treating strict score as stable.",
+      "success_signal": "Wontfix list reflects only intentional and still-valid exceptions."
+    },
+    "risk_flags": [
+      {
+        "type": "wontfix_gap",
+        "severity": "medium",
+        "message": "7.8 strict-score points are masked by wontfix debt (768 items).",
+        "command": "desloppify show --status wontfix"
+      }
+    ],
+    "strict_target": {
+      "target": 95.0,
+      "current": 59.3,
+      "gap": 35.7,
+      "state": "below",
+      "warning": null
+    },
+    "reminders": [],
+    "reminder_history": {
+      "report_scores": 10,
+      "auto_fixers_available": 3,
+      "dry_run_first": 3,
+      "zone_classification": 3,
+      "feedback_nudge": 3,
+      "stagnant_nudge": 10,
+      "fp_calibration_security_production": 3,
+      "wontfix_growing": 3,
+      "fp_calibration_orphaned_production": 3
+    }
+  },
+  "config": {
+    "review_max_age_days": 30,
+    "holistic_max_age_days": 30,
+    "generate_scorecard": true,
+    "badge_path": "scorecard.png",
+    "exclude": [],
+    "ignore": [
+      "test_coverage::frontend/src/pages/Login.tsx",
+      "test_coverage::frontend/src/App.tsx"
+    ],
+    "ignore_metadata": {
+      "test_coverage::frontend/src/pages/Login.tsx": {
+        "note": "Login page - test coverage is separate effort, permanently ignore",
+        "added_at": "2026-02-18T13:23:38+00:00"
+      },
+      "test_coverage::frontend/src/App.tsx": {
+        "note": "Main App component - test coverage is separate effort, permanently ignore",
+        "added_at": "2026-02-18T13:26:59+00:00"
+      }
+    },
+    "zone_overrides": {},
+    "review_dimensions": [],
+    "review_allow_custom_dimensions": false,
+    "review_custom_dimensions": [],
+    "large_files_threshold": 0,
+    "props_threshold": 0,
+    "finding_noise_budget": 10,
+    "finding_noise_global_budget": 0,
+    "target_strict_score": 95,
+    "languages": {}
+  }
+}

@@ -325,16 +325,15 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
             </h3>
           </div>
 
-          {/* Month labels - More visible and responsive */}
-          <div class="flex justify-between mb-3 px-8 text-sm font-medium">
-            {getMonthLabels().map((month, index) => (
-              <span 
-                class="text-foreground/80 hover:text-foreground transition-colors cursor-default"
-                style={index % 2 === 0 ? "" : "visibility: hidden;"}
-              >
-                {month}
-              </span>
-            ))}
+          {/* Month labels - Show all months with responsive spacing */}
+          <div class="flex justify-between mb-3 px-6 sm:px-8 text-xs sm:text-sm font-medium overflow-x-auto">
+            <div class="flex gap-2 sm:gap-3 min-w-max">
+              {getMonthLabels().map((month) => (
+                <span class="text-foreground/80 hover:text-foreground transition-colors cursor-default whitespace-nowrap">
+                  {month}
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Contribution grid - Responsive and prevents overflow */}
@@ -352,7 +351,7 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
               </div>
 
               {/* Weekly columns - Responsive with proper overflow handling */}
-              <div class="flex gap-1 overflow-x-auto overflow-y-hidden min-w-0">
+              <div class="flex gap-1 overflow-x-auto overflow-y-hidden min-w-0 pb-2">
                 {Array.from({ length: 53 }, (_, weekIndex) => (
                   <div class="flex flex-col gap-1 flex-shrink-0">
                     {Array.from({ length: 7 }, (_, dayIndex) => {
@@ -362,7 +361,7 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
                       if (!activity) {
                         return (
                           <div
-                            class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm flex-shrink-0"
+                            class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0 transition-all"
                             style={`background-color: ${getActivityColor(0)}`}
                           ></div>
                         );
@@ -370,7 +369,7 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
 
                       return (
                         <div
-                          class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm hover:ring-1 hover:ring-primary cursor-pointer transition-all flex-shrink-0"
+                          class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm hover:ring-1 hover:ring-primary cursor-pointer transition-all flex-shrink-0 hover:scale-110"
                           style={`background-color: ${getActivityColor(activity.level)}`}
                           title={`${activity.date}: ${activity.count} contributions`}
                         ></div>
@@ -388,7 +387,7 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
             <div class="flex gap-1">
               {[0, 1, 2, 3, 4].map((level) => (
                 <div
-                  class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm"
+                  class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm"
                   style={`background-color: ${getActivityColor(level)}`}
                 ></div>
               ))}

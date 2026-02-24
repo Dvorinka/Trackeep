@@ -1,5 +1,5 @@
 import { getOfflineData, clearOfflineChanges, addOfflineChange } from './storage';
-import { authAPI, bookmarksAPI, tasksAPI, notesAPI, timeEntriesAPI } from '../services/api';
+import { bookmarksAPI, tasksAPI, notesAPI, timeEntriesAPI } from '../services/api';
 
 interface OfflineChange {
   id: string;

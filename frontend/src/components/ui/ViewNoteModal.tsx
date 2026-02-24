@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/Button';
-import { For, Show } from 'solid-js';
+import { For, Show, createEffect } from 'solid-js';
 import { IconX, IconEdit, IconPin, IconTrash, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
 
 interface Note {
@@ -30,10 +30,39 @@ interface ViewNoteModalProps {
   onDelete: (noteId: number) => void;
   onCopyContent?: (note: Note) => void;
   onExportNote?: (note: Note) => void;
+  onUpdateNote?: (noteId: number, content: string) => void;
 }
 
 export const ViewNoteModal = (props: ViewNoteModalProps) => {
   console.log('ViewNoteModal render:', { isOpen: props.isOpen, note: props.note?.title });
+  
+  // Make the function available globally for checkbox onchange handlers
+  createEffect(() => {
+    (window as any).updateViewNoteContent = (checkbox: HTMLInputElement) => {
+      if (props.note && props.onUpdateNote) {
+        const lines = props.note.content.split('\n');
+        let checkboxCount = 0;
+        const checkboxElements = document.querySelectorAll('.note-content input[type="checkbox"]');
+        const checkboxIndex = Array.from(checkboxElements).indexOf(checkbox);
+        
+        const updatedLines = lines.map(line => {
+          const uncheckedMatch = line.match(/^- \[ \] (.*)$/);
+          const checkedMatch = line.match(/^- \[x\] (.*)$/);
+          
+          if (uncheckedMatch || checkedMatch) {
+            if (checkboxCount === checkboxIndex) {
+              const text = uncheckedMatch ? uncheckedMatch[1] : (checkedMatch ? checkedMatch[1] : '');
+              return checkbox.checked ? `- [x] ${text}` : `- [ ] ${text}`;
+            }
+            checkboxCount++;
+          }
+          return line;
+        });
+        
+        props.onUpdateNote(props.note.id, updatedLines.join('\n'));
+      }
+    };
+  });
   
   return (
     <>
@@ -154,7 +183,7 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
           )}
 
           {/* Note Content */}
-          <div class="prose prose-invert max-w-none">
+          <div class="prose prose-invert max-w-none note-content">
             {props.note.isHtml ? (
               <div 
                 class="text-[#fafafa] leading-relaxed"
@@ -172,6 +201,8 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
                   .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
                   .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-sm">$1</code>')
                   .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-4 rounded mb-4 overflow-x-auto"><code class="text-sm">$2</code></pre>')
+                  .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
+                  .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" checked class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
                   .replace(/\n\n/g, '</p><p class="mb-4">')
                   .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
                   .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
@@ -191,6 +222,8 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
                   .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
                   .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
                   .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                  .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
+                  .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" checked class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
                   .split('\n').map((line) => (
                     <div innerHTML={line || '<br />'} />
                   ))}

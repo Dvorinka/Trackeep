@@ -20,18 +20,18 @@ const iconPaths: Record<string, string> = {
 };
 
 const fallbackIcons: Record<string, string> = {
-  mistral: '🇪🇺',
-  longcat: '🐱',
-  grok: '🐦',
-  deepseek: '🔍',
-  ollama: '🦙',
-  openrouter: '🌀',
+  mistral: 'M',
+  longcat: 'C',
+  grok: 'G',
+  deepseek: 'D',
+  ollama: 'O',
+  openrouter: 'OR',
 };
 
 export function AIProviderIcon(props: AIProviderIconProps) {
   const inlineSVG = createMemo(() => inlineSVGs[props.providerId]);
   const iconPath = createMemo(() => iconPaths[props.providerId]);
-  const fallbackIcon = createMemo(() => fallbackIcons[props.providerId] || '🤖');
+  const fallbackIcon = createMemo(() => fallbackIcons[props.providerId] || 'AI');
   
   // Use inline SVG if available (for openrouter, ollama, grok)
   if (inlineSVG()) {

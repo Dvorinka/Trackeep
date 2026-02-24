@@ -20,7 +20,8 @@ import {
   IconCalendar,
   IconLogout,
   IconBuilding,
-  IconPlus
+  IconPlus,
+  IconX
 } from '@tabler/icons-solidjs'
 import { UpdateChecker } from '../ui/UpdateChecker'
 
@@ -48,9 +49,11 @@ const mockWorkspaces = [
 
 export interface SidebarProps {
   class?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
-export function Sidebar(_props: SidebarProps) {
+export function Sidebar(props: SidebarProps) {
   const location = useLocation()
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = createSignal(false)
   const [selectedWorkspace, setSelectedWorkspace] = createSignal(mockWorkspaces[0])
@@ -84,10 +87,23 @@ export function Sidebar(_props: SidebarProps) {
   })
 
   return (
-    <div class="w-280px border-r border-r-border flex-shrink-0 hidden md:block bg-card">
-      <div class="flex h-full">
-        <div class="h-full flex flex-col pb-6 flex-1 min-w-0">
-          {/* Organization Selector */}
+    <>
+      {/* Mobile Close Button - Above sidebar */}
+      <Show when={props.isOpen}>
+        <button
+          onClick={props.onClose}
+          class="fixed top-4 right-4 z-50 md:hidden inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+        >
+          <IconX class="size-4" />
+        </button>
+      </Show>
+      
+      <div class={`fixed inset-y-0 left-0 z-50 w-280px border-r border-r-border flex-shrink-0 bg-card transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+        props.isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div class="flex h-full">
+          <div class="h-full flex flex-col pb-6 flex-1 min-w-0">
+            {/* Organization Selector */}
           <div class="p-4 pb-0 min-w-0 max-w-full" id="workspace-selector">
             <div role="group" class="w-full relative">
               <button
@@ -261,5 +277,6 @@ export function Sidebar(_props: SidebarProps) {
         </div>
       </div>
     </div>
+    </>
   )
 }

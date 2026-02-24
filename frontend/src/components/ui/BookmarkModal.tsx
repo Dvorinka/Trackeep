@@ -55,15 +55,15 @@ export const BookmarkModal = (props: BookmarkModalProps) => {
     <>
       {/* Backdrop */}
       {props.isOpen && (
-        <div class="fixed inset-0 bg-black/50 z-40 mt-0" onClick={props.onClose} />
+        <div class="fixed inset-0 bg-black/50 z-[60] mt-0" onClick={props.onClose} />
       )}
 
       {/* Modal */}
-      <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-50 ${
+      <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-[70] ${
         props.isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-      }`} style="width: 500px; max-width: 90vw;">
+      }`} style="width: min(500px, 90vw); max-height: min(80vh, 600px); overflow-y: auto;">
         {/* Header */}
-        <div class="flex items-center justify-between p-6 border-b border-border">
+        <div class="flex items-center justify-between p-4 sm:p-6 border-b border-border">
           <h3 class="text-lg font-semibold">Add New Bookmark</h3>
           <button
             onClick={props.onClose}
@@ -74,7 +74,7 @@ export const BookmarkModal = (props: BookmarkModalProps) => {
         </div>
 
         {/* Content */}
-        <div class="p-6 space-y-4">
+        <div class="p-4 sm:p-6 space-y-4">
           <div class="relative">
             <Input
               type="url"
@@ -129,7 +129,7 @@ export const BookmarkModal = (props: BookmarkModalProps) => {
         </div>
 
         {/* Footer */}
-        <div class="flex justify-end gap-2 p-6 border-t border-border">
+        <div class="flex flex-col sm:flex-row justify-end gap-2 p-4 sm:p-6 border-t border-border">
           <Button variant="outline" onClick={props.onClose}>
             Cancel
           </Button>

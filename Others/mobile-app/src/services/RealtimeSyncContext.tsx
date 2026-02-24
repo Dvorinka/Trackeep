@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { NetInfoState, useNetInfo } from '@react-native-community/netinfo';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNetInfo } from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useServerConfig } from './ServerConfigContext';
 import { DeviceEventEmitter } from 'react-native';

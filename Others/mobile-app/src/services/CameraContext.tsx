@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { View, Alert, Platform } from 'react-native';
-import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import { Alert, Platform } from 'react-native';
+import { useCameraDevices } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 interface CameraContextType {

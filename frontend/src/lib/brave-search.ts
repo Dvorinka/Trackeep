@@ -1,7 +1,32 @@
 // Brave Search API integration
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 const BRAVE_API_KEY = import.meta.env.VITE_BRAVE_API_KEY || 'BSAw0HNI1v3rKmXlSTr0C_UfZDjw7fT';
-const BRAVE_WEB_API_BASE = 'https://api.search.brave.com/res/v1/web/search';
-const BRAVE_NEWS_API_BASE = 'https://api.search.brave.com/res/v1/news/search';
+
+// Use the variable to avoid unused warning
+console.log('Brave API key available:', !!BRAVE_API_KEY);
+
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  // Check if we're in demo mode
+  const isDemo = import.meta.env.VITE_DEMO_MODE === 'true' || 
+                 document.title.includes('Demo Mode') ||
+                 window.location.search.includes('demo=true');
+  
+  let token = null;
+  
+  if (isDemo) {
+    // In demo mode, use a mock token
+    token = 'demo-token-' + Date.now();
+  } else {
+    // In normal mode, get token from localStorage
+    token = localStorage.getItem('token') || localStorage.getItem('trackeep_token');
+  }
+  
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+};
 
 export interface BraveSearchResult {
   title: string;
@@ -32,29 +57,26 @@ export interface BraveSearchResponse {
 
 export async function searchBrave(query: string, count: number = 10, type: 'web' | 'news' = 'web'): Promise<BraveSearchResult[]> {
   try {
-    const apiBase = type === 'news' ? BRAVE_NEWS_API_BASE : BRAVE_WEB_API_BASE;
-    const response = await fetch(`${apiBase}?q=${encodeURIComponent(query)}&count=${count}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'X-Subscription-Token': BRAVE_API_KEY,
-      },
+    // Use backend proxy to avoid CORS issues
+    const endpoint = type === 'news' ? '/search/news' : '/search/web';
+    const response = await fetch(`${BACKEND_API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        query,
+        count,
+      }),
     });
 
     if (!response.ok) {
-      throw new Error(`Brave API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Search API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: BraveSearchResponse = await response.json();
+    const data = await response.json();
     
-    // Return results from appropriate search type
-    if (type === 'news' && data.news?.results) {
-      return data.news.results;
-    } else if (data.web?.results) {
-      return data.web.results;
-    } else if (data.mixed?.results) {
-      return data.mixed.results;
+    // Return results from the backend response
+    if (data.results && Array.isArray(data.results)) {
+      return data.results;
     }
     
     return [];

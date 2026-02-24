@@ -8,16 +8,12 @@ import {
 } from 'react-native';
 import {
   Text,
-  Card,
   Title,
   Paragraph,
   TextInput,
   Button,
-  FAB,
-  IconButton,
   Avatar,
   Chip,
-  Divider,
 } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRealtimeUpdates } from '../services/RealtimeSyncContext';

@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,10 +27,8 @@ type BraveSearchResponse struct {
 }
 
 type BraveNewsResponse struct {
-	News struct {
-		Results []map[string]interface{} `json:"results"`
-	} `json:"news"`
-	Query struct {
+	Results []map[string]interface{} `json:"results"`
+	Query   struct {
 		Original string `json:"original"`
 		Display  string `json:"display"`
 	} `json:"query"`
@@ -47,6 +47,7 @@ type BraveSearchResult struct {
 
 // SearchWeb handles POST /api/v1/search/web
 func SearchWeb(c *gin.Context) {
+	fmt.Printf("DEBUG: SearchWeb function called\n")
 	var req struct {
 		Query string `json:"query" binding:"required"`
 		Count int    `json:"count"`
@@ -135,6 +136,7 @@ func SearchWeb(c *gin.Context) {
 }
 
 func SearchNews(c *gin.Context) {
+	fmt.Printf("DEBUG: SearchNews function called\n")
 	var req struct {
 		Query string `json:"query" binding:"required"`
 		Count int    `json:"count"`
@@ -174,20 +176,35 @@ func SearchNews(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave News API"})
 		return
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave News API error: %d", resp.StatusCode)})
 		return
 	}
 
+	// Read the response body for debugging
+	bodyBytes, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+		return
+	}
+
+	fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
+
 	var braveResp BraveNewsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&braveResp); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
+		fmt.Printf("DEBUG: JSON decode error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
 		return
 	}
 
-	resultsRaw := braveResp.News.Results
+	// Debug logging
+	fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
+	fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
+
+	resultsRaw := braveResp.Results
 	results := make([]BraveSearchResult, 0, len(resultsRaw))
 	for _, r := range resultsRaw {
 		title, _ := r["title"].(string)

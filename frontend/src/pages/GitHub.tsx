@@ -394,9 +394,9 @@ export const GitHub = () => {
       </div>
 
       {/* Two-way Grid: Contribution Graph and Languages - Responsive */}
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Contribution Graph - Left Column (2/3 width on large screens) */}
-        <div class="xl:w-2/3">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contribution Graph - Left Column (larger) */}
+        <div class="lg:col-span-1">
           <GitHubActivity 
             title="Contribution Activity"
             showStats={false}
@@ -409,8 +409,8 @@ export const GitHub = () => {
           />
         </div>
 
-        {/* Languages - Right Column (1/3 width on large screens) */}
-        <Card class="p-6 xl:w-1/3">
+        {/* Languages - Right Column (smaller) */}
+        <Card class="p-6 lg:col-span-1">
           <h3 class="text-lg font-semibold text-foreground mb-4">Languages</h3>
           <div class="space-y-3">
             {githubStats().languages.map((language) => (
@@ -457,9 +457,9 @@ export const GitHub = () => {
                 const finalHeightPercent = Math.max(heightPercent, minHeightPercent);
 
                 return (
-                  <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-8">
-                    <div class="relative w-full max-w-4 md:max-w-5 flex flex-col items-center">
-                      <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5">
+                  <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-8 h-full">
+                    <div class="relative w-full max-w-4 md:max-w-5 flex flex-col items-center justify-end h-full">
+                      <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10">
                         {activity}
                       </span>
                       <div 

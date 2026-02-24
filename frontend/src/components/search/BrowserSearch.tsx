@@ -4,8 +4,8 @@ import { type BraveSearchResult } from '@/lib/brave-search';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { isEnvDemoMode, shouldUseRealSearch } from '@/lib/demo-mode';
-import { getSearchProvider, getApiBaseUrl } from '@/lib/credentials';
+import { isEnvDemoMode } from '@/lib/demo-mode';
+import { getApiBaseUrl } from '@/lib/credentials';
 
 export const BrowserSearch = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
@@ -14,79 +14,67 @@ export const BrowserSearch = () => {
   const [error, setError] = createSignal('');
   const [hasSearched, setHasSearched] = createSignal(false);
   const [searchType, setSearchType] = createSignal<'web' | 'news'>('web');
+  
+  // Add debouncing and request cancellation
+  let searchTimeout: number | undefined;
+  let currentRequestId: number = 0;
 
   // Check if we're in demo mode
   const isDemo = () => {
     return isEnvDemoMode();
   };
 
-  // Check if we should use real search APIs
-  const shouldUseReal = () => {
-    return shouldUseRealSearch();
-  };
-
   const handleSearch = async () => {
     const query = searchQuery().trim();
-    if (!query) return;
+    if (!query || isLoading()) return;
 
+    // Cancel any existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    // Increment request ID for cancellation
+    const requestId = ++currentRequestId;
+    
     setIsLoading(true);
     setError('');
     setHasSearched(true);
 
     try {
       const isDemoMode = isDemo();
-      const useRealAPIs = shouldUseReal();
       
-      console.log(`[BrowserSearch] Demo mode: ${isDemoMode}, Use real APIs: ${useRealAPIs}`);
+      console.log(`[BrowserSearch] Demo mode: ${isDemoMode}`);
       
-      // If we have credentials and should use real APIs, try them first
-      if (useRealAPIs) {
-        console.log('Using real search APIs...');
-        
-        // Try the configured search provider first
-        const searchProvider = getSearchProvider();
-        console.log(`Using search provider: ${searchProvider}`);
-        
-        if (searchProvider === 'brave' && import.meta.env.VITE_BRAVE_API_KEY) {
-          try {
-            const { searchBrave } = await import('@/lib/brave-search');
-            const results = await searchBrave(query, 8, searchType());
-            if (results && results.length > 0) {
-              setSearchResults(results);
-              return;
-            }
-          } catch (err) {
-            console.warn('Brave Search failed:', err);
-          }
-        }
-        
-        // Try backend as fallback
-        const API_BASE_URL = getApiBaseUrl();
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('auth_token') || 
-                      localStorage.getItem('trackeep_token');
-        const endpoint = searchType() === 'news' ? '/api/v1/search/news' : '/api/v1/search/web';
-        
-        try {
-          const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
-            body: JSON.stringify({ query, count: 8 }),
-          });
+      // Always use backend API for search to avoid CORS issues
+      const API_BASE_URL = getApiBaseUrl();
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('auth_token') || 
+                    localStorage.getItem('trackeep_token');
+      const endpoint = searchType() === 'news' ? '/api/v1/search/news' : '/api/v1/search/web';
+      
+      try {
+        console.log(`Using backend search API: ${API_BASE_URL}${endpoint}`);
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+          body: JSON.stringify({ query, count: 8 }),
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              setSearchResults(data.results);
-              return;
-            }
+        if (response.ok) {
+          const data = await response.json();
+          // Check if this request is still current
+          if (requestId === currentRequestId && data.results && data.results.length > 0) {
+            setSearchResults(data.results);
+            return;
           }
-        } catch (err) {
-          console.warn('Backend search failed:', err);
+        } else {
+          console.warn('Backend search returned error:', response.status, response.statusText);
         }
+      } catch (err) {
+        console.warn('Backend search failed:', err);
       }
       
       // In demo mode or as fallback, use the demo mode API interceptor
@@ -105,11 +93,14 @@ export const BrowserSearch = () => {
 
         if (response.ok) {
           const data = await response.json();
-          // Handle demo mode response format
-          const results = data.web?.results || data.news?.results || data.mixed?.results || data.results || [];
-          if (results.length > 0) {
-            setSearchResults(results);
-            return;
+          // Check if this request is still current
+          if (requestId === currentRequestId) {
+            // Handle demo mode response format
+            const results = data.web?.results || data.news?.results || data.mixed?.results || data.results || [];
+            if (results.length > 0) {
+              setSearchResults(results);
+              return;
+            }
           }
         }
         console.warn('Demo API failed, falling back to mock results...');
@@ -127,28 +118,37 @@ export const BrowserSearch = () => {
       
       if (apiFailed) {
         console.warn('All search APIs failed, showing demo results:', errorMessage);
-        const mockResults: BraveSearchResult[] = [
-          {
-            title: `${query} - Search Result 1`,
-            url: `https://example.com/${query.toLowerCase().replace(/\s+/g, '-')}`,
-            description: `This is a mock search result for "${query}" demonstrating the search functionality in demo mode.`,
-            published_date: new Date().toISOString().split('T')[0],
-            language: 'English'
-          },
-          {
-            title: `${query} - Search Result 2`,
-            url: `https://demo-site.com/${query.toLowerCase().replace(/\s+/g, '-')}`,
-            description: `Another mock search result for "${query}" showing how the search interface works in demo mode.`,
-            published_date: new Date().toISOString().split('T')[0],
-            language: 'English'
-          }
-        ];
-        setSearchResults(mockResults);
+        // Check if this request is still current
+        if (requestId === currentRequestId) {
+          const mockResults: BraveSearchResult[] = [
+            {
+              title: `${query} - Search Result 1`,
+              url: `https://example.com/${query.toLowerCase().replace(/\s+/g, '-')}`,
+              description: `This is a mock search result for "${query}" demonstrating the search functionality in demo mode.`,
+              published_date: new Date().toISOString().split('T')[0],
+              language: 'English'
+            },
+            {
+              title: `${query} - Search Result 2`,
+              url: `https://demo-site.com/${query.toLowerCase().replace(/\s+/g, '-')}`,
+              description: `Another mock search result for "${query}" showing how the search interface works in demo mode.`,
+              published_date: new Date().toISOString().split('T')[0],
+              language: 'English'
+            }
+          ];
+          setSearchResults(mockResults);
+        }
       } else {
-        setError('Search temporarily unavailable. Please try again later.');
+        // Check if this request is still current before setting error
+        if (requestId === currentRequestId) {
+          setError('Search temporarily unavailable. Please try again later.');
+        }
       }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if this is still the current request
+      if (requestId === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   };
 

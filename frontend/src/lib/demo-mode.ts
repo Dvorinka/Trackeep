@@ -1,6 +1,6 @@
 // Demo mode API interceptor to provide mock data instead of making real API calls
 
-import { hasAnyCredentials, isBackendAvailable, isSearchAvailable } from './credentials';
+import { hasAnyCredentials, isBackendAvailable, isSearchAvailable, hasSearchCredentials, hasDatabaseCredentials, hasAICredentials } from './credentials';
 
 // Check if demo mode is enabled via environment variable
 export const isEnvDemoMode = (): boolean => {
@@ -17,7 +17,18 @@ export const isDemoMode = (): boolean => {
 
 // Check if we should use real APIs even in demo mode
 export const shouldUseRealAPIs = (): boolean => {
-  return hasAnyCredentials();
+  const hasCredentials = hasAnyCredentials();
+  const hasBackend = shouldUseRealBackend();
+  const result = hasCredentials || hasBackend;
+  console.log('[Demo Mode] shouldUseRealAPIs:', { 
+    hasCredentials, 
+    hasBackend, 
+    result,
+    searchCreds: hasSearchCredentials(),
+    dbCreds: hasDatabaseCredentials(),
+    aiCreds: hasAICredentials()
+  });
+  return result;
 };
 
 // Check if we should use real backend API
@@ -196,16 +207,60 @@ const generateMockAIProviders = () => [
   }
 ];
 
+// Store original fetch at module level
+let originalFetch: typeof fetch | null = null;
+
+// Request cache to prevent duplicate API calls
+const requestCache = new Map<string, Promise<Response>>();
+const CACHE_TTL = 2000; // 2 seconds
+
+// Generate cache key for requests
+const getCacheKey = (url: string, options?: RequestInit): string => {
+  const method = options?.method || 'GET';
+  const body = options?.body || '';
+  return `${method}:${url}:${body}`;
+};
+
 // Demo mode fetch interceptor
 export const demoFetch = async (url: string, options?: RequestInit): Promise<Response> => {
   // Check if we should use real APIs even in demo mode
-  if (shouldUseRealAPIs()) {
-    console.log('[Demo Mode] Real credentials detected, using real API for:', url);
-    return fetch(url, options);
+  const shouldUseReal = shouldUseRealAPIs();
+  console.log('[Demo Mode] demoFetch called:', { url, shouldUseReal });
+  
+  if (shouldUseReal) {
+    // Only log YouTube API calls once every 50 calls to reduce spam
+    if (url.includes('youtube') && Math.random() < 0.02) {
+      console.log('[Demo Mode] Real credentials detected, using real API for:', url);
+    }
+    
+    // Check cache for YouTube API calls to prevent duplicates
+    if (url.includes('youtube')) {
+      const cacheKey = getCacheKey(url, options);
+      const cachedRequest = requestCache.get(cacheKey);
+      
+      if (cachedRequest) {
+        return cachedRequest;
+      }
+      
+      // Create new request and cache it
+      const requestPromise = (originalFetch || window.fetch)(url, options);
+      requestCache.set(cacheKey, requestPromise);
+      
+      // Clear cache after TTL
+      setTimeout(() => {
+        requestCache.delete(cacheKey);
+      }, CACHE_TTL);
+      
+      return requestPromise;
+    }
+    
+    // Use original fetch to avoid recursion
+    return (originalFetch || window.fetch)(url, options);
   }
 
   if (!isDemoMode()) {
-    return fetch(url, options);
+    console.log('[Demo Mode] Not in demo mode, using real fetch for:', url);
+    return (originalFetch || window.fetch)(url, options);
   }
 
   // Parse URL to determine which mock data to return
@@ -247,6 +302,27 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
 
   if (path.includes('/api/v1/dashboard/stats')) {
     return new Response(JSON.stringify(generateMockStats()), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (path.includes('/api/v1/bookmarks') && (!options?.method || options.method === 'GET')) {
+    const { getMockBookmarks } = await import('./mockData');
+    const mockBookmarks = getMockBookmarks().map((bookmark, index) => ({
+      id: index + 1,
+      title: bookmark.title,
+      url: bookmark.url,
+      description: bookmark.description,
+      tags: bookmark.tags,
+      created_at: bookmark.createdAt,
+      is_favorite: bookmark.tags.some((tag) => tag.name === 'important' || tag.name === 'favorite'),
+      favicon: bookmark.favicon,
+      screenshot: bookmark.screenshot,
+      screenshot_medium: bookmark.screenshot,
+    }));
+
+    return new Response(JSON.stringify(mockBookmarks), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -423,6 +499,27 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
       });
     }
 
+    if (path.includes('/api/v1/bookmarks')) {
+      const body = options.body ? JSON.parse(options.body as string) : {};
+      const newBookmark = {
+        id: Date.now(),
+        title: body.title || 'Untitled bookmark',
+        url: body.url || '',
+        description: body.description || '',
+        tags: body.tags || [],
+        created_at: new Date().toISOString(),
+        is_favorite: body.is_favorite || false,
+        favicon: body.favicon || '',
+        screenshot: body.screenshot || '',
+        screenshot_medium: body.screenshot_medium || '',
+      };
+
+      return new Response(JSON.stringify(newBookmark), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     if (path.includes('/api/v1/tasks')) {
       const body = options.body ? JSON.parse(options.body as string) : {};
       const newTask = {
@@ -442,6 +539,29 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
     }
   }
 
+   if (options?.method === 'PUT' && path.includes('/api/v1/bookmarks')) {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const pathParts = path.split('/');
+    const idFromPath = parseInt(pathParts[pathParts.length - 1] || '0', 10);
+    const updatedBookmark = {
+      id: idFromPath || body.id || Date.now(),
+      title: body.title || 'Untitled bookmark',
+      url: body.url || '',
+      description: body.description || '',
+      tags: body.tags || [],
+      created_at: body.created_at || new Date().toISOString(),
+      is_favorite: body.is_favorite ?? false,
+      favicon: body.favicon || '',
+      screenshot: body.screenshot || '',
+      screenshot_medium: body.screenshot_medium || '',
+    };
+
+    return new Response(JSON.stringify(updatedBookmark), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
    if (options?.method === 'PUT' && path.includes('/api/v1/tasks')) {
     const body = options.body ? JSON.parse(options.body as string) : {};
     const pathParts = path.split('/');
@@ -457,6 +577,13 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
     };
 
     return new Response(JSON.stringify(updatedTask), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (options?.method === 'DELETE' && path.includes('/api/v1/bookmarks')) {
+    return new Response(JSON.stringify({ message: 'Bookmark deleted (demo mode)' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -590,8 +717,8 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
 // Override global fetch for demo mode
 export const initializeDemoMode = () => {
   if (isDemoMode()) {
-    // Store original fetch to restore later if needed
-    const originalFetch = window.fetch;
+    // Store original fetch to use for real API calls and restore later if needed
+    originalFetch = window.fetch;
     window.fetch = demoFetch as typeof fetch;
     console.log('[Demo Mode] API interceptor initialized');
     return originalFetch;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Alert, Platform, PermissionsAndroid } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import Voice from 'react-native-voice';
 

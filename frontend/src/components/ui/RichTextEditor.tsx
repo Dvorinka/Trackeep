@@ -12,7 +12,8 @@ import {
   IconLink,
   IconPhoto,
   IconPaperclip,
-  IconEye
+  IconEye,
+  IconCheckbox
 } from '@tabler/icons-solidjs';
 
 interface RichTextEditorProps {
@@ -95,6 +96,8 @@ export const RichTextEditor = (props: RichTextEditorProps) => {
         .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
         .replace(/\*(.*)\*/gim, '<em>$1</em>')
         .replace(/`(.*)`/gim, '<code>$1</code>')
+        .replace(/^- \[ \] (.*)$/gim, '<div class="flex items-center gap-2"><input type="checkbox" class="rounded" readonly><span>$1</span></div>')
+        .replace(/^- \[x\] (.*)$/gim, '<div class="flex items-center gap-2"><input type="checkbox" checked class="rounded" readonly><span>$1</span></div>')
         .replace(/\n/gim, '<br>');
     }
     
@@ -106,7 +109,9 @@ export const RichTextEditor = (props: RichTextEditorProps) => {
     return props.value
       .replace(/\n/gim, '<br>')
       .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/gim, '<em>$1</em>');
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/^- \[ \] (.*)$/gim, '<div class="flex items-center gap-2"><input type="checkbox" class="rounded" readonly><span>$1</span></div>')
+      .replace(/^- \[x\] (.*)$/gim, '<div class="flex items-center gap-2"><input type="checkbox" checked class="rounded" readonly><span>$1</span></div>');
   };
 
   const toolbarButtons = [
@@ -117,6 +122,7 @@ export const RichTextEditor = (props: RichTextEditorProps) => {
     { icon: IconHeading, action: () => insertText('## ', ''), title: 'Heading' },
     { icon: IconList, action: () => insertText('- '), title: 'Bullet List' },
     { icon: IconListNumbers, action: () => insertText('1. '), title: 'Numbered List' },
+    { icon: IconCheckbox, action: () => insertText('- [ ] '), title: 'Checkbox' },
     { icon: IconQuote, action: () => insertText('> '), title: 'Quote' },
     { icon: IconCode, action: () => insertText('`', '`'), title: 'Code' },
     { icon: IconLink, action: () => insertText('[', '](url)'), title: 'Link' },

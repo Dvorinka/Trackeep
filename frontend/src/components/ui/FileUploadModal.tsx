@@ -155,7 +155,7 @@ export const FileUploadModal = (props: FileUploadModalProps) => {
   return (
     <Show when={props.isOpen}>
       <div 
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
         onClick={props.onClose}
       >
         <div 

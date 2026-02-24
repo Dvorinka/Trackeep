@@ -79,7 +79,7 @@ export function FloatingAI(props: FloatingAIProps) {
 
       {/* AI Chat Modal */}
       <Show when={props.isChatOpen}>
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0 p-4">
           <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full max-h-[600px] flex flex-col" style="width: 420px;">
             {/* Header */}
             <div class="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">

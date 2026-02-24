@@ -89,13 +89,13 @@ export const UploadModal = (props: UploadModalProps) => {
     <>
       {/* Backdrop */}
       {props.isOpen && (
-        <div class="fixed inset-0 bg-black/50 z-40" onClick={props.onClose} />
+        <div class="fixed inset-0 bg-black/50 z-[60] mt-0" onClick={props.onClose} />
       )}
 
       {/* Modal */}
-      <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-50 ${
+      <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-[70] ${
         props.isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-      }`} style="width: 600px; max-width: 90vw; max-height: 80vh; overflow-y: auto;">
+      }`} style="width: min(600px, 90vw); max-height: min(80vh, 600px); overflow-y: auto;">
         {/* Header */}
         <div class="flex items-center justify-between p-6 border-b border-border">
           <h3 class="text-lg font-semibold">Import Documents</h3>
@@ -108,10 +108,10 @@ export const UploadModal = (props: UploadModalProps) => {
         </div>
 
         {/* Content */}
-        <div class="p-6 space-y-4">
+        <div class="p-4 sm:p-6 space-y-4">
           {/* Drop Zone */}
           <div
-            class={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            class={`border-2 border-dashed rounded-lg p-4 sm:p-8 text-center transition-colors ${
               isDragging() 
                 ? 'border-primary bg-primary/5' 
                 : 'border-border hover:border-muted-foreground'
@@ -120,9 +120,9 @@ export const UploadModal = (props: UploadModalProps) => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <IconUpload class="size-12 mx-auto mb-4 text-muted-foreground" />
-            <h4 class="text-lg font-medium mb-2">Drop files here</h4>
-            <p class="text-muted-foreground mb-4">or click to browse</p>
+            <IconUpload class="size-8 sm:size-12 mx-auto mb-4 text-muted-foreground" />
+            <h4 class="text-base sm:text-lg font-medium mb-2">Drop files here</h4>
+            <p class="text-muted-foreground mb-4 text-sm sm:text-base">or click to browse</p>
             <input
               type="file"
               multiple
@@ -164,7 +164,7 @@ export const UploadModal = (props: UploadModalProps) => {
         </div>
 
         {/* Footer */}
-        <div class="flex justify-end gap-2 p-6 border-t border-border">
+        <div class="flex flex-col sm:flex-row justify-end gap-2 p-4 sm:p-6 border-t border-border">
           <Button variant="outline" onClick={props.onClose}>
             Cancel
           </Button>

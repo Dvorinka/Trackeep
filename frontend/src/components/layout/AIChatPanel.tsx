@@ -164,16 +164,11 @@ export function AIChatPanel(props: AIChatPanelProps) {
                   onClick={() => setShowModelPicker(!showModelPicker())}
                   class="flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-full text-xs transition-colors"
                 >
-                  <Show when={aiModels.find(m => m.id === selectedModel())?.iconId}>
-                    <AIProviderIcon 
-                      providerId={aiModels.find(m => m.id === selectedModel())?.iconId || 'longcat'} 
-                      size="1rem"
-                      class="rounded-full"
-                    />
-                  </Show>
-                  <Show when={!aiModels.find(m => m.id === selectedModel())?.iconId}>
-                    <div class="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                  </Show>
+                  <AIProviderIcon 
+                    providerId={aiModels.find(m => m.id === selectedModel())?.iconId || 'longcat'} 
+                    size="1rem"
+                    class="rounded-full"
+                  />
                   <span class="text-muted-foreground">
                     {aiModels.find(m => m.id === selectedModel())?.name?.split(' ')[0] || 'AI'}
                   </span>
@@ -196,20 +191,11 @@ export function AIChatPanel(props: AIChatPanelProps) {
                           }`}
                         >
                           <div class="flex items-center gap-2">
-                            <Show when={model.iconId}>
-                              <AIProviderIcon 
-                                providerId={model.iconId!} 
-                                size="0.75rem"
-                                class="rounded-full flex-shrink-0"
-                              />
-                            </Show>
-                            <Show when={!model.iconId}>
-                              <div class={`w-3 h-3 rounded-full flex-shrink-0 ${
-                                model.provider === 'LongCat' ? 'bg-gradient-to-r from-orange-500 to-red-500' :
-                                model.provider === 'OpenAI' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                                'bg-gradient-to-r from-purple-500 to-pink-500'
-                              }`}></div>
-                            </Show>
+                            <AIProviderIcon 
+                              providerId={model.iconId!} 
+                              size="0.75rem"
+                              class="rounded-full flex-shrink-0"
+                            />
                             <div class="flex-1 min-w-0">
                               <div class="font-medium truncate">{model.name}</div>
                               <div class="text-muted-foreground text-xs truncate">{model.description}</div>
@@ -224,7 +210,7 @@ export function AIChatPanel(props: AIChatPanelProps) {
               
               <div class="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{aiModels.find(m => m.id === selectedModel())?.provider || 'LongCat'}</span>
-                <a href="/app/settings" class="text-primary hover:underline">
+                <a href="/app/settings#ai" class="text-primary hover:underline">
                   AI settings
                 </a>
               </div>

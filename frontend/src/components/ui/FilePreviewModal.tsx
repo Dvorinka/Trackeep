@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js';
 import { Button } from '@/components/ui/Button';
-import { IconX, IconDownload, IconExternalLink, IconEye, IconFile, IconCode, IconFileText } from '@tabler/icons-solidjs';
+import { IconX, IconDownload, IconExternalLink, IconEye, IconFile, IconCode, IconFileText, IconAlertTriangle, IconMusic, IconFileDescription, IconChartBar, IconChartLine } from '@tabler/icons-solidjs';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export const FilePreviewModal = (props: FilePreviewModalProps) => {
       return (
         <div class="w-full h-full bg-muted p-8 rounded flex items-center justify-center">
           <div class="text-center">
-            <div class="text-6xl mb-4">⚠️</div>
+            <IconAlertTriangle class="size-12 mx-auto mb-4 text-muted-foreground" />
             <p class="text-lg font-medium mb-2">Preview Failed</p>
             <p class="text-muted-foreground mb-4">Unable to load preview for this file</p>
             <Button onClick={() => window.open(file.downloadUrl || '#', '_blank')}>
@@ -68,7 +68,7 @@ export const FilePreviewModal = (props: FilePreviewModalProps) => {
               Your browser does not support the audio element.
             </audio>
             <div class="text-center">
-              <div class="text-4xl mb-2">🎵</div>
+              <IconMusic class="size-8 mx-auto mb-2 text-muted-foreground" />
               <p class="font-medium">{file.name}</p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export const FilePreviewModal = (props: FilePreviewModalProps) => {
       return (
         <div class="w-full h-full bg-muted p-8 rounded flex items-center justify-center">
           <div class="text-center max-w-md">
-            <div class="text-6xl mb-4">📄</div>
+            <IconFileText class="size-12 mx-auto mb-4 text-muted-foreground" />
             <p class="text-lg font-medium mb-2">PDF Document</p>
             <p class="text-muted-foreground mb-4 truncate">{file.name}</p>
             <div class="space-y-2">
@@ -106,8 +106,8 @@ export const FilePreviewModal = (props: FilePreviewModalProps) => {
       return (
         <div class="w-full h-full bg-muted p-8 rounded flex items-center justify-center">
           <div class="text-center max-w-md">
-            <div class="text-6xl mb-4">
-              {file.type === 'docx' ? '📄' : file.type === 'pptx' ? '📊' : '📈'}
+            <div class="size-12 mx-auto mb-4 text-muted-foreground flex items-center justify-center">
+              {file.type === 'docx' ? <IconFileDescription class="size-12" /> : file.type === 'pptx' ? <IconChartBar class="size-12" /> : <IconChartLine class="size-12" />}
             </div>
             <p class="text-lg font-medium mb-2">
               {file.type === 'docx' ? 'Word Document' : file.type === 'pptx' ? 'PowerPoint Presentation' : 'Excel Spreadsheet'}
@@ -193,7 +193,7 @@ export const FilePreviewModal = (props: FilePreviewModalProps) => {
     <>
       {/* Backdrop */}
       {props.isOpen && (
-        <div class="fixed inset-0 bg-black/50 z-40" onClick={props.onClose} />
+        <div class="fixed inset-0 bg-black/50 z-40 mt-0" onClick={props.onClose} />
       )}
 
       {/* Modal */}

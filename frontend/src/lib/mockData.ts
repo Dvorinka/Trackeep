@@ -1107,7 +1107,7 @@ export const mockNotes: MockNote[] = [
   {
     id: 'note_4',
     title: 'Shopping List',
-    content: 'Grocery shopping for this week:\n\n🥬 Vegetables:\n- Spinach\n- Bell peppers\n- Carrots\n- Broccoli\n\n🍎 Fruits:\n- Apples\n- Bananas\n- Oranges\n- Berries\n\n🥩 Proteins:\n- Chicken breast\n- Ground beef\n- Salmon\n- Eggs\n\n🥛 Dairy:\n- Milk\n- Greek yogurt\n- Cheese\n- Butter\n\n🍞 Pantry:\n- Bread\n- Rice\n- Pasta\n- Olive oil',
+    content: 'Grocery shopping for this week:\n\nVegetables:\n- Spinach\n- Bell peppers\n- Carrots\n- Broccoli\n\nFruits:\n- Apples\n- Bananas\n- Oranges\n- Berries\n\nProteins:\n- Chicken breast\n- Ground beef\n- Salmon\n- Eggs\n\nDairy:\n- Milk\n- Greek yogurt\n- Cheese\n- Butter\n\nPantry:\n- Bread\n- Rice\n- Pasta\n- Olive oil',
     tags: [
       { name: 'personal', color: '#84cc16' },
       { name: 'shopping', color: '#10b981' }
@@ -1826,6 +1826,272 @@ export const mockLearningPaths: MockLearningPath[] = [
     ],
     createdAt: '4 weeks ago',
     enrolledAt: '3 weeks ago'
+  },
+  {
+    id: 'lp_9',
+    title: 'Blockchain Development',
+    description: 'Learn blockchain fundamentals, smart contracts, and decentralized application development',
+    category: 'Blockchain',
+    difficulty: 'advanced',
+    estimatedTime: '14 weeks',
+    progress: 20,
+    modules: [
+      {
+        id: 'mod_18',
+        title: 'Blockchain Fundamentals',
+        description: 'Understanding distributed ledgers and consensus mechanisms',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Blockchain Basics', url: 'https://example.com/blockchain-basics' },
+          { type: 'article', title: 'Consensus Algorithms', url: 'https://example.com/consensus' }
+        ]
+      },
+      {
+        id: 'mod_19',
+        title: 'Smart Contract Development',
+        description: 'Building smart contracts with Solidity',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'Solidity Programming', url: 'https://example.com/solidity' },
+          { type: 'project', title: 'DeFi Application', url: 'https://example.com/defi-project' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'blockchain', color: '#8b5cf6' },
+      { name: 'solidity', color: '#6366f1' },
+      { name: 'web3', color: '#ec4899' }
+    ],
+    createdAt: '5 days ago',
+    enrolledAt: undefined
+  },
+  {
+    id: 'lp_10',
+    title: 'Data Science with Python',
+    description: 'Master data analysis, visualization, and machine learning with Python',
+    category: 'Data Science',
+    difficulty: 'intermediate',
+    estimatedTime: '12 weeks',
+    progress: 40,
+    modules: [
+      {
+        id: 'mod_20',
+        title: 'Data Analysis Fundamentals',
+        description: 'Pandas, NumPy, and data manipulation',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Data Analysis with Python', url: 'https://example.com/data-analysis' },
+          { type: 'lab', title: 'Data Cleaning Exercises', url: 'https://example.com/data-cleaning' }
+        ]
+      },
+      {
+        id: 'mod_21',
+        title: 'Machine Learning Basics',
+        description: 'Introduction to ML algorithms and scikit-learn',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'Machine Learning Intro', url: 'https://example.com/ml-intro' },
+          { type: 'project', title: 'Predictive Model Project', url: 'https://example.com/predictive-model' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'python', color: '#3776ab' },
+      { name: 'data-science', color: '#10b981' },
+      { name: 'pandas', color: '#f59e0b' }
+    ],
+    createdAt: '1 week ago',
+    enrolledAt: '4 days ago'
+  },
+  {
+    id: 'lp_11',
+    title: 'Game Development with Unity',
+    description: 'Create immersive games using Unity engine and C# programming',
+    category: 'Game Development',
+    difficulty: 'intermediate',
+    estimatedTime: '16 weeks',
+    progress: 10,
+    modules: [
+      {
+        id: 'mod_22',
+        title: 'Unity Basics',
+        description: 'Interface, GameObjects, and basic scripting',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Unity Interface Tutorial', url: 'https://example.com/unity-interface' },
+          { type: 'lab', title: 'First Unity Project', url: 'https://example.com/unity-first' }
+        ]
+      },
+      {
+        id: 'mod_23',
+        title: 'C# for Game Development',
+        description: 'Programming concepts and game logic',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'C# Game Programming', url: 'https://example.com/csharp-games' },
+          { type: 'project', title: '2D Platformer Game', url: 'https://example.com/platformer' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'gamedev', color: '#ef4444' },
+      { name: 'unity', color: '#000000' },
+      { name: 'csharp', color: '#8b5cf6' }
+    ],
+    createdAt: '2 weeks ago',
+    enrolledAt: undefined
+  },
+  {
+    id: 'lp_12',
+    title: 'Cloud Architecture with AWS',
+    description: 'Design and deploy scalable cloud solutions using Amazon Web Services',
+    category: 'Cloud Computing',
+    difficulty: 'advanced',
+    estimatedTime: '10 weeks',
+    progress: 70,
+    modules: [
+      {
+        id: 'mod_24',
+        title: 'AWS Core Services',
+        description: 'EC2, S3, and fundamental AWS services',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'AWS Core Services Guide', url: 'https://example.com/aws-core' },
+          { type: 'lab', title: 'AWS Hands-on Lab', url: 'https://example.com/aws-lab' }
+        ]
+      },
+      {
+        id: 'mod_25',
+        title: 'Advanced Cloud Architecture',
+        description: 'Serverless, microservices, and cloud patterns',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'Advanced AWS Patterns', url: 'https://example.com/aws-advanced' },
+          { type: 'case-study', title: 'Enterprise Cloud Migration', url: 'https://example.com/cloud-migration' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'aws', color: '#ff9900' },
+      { name: 'cloud', color: '#4ecdc4' },
+      { name: 'architecture', color: '#3b82f6' }
+    ],
+    createdAt: '3 weeks ago',
+    enrolledAt: '1 week ago'
+  },
+  {
+    id: 'lp_13',
+    title: 'React Native Advanced',
+    description: 'Master advanced React Native concepts for professional mobile app development',
+    category: 'Mobile Development',
+    difficulty: 'advanced',
+    estimatedTime: '8 weeks',
+    progress: 55,
+    modules: [
+      {
+        id: 'mod_26',
+        title: 'Advanced Navigation',
+        description: 'Complex navigation patterns and state management',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Advanced React Native Navigation', url: 'https://example.com/advanced-nav' },
+          { type: 'project', title: 'Multi-screen App', url: 'https://example.com/multi-screen' }
+        ]
+      },
+      {
+        id: 'mod_27',
+        title: 'Performance Optimization',
+        description: 'Optimizing app performance and memory usage',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'React Native Performance', url: 'https://example.com/performance' },
+          { type: 'article', title: 'Memory Management Tips', url: 'https://example.com/memory-tips' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'react-native', color: '#61dafb' },
+      { name: 'mobile', color: '#a855f7' },
+      { name: 'performance', color: '#f59e0b' }
+    ],
+    createdAt: '1 week ago',
+    enrolledAt: '3 days ago'
+  },
+  {
+    id: 'lp_14',
+    title: 'Vue.js 3 Complete Guide',
+    description: 'Learn Vue.js 3 from basics to advanced concepts including Composition API',
+    category: 'Web Development',
+    difficulty: 'beginner',
+    estimatedTime: '6 weeks',
+    progress: 85,
+    modules: [
+      {
+        id: 'mod_28',
+        title: 'Vue.js Fundamentals',
+        description: 'Components, directives, and reactivity',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Vue.js 3 Basics', url: 'https://example.com/vue-basics' },
+          { type: 'project', title: 'Todo App with Vue', url: 'https://example.com/vue-todo' }
+        ]
+      },
+      {
+        id: 'mod_29',
+        title: 'Composition API',
+        description: 'Modern Vue.js development patterns',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Composition API Guide', url: 'https://example.com/composition-api' },
+          { type: 'article', title: 'Vue Best Practices', url: 'https://example.com/vue-best' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'vue', color: '#4fc08d' },
+      { name: 'javascript', color: '#f7df1e' },
+      { name: 'frontend', color: '#61dafb' }
+    ],
+    createdAt: '2 weeks ago',
+    enrolledAt: '1 week ago'
+  },
+  {
+    id: 'lp_15',
+    title: 'Kubernetes and Microservices',
+    description: 'Build and deploy microservices architecture with Kubernetes orchestration',
+    category: 'DevOps',
+    difficulty: 'advanced',
+    estimatedTime: '12 weeks',
+    progress: 30,
+    modules: [
+      {
+        id: 'mod_30',
+        title: 'Microservices Design',
+        description: 'Designing and implementing microservices',
+        completed: true,
+        resources: [
+          { type: 'video', title: 'Microservices Architecture', url: 'https://example.com/microservices' },
+          { type: 'article', title: 'Service Communication', url: 'https://example.com/service-comm' }
+        ]
+      },
+      {
+        id: 'mod_31',
+        title: 'Kubernetes Production',
+        description: 'Production-ready Kubernetes deployments',
+        completed: false,
+        resources: [
+          { type: 'video', title: 'K8s Production Guide', url: 'https://example.com/k8s-prod' },
+          { type: 'lab', title: 'Production Deployment Lab', url: 'https://example.com/prod-lab' }
+        ]
+      }
+    ],
+    tags: [
+      { name: 'kubernetes', color: '#326ce5' },
+      { name: 'microservices', color: '#ff6b6b' },
+      { name: 'devops', color: '#4ecdc4' }
+    ],
+    createdAt: '4 days ago',
+    enrolledAt: undefined
   }
 ];
 
@@ -2350,7 +2616,7 @@ export const getMockStats = () => ({
     tasks: -5,
     notes: 12
   },
-  weeklyActivity: [12, 19, 8, 15, 22, 18, 25],
+  weeklyActivity: Array.from({length: 7}, () => Math.floor(Math.random() * 30) + 5), // Random values between 5-35
   // Additional stats for enhanced dashboard
   totalVideos: mockVideos.length,
   totalLearningPaths: mockLearningPaths.length,

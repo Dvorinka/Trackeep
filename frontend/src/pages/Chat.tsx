@@ -9,7 +9,9 @@ import {
   FileText as FileTextIcon,
   Sparkles,
   ChevronDown,
-  Settings
+  Settings,
+  Trash,
+  User
 } from 'lucide-solid'
 
 interface ChatMessage {
@@ -602,7 +604,7 @@ const Chat = () => {
                     }}
                     class="opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <span class="h-4 w-4">🗑️</span>
+                    <Trash class="h-4 w-4" />
                   </Button>
                     </div>
                   </div>
@@ -706,7 +708,7 @@ const Chat = () => {
                             message.role === 'user' ? 'bg-primary-foreground/20' : 'bg-primary/10'
                           }`}>
                             {message.role === 'user' ? (
-                              <span class="w-4 h-4 text-xs">👤</span>
+                              <User class="w-4 h-4 text-xs" />
                             ) : (
                               <AIProviderIcon 
                                 providerId={selectedModel()} 

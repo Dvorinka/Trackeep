@@ -171,17 +171,13 @@ func GetYouTubeTrending(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// GetPredefinedChannelVideos handles GET /api/v1/youtube/predefined-channels
 func GetPredefinedChannelVideos(c *gin.Context) {
-	// Get query parameters
 	maxResults, _ := strconv.Atoi(c.DefaultQuery("max_results", "5"))
 
-	// Validate max results
 	if maxResults < 1 || maxResults > 20 {
 		maxResults = 10
 	}
 
-	// Get videos from predefined channels
 	response, err := services.GetPredefinedChannelVideos(maxResults)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -192,4 +188,33 @@ func GetPredefinedChannelVideos(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func YouTubeSearchTest(c *gin.Context) {
+	var req struct {
+		Query      string `json:"query" binding:"required"`
+		MaxResults int    `json:"max_results"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.MaxResults <= 0 {
+		req.MaxResults = 5
+	}
+
+	response, err := services.SearchYouTubeVideos(req.Query, req.MaxResults, "")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to search YouTube videos",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
 }

@@ -15,9 +15,10 @@ import { useAuth } from '@/lib/auth'
 export interface HeaderProps {
   class?: string
   title?: string
+  onMenuClick?: () => void
 }
 
-export function Header(_props: HeaderProps) {
+export function Header(props: HeaderProps) {
   const [showUploadModal, setShowUploadModal] = createSignal(false);
   const { authState, updateProfile } = useAuth();
 
@@ -55,8 +56,15 @@ export function Header(_props: HeaderProps) {
       <div class="flex justify-between px-6 pt-4 pb-4">
         {/* Left side */}
         <div class="flex items-center">
-          {/* Mobile menu button */}
-          <button type="button" aria-haspopup="dialog" aria-expanded="false" data-closed="" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-9 w-9 md:hidden mr-2">
+          {/* Menu button */}
+          <button 
+            type="button" 
+            onClick={props.onMenuClick}
+            aria-haspopup="dialog" 
+            aria-expanded="false" 
+            data-closed="" 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-9 w-9 mr-2"
+          >
             <IconMenu2 class="size-6" />
           </button>
           
@@ -79,10 +87,10 @@ export function Header(_props: HeaderProps) {
           <button 
             type="button" 
             onClick={() => setShowUploadModal(true)}
-            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2 text-base"
           >
-            <IconUpload class="size-4" />
-            <span class="hidden sm:inline ml-2">Import a document</span>
+            <IconUpload class="size-4 mr-2" />
+            Import a document
           </button>
 
           {/* Color switcher dropdown */}

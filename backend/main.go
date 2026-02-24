@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
-	"strings"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -18,29 +14,24 @@ import (
 	"github.com/trackeep/backend/handlers"
 	"github.com/trackeep/backend/middleware"
 	"github.com/trackeep/backend/models"
-	"github.com/trackeep/backend/services"
 	"github.com/trackeep/backend/utils"
 )
 
-// IsDemoMode checks if demo mode is enabled
 func IsDemoMode() bool {
 	return os.Getenv("VITE_DEMO_MODE") == "true"
 }
 
-// initializeSecuritySecrets sets up JWT and encryption secrets on startup
 func initializeSecuritySecrets() error {
-	// Initialize JWT secret
 	jwtSecret, err := utils.GetOrCreateJWTSecret()
 	if err != nil {
-		return fmt.Errorf("failed to initialize JWT secret: %w", err)
+		return err
 	}
 	os.Setenv("JWT_SECRET", jwtSecret)
 	log.Println("JWT secret initialized successfully")
 
-	// Initialize encryption key
 	encryptionKey, err := utils.GetOrCreateEncryptionKey()
 	if err != nil {
-		return fmt.Errorf("failed to initialize encryption key: %w", err)
+		return err
 	}
 	os.Setenv("ENCRYPTION_KEY", encryptionKey)
 	log.Println("Encryption key initialized successfully")
@@ -48,13 +39,9 @@ func initializeSecuritySecrets() error {
 	return nil
 }
 
-var startTime = time.Now()
-
 func main() {
-	// Set application version
 	os.Setenv("APP_VERSION", "1.0.0")
 
-	// Load environment variables from multiple possible locations
 	envPaths := []string{".env", "../.env", "/app/.env"}
 	envLoaded := false
 
@@ -70,8 +57,12 @@ func main() {
 		log.Println("No .env file found, using environment variables only")
 	}
 
-	// Initialize database (skip in demo mode)
-	if !IsDemoMode() {
+	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Printf("Configuration warning: %v", err)
+	}
+
+	if !cfg.App.DemoMode {
 		config.InitDatabase()
 		models.InitDB()
 		models.AutoMigrate()
@@ -115,191 +106,12 @@ func main() {
 	// Apply general rate limiting to all endpoints
 	r.Use(middleware.GeneralRateLimit(rateLimiters["general"]))
 
-	// CORS middleware - environment-aware
-	r.Use(func(c *gin.Context) {
-		allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
-		ginMode := os.Getenv("GIN_MODE")
+	r.Use(middleware.CORSMiddleware())
 
-		// Default origins based on environment
-		if allowedOrigins == "" {
-			if ginMode == "release" {
-				// Production: no default origins - must be explicitly set
-				c.JSON(http.StatusForbidden, gin.H{
-					"error":   "CORS not configured for production",
-					"message": "Please set CORS_ALLOWED_ORIGINS environment variable",
-				})
-				c.Abort()
-				return
-			} else {
-				// Development: allow localhost origins
-				allowedOrigins = "http://localhost:5173,http://localhost:3000,http://localhost:8080"
-			}
-		}
-
-		origin := c.Request.Header.Get("Origin")
-		allowed := false
-
-		// Handle wildcard origin
-		if allowedOrigins == "*" {
-			allowed = true
-		} else {
-			for _, allowedOrigin := range strings.Split(allowedOrigins, ",") {
-				if strings.TrimSpace(allowedOrigin) == origin {
-					allowed = true
-					break
-				}
-			}
-		}
-
-		if allowed {
-			if allowedOrigins == "*" {
-				c.Header("Access-Control-Allow-Origin", "*")
-			} else {
-				c.Header("Access-Control-Allow-Origin", origin)
-			}
-		}
-
-		// Set other CORS headers
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Max-Age", "86400") // 24 hours
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
-
-	// Enhanced health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		// Check database connection
-		db := config.GetDB()
-		dbStatus := "connected"
-		var dbPingTime time.Duration = 0
-
-		if db == nil {
-			dbStatus = "disconnected"
-		} else {
-			sqlDB, err := db.DB()
-			if err != nil {
-				dbStatus = "error"
-			} else {
-				start := time.Now()
-				if err := sqlDB.Ping(); err != nil {
-					dbStatus = "error"
-				} else {
-					dbPingTime = time.Since(start)
-				}
-			}
-		}
-
-		// Check session store
-		sessionStatus := "ok"
-		// Since sessionStore is package-private in middleware, we assume it's initialized
-		// if we've reached this point in the code execution
-
-		// Get system stats
-		var memStats runtime.MemStats
-		runtime.ReadMemStats(&memStats)
-
-		uptime := time.Since(startTime)
-
-		health := gin.H{
-			"status":  "ok",
-			"message": "Trackeep API is running",
-			"version": "1.0.0",
-			"uptime":  uptime.String(),
-			"database": gin.H{
-				"status":    dbStatus,
-				"ping_time": dbPingTime.String(),
-			},
-			"sessions": gin.H{
-				"status": sessionStatus,
-			},
-			"system": gin.H{
-				"goroutines": runtime.NumGoroutine(),
-				"memory": gin.H{
-					"alloc_mb":       memStats.Alloc / 1024 / 1024,
-					"total_alloc_mb": memStats.TotalAlloc / 1024 / 1024,
-					"sys_mb":         memStats.Sys / 1024 / 1024,
-				},
-			},
-			"timestamp": gin.H{
-				"human": time.Now().Format(time.RFC3339),
-				"unix":  time.Now().Unix(),
-			},
-		}
-
-		// Determine overall health status
-		overallStatus := "healthy"
-		if dbStatus != "connected" {
-			overallStatus = "degraded"
-			health["status"] = "degraded"
-		}
-		if sessionStatus != "ok" {
-			overallStatus = "degraded"
-			health["status"] = "degraded"
-		}
-
-		statusCode := 200
-		if overallStatus == "degraded" {
-			statusCode = 503
-		}
-
-		c.JSON(statusCode, health)
-	})
-
-	// Readiness probe endpoint (for Kubernetes/container orchestration)
-	r.GET("/ready", func(c *gin.Context) {
-		db := config.GetDB()
-		if db == nil {
-			c.JSON(503, gin.H{"status": "not_ready", "reason": "database_not_connected"})
-			return
-		}
-
-		sqlDB, err := db.DB()
-		if err != nil || sqlDB.Ping() != nil {
-			c.JSON(503, gin.H{"status": "not_ready", "reason": "database_ping_failed"})
-			return
-		}
-
-		// Assume session store is initialized if we're running
-		c.JSON(200, gin.H{"status": "ready"})
-	})
-
-	// API configuration endpoint for frontend
-	r.GET("/api/v1/config", func(c *gin.Context) {
-		// Get the current request info to determine base URL
-		scheme := "http"
-		if c.Request.TLS != nil {
-			scheme = "https"
-		}
-
-		host := c.Request.Host
-		if host == "" {
-			// Fallback to environment or localhost
-			host = os.Getenv("HOST")
-			if host == "" {
-				host = "localhost:8080"
-			}
-		}
-
-		apiURL := fmt.Sprintf("%s://%s/api/v1", scheme, host)
-
-		c.JSON(http.StatusOK, gin.H{
-			"api_url":   apiURL,
-			"demo_mode": os.Getenv("VITE_DEMO_MODE") == "true",
-			"version":   "1.0.0",
-		})
-	})
-
-	// Liveness probe endpoint (for Kubernetes/container orchestration)
-	r.GET("/live", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "alive", "timestamp": time.Now().Unix()})
-	})
+	r.GET("/health", handlers.HealthCheck)
+	r.GET("/ready", handlers.ReadinessCheck)
+	r.GET("/live", handlers.LivenessCheck)
+	r.GET("/api/v1/config", handlers.GetAPIConfig)
 
 	// Demo status endpoint
 	r.GET("/api/demo/status", handlers.DemoStatus)
@@ -363,36 +175,7 @@ func main() {
 			github.GET("/repos", handlers.GetGitHubRepos)
 		}
 
-		// Public YouTube search test endpoint (no auth required for testing)
-		v1.POST("/youtube-search-test", func(c *gin.Context) {
-			var req struct {
-				Query      string `json:"query" binding:"required"`
-				MaxResults int    `json:"max_results"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-
-			if req.MaxResults <= 0 {
-				req.MaxResults = 5
-			}
-
-			// Search videos using the YouTube service
-			response, err := services.SearchYouTubeVideos(req.Query, req.MaxResults, "")
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error":   "Failed to search YouTube videos",
-					"details": err.Error(),
-				})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{
-				"success": true,
-				"data":    response,
-			})
-		})
+		v1.POST("/youtube-search-test", handlers.YouTubeSearchTest)
 
 		// Protected auth routes (with demo mode protection)
 		authProtected := v1.Group("/auth")
@@ -910,41 +693,30 @@ func main() {
 		}
 	}
 
-	// Start server with graceful shutdown
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	// Create HTTP server with custom configuration
 	srv := &http.Server{
-		Addr:         ":" + port,
+		Addr:         ":" + cfg.Server.Port,
 		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
-	// Start server in a goroutine
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		log.Printf("Server starting on port %s", cfg.Server.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Failed to start server:", err)
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
 
-	// Cleanup sessions
 	middleware.CleanupSessionsOnShutdown()
 	log.Println("Sessions cleaned up")
 
-	// Create a deadline for shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
 	// Attempt graceful shutdown

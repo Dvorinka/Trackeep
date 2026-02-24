@@ -4,6 +4,7 @@ import { IconUser, IconLock, IconTrash, IconKey, IconBrain, IconMail, IconSend, 
 import { TwoFactorAuth } from '@/components/TwoFactorAuth';
 import { Button } from '@/components/ui/Button';
 import { AIProviderIcon } from '@/components/AIProviderIcon';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 
 export const Settings = () => {
   const { authState, updateProfile, changePassword } = useAuth();
@@ -14,12 +15,24 @@ export const Settings = () => {
     theme: 'dark',
     showBrowserSearch: true
   });
+  const [customColors, setCustomColors] = createSignal({
+    primary: '#5ab9ff',
+    background: '#000000',
+    foreground: '#ffffff',
+    muted: '#262727',
+    border: '#262626'
+  });
   const [passwordData, setPasswordData] = createSignal({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
   const [aiSettingsExpanded, setAISettingsExpanded] = createSignal(true);
+  const [showMistralKey, setShowMistralKey] = createSignal(false);
+  const [showLongcatKey, setShowLongcatKey] = createSignal(false);
+  const [showGrokKey, setShowGrokKey] = createSignal(false);
+  const [showDeepseekKey, setShowDeepseekKey] = createSignal(false);
+  const [showOpenrouterKey, setShowOpenrouterKey] = createSignal(false);
   const [aiSettings, setAISettings] = createSignal({
     mistral: { enabled: false, api_key: '', model: 'mistral-small-latest', model_thinking: 'mistral-large-latest' },
     grok: { enabled: false, api_key: '', base_url: 'https://api.x.ai/v1', model: 'grok-4-1-fast-non-reasoning-latest', model_thinking: 'grok-4-1-fast-reasoning-latest' },
@@ -351,6 +364,17 @@ export const Settings = () => {
             </div>
 
             <div>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">
+                Primary Color
+              </label>
+              <ColorPicker
+                value={customColors().primary}
+                onChange={(color) => setCustomColors(prev => ({ ...prev, primary: color }))}
+                savedColors={['#5ab9ff', '#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6ab04c']}
+              />
+            </div>
+
+            <div>
               <label class="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
                 <input
                   type="checkbox"
@@ -485,14 +509,14 @@ export const Settings = () => {
                 const totalAvailable = availableAIProviders().length || Object.keys(settings).length;
 
                 if (totalAvailable === 0) {
-                  return '⚠️ No AI providers are available on the server. Check backend AI configuration.';
+                  return 'No AI providers are available on the server. Check backend AI configuration.';
                 }
 
                 if (enabledCount === 0) {
-                  return '⚠️ Providers are available but none are enabled. Enable at least one provider below.';
+                  return 'Providers are available but none are enabled. Enable at least one provider below.';
                 }
 
-                return `✅ AI is ready. ${enabledCount} provider${enabledCount > 1 ? 's' : ''} enabled.`;
+                return `AI is ready. ${enabledCount} provider${enabledCount > 1 ? 's' : ''} enabled.`;
               })()}
             </span>
           </div>
@@ -647,19 +671,28 @@ export const Settings = () => {
 
               <div>
                 <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={aiSettings().mistral.api_key}
-                  onInput={(e) => {
-                    const settings = aiSettings();
-                    setAISettings({
-                      ...settings,
-                      mistral: { ...settings.mistral, api_key: e.currentTarget.value }
-                    });
-                  }}
-                  placeholder="Enter Mistral API key"
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
+                <div class="relative">
+                  <input
+                    type={showMistralKey() ? "text" : "password"}
+                    value={aiSettings().mistral.api_key}
+                    onInput={(e) => {
+                      const settings = aiSettings();
+                      setAISettings({
+                        ...settings,
+                        mistral: { ...settings.mistral, api_key: e.currentTarget.value }
+                      });
+                    }}
+                    placeholder="Enter Mistral API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowMistralKey(!showMistralKey())}
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  >
+                    <IconKey class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div class="grid grid-cols-2 gap-3">
@@ -740,19 +773,28 @@ export const Settings = () => {
 
               <div>
                 <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={aiSettings().longcat.api_key}
-                  onInput={(e) => {
-                    const settings = aiSettings();
-                    setAISettings({
-                      ...settings,
-                      longcat: { ...settings.longcat, api_key: e.currentTarget.value }
-                    });
-                  }}
-                  placeholder="Enter LongCat API key"
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
+                <div class="relative">
+                  <input
+                    type={showLongcatKey() ? "text" : "password"}
+                    value={aiSettings().longcat.api_key}
+                    onInput={(e) => {
+                      const settings = aiSettings();
+                      setAISettings({
+                        ...settings,
+                        longcat: { ...settings.longcat, api_key: e.currentTarget.value }
+                      });
+                    }}
+                    placeholder="Enter LongCat API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLongcatKey(!showLongcatKey())}
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  >
+                    <IconKey class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -923,19 +965,28 @@ export const Settings = () => {
               
               <div>
                 <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={aiSettings().grok.api_key}
-                  onInput={(e) => {
-                    const settings = aiSettings();
-                    setAISettings({
-                      ...settings,
-                      grok: { ...settings.grok, api_key: e.currentTarget.value }
-                    });
-                  }}
-                  placeholder="Enter Grok API key"
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
+                <div class="relative">
+                  <input
+                    type={showGrokKey() ? "text" : "password"}
+                    value={aiSettings().grok.api_key}
+                    onInput={(e) => {
+                      const settings = aiSettings();
+                      setAISettings({
+                        ...settings,
+                        grok: { ...settings.grok, api_key: e.currentTarget.value }
+                      });
+                    }}
+                    placeholder="Enter Grok API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGrokKey(!showGrokKey())}
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  >
+                    <IconKey class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               
               <div>
@@ -1033,19 +1084,28 @@ export const Settings = () => {
               
               <div>
                 <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={aiSettings().deepseek.api_key}
-                  onInput={(e) => {
-                    const settings = aiSettings();
-                    setAISettings({
-                      ...settings,
-                      deepseek: { ...settings.deepseek, api_key: e.currentTarget.value }
-                    });
-                  }}
-                  placeholder="Enter DeepSeek API key"
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
+                <div class="relative">
+                  <input
+                    type={showDeepseekKey() ? "text" : "password"}
+                    value={aiSettings().deepseek.api_key}
+                    onInput={(e) => {
+                      const settings = aiSettings();
+                      setAISettings({
+                        ...settings,
+                        deepseek: { ...settings.deepseek, api_key: e.currentTarget.value }
+                      });
+                    }}
+                    placeholder="Enter DeepSeek API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeepseekKey(!showDeepseekKey())}
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  >
+                    <IconKey class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               
               <div>
@@ -1236,19 +1296,28 @@ export const Settings = () => {
               
               <div>
                 <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                <input
-                  type="password"
-                  value={aiSettings().openrouter.api_key}
-                  onInput={(e) => {
-                    const settings = aiSettings();
-                    setAISettings({
-                      ...settings,
-                      openrouter: { ...settings.openrouter, api_key: e.currentTarget.value }
-                    });
-                  }}
-                  placeholder="Enter OpenRouter API key"
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
+                <div class="relative">
+                  <input
+                    type={showOpenrouterKey() ? "text" : "password"}
+                    value={aiSettings().openrouter.api_key}
+                    onInput={(e) => {
+                      const settings = aiSettings();
+                      setAISettings({
+                        ...settings,
+                        openrouter: { ...settings.openrouter, api_key: e.currentTarget.value }
+                      });
+                    }}
+                    placeholder="Enter OpenRouter API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOpenrouterKey(!showOpenrouterKey())}
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  >
+                    <IconKey class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               
               <div>

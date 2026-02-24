@@ -1,6 +1,5 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useOffline } from '../services/OfflineContext';
 import { useTheme } from 'react-native-paper';
@@ -28,12 +27,8 @@ export type MainTabParamList = {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const TabNavigator: React.FC = () => {
-  const { isOnline, pendingChanges } = useOffline();
+  const { pendingChanges } = useOffline();
   const theme = useTheme();
-
-  const getTabBarIcon = (name: string, color: string) => (
-    <Icon name={name} size={24} color={color} />
-  );
 
   return (
     <Tab.Navigator

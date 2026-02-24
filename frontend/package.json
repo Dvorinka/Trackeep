@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"No tests yet\" && exit 0",
+    "test:ci": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {
     "@kobalte/core": "^0.13.11",

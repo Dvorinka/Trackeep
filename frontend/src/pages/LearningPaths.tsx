@@ -118,7 +118,7 @@ export const LearningPaths = () => {
       }
 
       // Fetch categories
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
       const categoriesResponse = await fetch(`${API_BASE_URL}/learning-paths/categories`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -214,7 +214,7 @@ export const LearningPaths = () => {
         return;
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
       const response = await fetch(`${API_BASE_URL}/learning-paths/${pathId}/enroll`, {
         method: 'POST',
         headers: {
@@ -364,16 +364,12 @@ export const LearningPaths = () => {
                     Featured
                   </div>
                 )}
-                <img 
-                  src={path.thumbnail} 
-                  alt={path.title}
-                  class="w-full h-full object-cover filter grayscale"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    target.src = `https://placehold.co/600x400/1e293b/ffffff?text=${encodeURIComponent(path.category)}`;
-                  }}
-                />
-                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
+                    <IconBook class="size-8 text-blue-400" />
+                  </div>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#262626] to-transparent"></div>
                 <div class="absolute bottom-4 left-4 right-4">
                   <div class="flex items-center gap-2 mb-2">
                     {getCategoryIcon(path.category)}

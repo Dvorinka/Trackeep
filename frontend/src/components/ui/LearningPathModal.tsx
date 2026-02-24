@@ -100,7 +100,7 @@ export const LearningPathModal = (props: LearningPathModalProps) => {
   if (!props.isOpen) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0">
       <div class="bg-[#1a1a1a] rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 my-4">
         {/* Header */}
         <div class="flex items-center justify-between p-6 border-b border-[#404040]">

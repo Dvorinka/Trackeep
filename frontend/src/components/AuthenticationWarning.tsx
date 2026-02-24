@@ -80,7 +80,7 @@ export const AuthenticationWarning = () => {
                   size="lg"
                   onClick={handleDemoMode}
                 >
-                  🎭 Try Demo Mode
+                  Try Demo Mode
                 </Button>
               )}
             </div>

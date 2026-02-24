@@ -2,7 +2,6 @@ import { children, createSignal, onMount } from 'solid-js'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { AIChatPanel } from './AIChatPanel'
-import { UpdateNotification } from '../ui/UpdateNotification'
 import { IconBrain } from '@tabler/icons-solidjs'
 
 export interface LayoutProps {
@@ -15,6 +14,7 @@ export interface LayoutProps {
 export function Layout(props: LayoutProps) {
   const resolved = children(() => props.children)
   const [isChatOpen, setIsChatOpen] = createSignal(false)
+  const [isSidebarOpen, setIsSidebarOpen] = createSignal(false)
 
   onMount(() => {
     // Initialize dark mode from localStorage or system preference
@@ -142,19 +142,33 @@ export function Layout(props: LayoutProps) {
     setIsChatOpen(!isChatOpen())
   }
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen())
+  }
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false)
+  }
+
   return (
     <div class="min-h-screen font-sans text-sm font-400 bg-background text-foreground">
-      {/* Update Notification - Above everything */}
-      <UpdateNotification />
       
-      <div class="flex flex-row h-screen min-h-0">
+      <div class="flex flex-row h-screen min-h-0 relative">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen() && (
+          <div 
+            class="fixed inset-0 bg-black/50 z-40" 
+            onClick={closeSidebar}
+          />
+        )}
+        
         {/* Sidebar */}
-        <Sidebar />
+        <Sidebar isOpen={isSidebarOpen()} onClose={closeSidebar} />
         
         {/* Main Content */}
         <div class="flex-1 min-h-0 flex flex-col">
           {/* Header */}
-          <Header title={props.title} />
+          <Header title={props.title} onMenuClick={toggleSidebar} />
           
           {/* Page Content */}
           <main class="flex-1 overflow-auto max-w-screen">

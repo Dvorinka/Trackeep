@@ -647,7 +647,7 @@ body {
     background-color: hsl(var(--primary)) !important;
 }
 
-/* Bar chart specific fixes */
+/* Bar chart specific fixes - simplified for responsiveness */
 .weekly-bar {
     background-color: hsl(var(--primary)) !important;
     min-height: 4px !important;
@@ -659,61 +659,77 @@ body {
     background-color: hsl(199 89% 67%) !important;
 }
 
-/* Additional bar chart fixes */
-.bg-primary.rounded-t {
-    background-color: hsl(var(--primary)) !important;
-    min-height: 4px !important;
-}
-
-[data-kb-theme=dark] .bg-primary.rounded-t {
-    background-color: hsl(199 89% 67%) !important;
-}
-
-/* Force bar chart visibility */
-.weekly-activity-chart .bg-primary {
-    background-color: hsl(199 89% 67%) !important;
-}
-
-.weekly-activity-chart .weekly-bar {
-    background-color: hsl(199 89% 67%) !important;
-}
-
-/* Direct bar styling */
-div[class*="bg-primary"][class*="rounded-t"] {
-    background-color: hsl(199 89% 67%) !important;
-}
-
-/* Better bar proportions */
-.weekly-activity-chart .max-w-8 {
-    width: 2rem !important;
-    max-width: 2rem !important;
-}
-
-/* Enhanced bar visibility */
-.weekly-activity-chart .weekly-bar {
-    min-height: 8px !important;
-    width: 2rem !important;
-    max-width: 2rem !important;
-}
-
-/* Responsive bar chart */
+/* Completely responsive bar chart */
 .weekly-activity-chart {
     min-height: 128px !important; /* h-32 */
+    width: 100%;
+    overflow: hidden;
+    position: relative;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
     .weekly-activity-chart {
         min-height: 144px !important; /* h-36 */
     }
-    
-    .weekly-activity-chart .max-w-8 {
-        width: 2.5rem !important;
-        max-width: 2.5rem !important;
+}
+
+/* Responsive bars that fill available space */
+.weekly-activity-chart .weekly-bar {
+    background-color: hsl(199, 89%, 67%) !important;
+    min-height: 4px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transition: all 0.3s ease !important;
+    border-radius: 0.25rem 0.25rem 0 0;
+}
+
+/* Dark mode bar colors */
+[data-kb-theme=dark] .weekly-activity-chart .weekly-bar {
+    background-color: hsl(199, 89%, 67%) !important;
+}
+
+/* Ensure bar containers are truly flexible - BUT preserve max-width for responsive design */
+.weekly-activity-chart .flex-1 {
+    flex: 1 1 0%;
+    min-width: 0;
+    /* Don't override max-width - let Tailwind handle it */
+}
+
+/* Only override max-width on actual bars, not containers */
+.weekly-activity-chart .weekly-bar,
+.weekly-activity-chart .weekly-bar[class*="max-w"] {
+    max-width: 100% !important;
+}
+
+/* Don't remove max-width from bar containers - needed for responsive design */
+/* .weekly-activity-chart [class*="max-w"] {
+    max-width: none !important;
+} */
+
+/* Responsive tooltip positioning */
+.weekly-activity-chart .group:hover .absolute {
+    opacity: 1 !important;
+}
+
+/* Better spacing on smaller screens */
+@media (max-width: 640px) {
+    .weekly-activity-chart {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
     }
-    
-    .weekly-activity-chart .weekly-bar {
-        width: 2.5rem !important;
-        max-width: 2.5rem !important;
+}
+
+@media (min-width: 640px) {
+    .weekly-activity-chart {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .weekly-activity-chart {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
     }
 }
 
@@ -783,6 +799,13 @@ div[class*="bg-primary"][class*="rounded-t"] {
     scrollbar-color: #262626 transparent;
 }
 
+/* Fix space-y-6 margin issue - exclude overlays and fixed elements */
+.space-y-6 > :not([hidden]) ~ :not([hidden]):not(.fixed):not([class*="fixed"]):not([class*="overlay"]):not([class*="backdrop"]),
+[space-y-6=""] > :not([hidden]) ~ :not([hidden]):not(.fixed):not([class*="fixed"]):not([class*="overlay"]):not([class*="backdrop"]) {
+    --un-space-y-reverse: 0;
+    margin-top: calc(1.5rem * calc(1 - var(--un-space-y-reverse)));
+}
+
 /* Dark mode scrollbar adjustments */
 [data-kb-theme="dark"] ::-webkit-scrollbar-thumb {
     background: #404040;
@@ -795,4 +818,75 @@ div[class*="bg-primary"][class*="rounded-t"] {
 
 [data-kb-theme="dark"] * {
     scrollbar-color: #404040 transparent;
+}
+
+/* Better checkbox styling for notes */
+.note-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid hsl(var(--border));
+    border-radius: 3px;
+    background-color: hsl(var(--background));
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease-in-out;
+    flex-shrink: 0;
+    margin-right: 8px;
+}
+
+.note-checkbox:hover {
+    border-color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
+}
+
+.note-checkbox:checked {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+}
+
+.note-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Dark mode checkbox adjustments */
+[data-kb-theme="dark"] .note-checkbox {
+    background-color: hsl(var(--background));
+    border-color: #525252;
+}
+
+[data-kb-theme="dark"] .note-checkbox:hover {
+    border-color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
+}
+
+[data-kb-theme="dark"] .note-checkbox:checked {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+}
+
+/* Ensure text-primary color always uses the current primary color from CSS variables */
+.text-primary,
+.text-primary svg,
+svg.text-primary,
+button.text-primary,
+button.text-primary svg {
+    color: hsl(var(--primary)) !important;
+}
+
+/* Force primary color on hover states */
+.hover\:text-primary\/80:hover,
+button.hover\:text-primary\/80:hover,
+button.hover\:text-primary\/80:hover svg {
+    color: hsl(var(--primary) / 0.8) !important;
 }

@@ -118,7 +118,7 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
         {
           id: 'github_3',
           type: 'github_star' as const,
-          title: '⭐ trackeep gained new stars',
+          title: 'trackeep gained new stars',
           description: 'Repository reached 245 stars',
           timestamp: new Date(now.getTime() - 8 * 3600000).toISOString(),
           source: 'github' as const,

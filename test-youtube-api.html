@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; }
+        .error { background: #ffe6e6; color: red; }
+        .success { background: #e6ffe6; color: green; }
+    </style>
+</head>
+<body>
+    <h1>YouTube API Test</h1>
+    
+    <div class="test-section">
+        <h2>Test YouTube Search</h2>
+        <button onclick="testSearch()">Test Search API</button>
+        <div id="search-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Channel Videos</h2>
+        <button onclick="testChannelVideos()">Test Channel Videos API</button>
+        <div id="channel-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Predefined Channels</h2>
+        <button onclick="testPredefinedChannels()">Test Predefined Channels API</button>
+        <div id="predefined-result" class="result"></div>
+    </div>
+
+    <script>
+        // Demo mode detection
+        function isDemoMode() {
+            return localStorage.getItem('demoMode') === 'true' || 
+                   document.title.includes('Demo Mode') ||
+                   window.location.search.includes('demo=true');
+        }
+        
+        // Get auth headers (same as frontend)
+        function getAuthHeaders() {
+            const isDemo = isDemoMode();
+            let token = null;
+            
+            if (isDemo) {
+                token = 'demo-token-' + Date.now();
+            } else {
+                token = localStorage.getItem('token') || localStorage.getItem('trackeep_token');
+            }
+            
+            return {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+            };
+        }
+        
+        async function testSearch() {
+            const resultDiv = document.getElementById('search-result');
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/youtube/search', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ query: 'test', max_results: 3 })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Search API Success!</h3>
+                        <p>Found ${data.videos.length} videos</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<h3>❌ Search API Failed</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testChannelVideos() {
+            const resultDiv = document.getElementById('channel-result');
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/youtube/channel-videos', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ channel_id: '@Fireship', max_results: 3 })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Channel Videos API Success!</h3>
+                        <p>Found ${data.videos.length} videos</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<h3>❌ Channel Videos API Failed</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testPredefinedChannels() {
+            const resultDiv = document.getElementById('predefined-result');
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/youtube/predefined-channels', {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Predefined Channels API Success!</h3>
+                        <p>Found ${data.videos.length} videos</p>
+                        <pre>${JSON.stringify(data.videos.slice(0, 2), null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<h3>❌ Predefined Channels API Failed</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        // Set demo mode for testing
+        localStorage.setItem('demoMode', 'true');
+        document.title = 'Trackeep - Demo Mode';
+        
+        console.log('Demo mode enabled for testing');
+    </script>
+</body>
+</html>

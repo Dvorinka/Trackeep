@@ -1,5 +1,6 @@
 import { createSignal, onMount, Show } from 'solid-js';
 import { IconPalette, IconCheck, IconRepeat, IconSun, IconMoon, IconDownload, IconUpload, IconEye, IconEyeOff } from '@tabler/icons-solidjs';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 
 interface ColorScheme {
   name: string;
@@ -445,20 +446,11 @@ export const ColorSwitcher = () => {
               <label class="block text-sm font-medium text-muted-foreground mb-2">
                 Primary Color
               </label>
-              <div class="flex gap-2">
-                <input
-                  type="color"
-                  value={customColors().primary}
-                  onInput={(e) => setCustomColors(prev => ({ ...prev, primary: e.currentTarget.value }))}
-                  class="h-10 w-16 rounded border border-input"
-                />
-                <input
-                  type="text"
-                  value={customColors().primary}
-                  onInput={(e) => setCustomColors(prev => ({ ...prev, primary: e.currentTarget.value }))}
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                />
-              </div>
+              <ColorPicker
+                value={customColors().primary}
+                onChange={(color) => setCustomColors(prev => ({ ...prev, primary: color }))}
+                savedColors={['#5ab9ff', '#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6ab04c']}
+              />
             </div>
 
             <div>

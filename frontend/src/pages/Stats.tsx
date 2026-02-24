@@ -20,6 +20,7 @@ import {
 import { ActivityFeed } from '@/components/ui/ActivityFeed';
 import { getMockStats, getMockActivities } from '@/lib/mockData';
 import { formatDuration } from '@/lib/timeFormat';
+import { isDemoMode } from '@/lib/demo-mode';
 
 interface ActivityData {
   date: string;
@@ -119,6 +120,12 @@ export const Stats = () => {
       return graph;
     };
 
+    // Create test data with varied values to verify height calculations
+    const testWeeklyActivity = [8, 22, 15, 31, 18, 25, 12]; // Fixed test values
+    
+    // Use demo mode data if available, otherwise use test data
+    const weeklyActivityData = isDemoMode() ? mockStats.weeklyActivity : testWeeklyActivity;
+
     // Set stats using mock data
     setStats({
       totalBookmarks: mockStats.totalBookmarks,
@@ -129,7 +136,7 @@ export const Stats = () => {
       activeTasks: mockStats.activeTasks,
       storageUsed: mockStats.totalSize,
       storageTotal: '50 GB',
-      weeklyActivity: [12, 19, 8, 15, 25, 6, 14], // Enhanced mock data for better visualization
+      weeklyActivity: weeklyActivityData, // Use demo mode or test data
       monthlyGrowth: mockStats.monthlyGrowth,
       topCategories: [
         { name: 'Work', count: 45, color: 'hsl(var(--primary))' },
@@ -157,11 +164,24 @@ export const Stats = () => {
   };
   return (
     <div class="p-6 mt-4 pb-32 max-w-5xl mx-auto space-y-6">
-      <div class="flex justify-between items-start">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 class="text-2xl font-bold">Statistics & Activity</h1>
           <p class="text-muted-foreground mt-2">Track your productivity, growth, and activity over time</p>
         </div>
+        
+        {/* Demo Mode Indicator */}
+        <Show when={isDemoMode()}>
+          <div class="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-lg p-3">
+            <p class="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
+              Demo Mode Active - Showing sample data
+            </p>
+          </div>
+        </Show>
+      </div>
+
+      <div class="flex justify-between items-start">
+        <div></div>
         <div class="flex gap-2">
           <Button 
             variant="outline" 
@@ -398,52 +418,52 @@ export const Stats = () => {
       />
 
       {/* Weekly Activity Chart */}
-      <div class="border rounded-lg p-6">
+      <div class="border rounded-lg p-4 sm:p-6">
         <div class="flex items-center gap-2 mb-4">
           <IconActivity class="size-5 text-primary" />
           <h3 class="text-lg font-semibold">Weekly Activity</h3>
         </div>
         <div class="space-y-4">
-          <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
+          <div class="relative h-32 sm:h-36 md:h-40 lg:h-44 px-4 sm:px-6 weekly-activity-chart">
             <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
               <div class="border-t border-border/60"></div>
               <div class="border-t border-border/40"></div>
               <div class="border-t border-border/30"></div>
               <div class="border-t border-border/20"></div>
             </div>
-            <div class="relative flex items-end justify-between h-full gap-3 md:gap-4">
+            <div class="relative flex items-end justify-between h-full gap-1 sm:gap-2">
               {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
-                const weeklyActivity = stats().weeklyActivity || [12, 19, 8, 15, 22, 18, 25]; // Fallback data
+                const weeklyActivity = stats().weeklyActivity;
                 const activity = weeklyActivity[index];
                 const maxActivity = Math.max(...weeklyActivity);
-                // Use dynamic scale based on actual data
-                const fixedMax = Math.max(maxActivity, 30); // Ensure minimum scale for better visualization
-                const containerHeight = 128; // h-32 = 128px (base), md:h-36 = 144px
-                const availableHeight = containerHeight * 0.75; // Use 75% of container height to leave room for labels
-                const heightPercent = (activity / fixedMax) * (availableHeight / containerHeight) * 100;
-                const minHeightPercent = (8 / containerHeight) * 100; // Minimum 8px height
-                const finalHeightPercent = Math.max(heightPercent, minHeightPercent);
+                // Dynamic scale: use the highest value as the scale, with minimum of 25 for better visualization
+                const scaleMax = Math.max(maxActivity, 25);
+                // Calculate height percentage (use 85% of available height to leave room for labels)
+                const heightPercent = (activity / scaleMax) * 85;
+                // Ensure minimum height for visibility
+                const finalHeightPercent = Math.max(heightPercent, 5);
 
                 return (
-                  <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-8">
-                    <div class="relative w-full max-w-4 md:max-w-5 flex flex-col items-center">
-                      <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5">
+                  <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 h-full">
+                    <div class="relative w-full max-w-2 sm:max-w-3 md:max-w-4 flex flex-col items-center justify-end h-full">
+                      <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10 bg-background px-1 rounded shadow-sm">
                         {activity}
                       </span>
                       <div 
-                        class="w-full max-w-4 md:max-w-5 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
-                        style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 8px;`}
-                        title={`${day}: ${activity} activities`}
+                        class="w-full max-w-2 sm:max-w-3 md:max-w-4 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
+                        style={`height: ${finalHeightPercent}%; min-height: 4px;`}
+                        title={`${day}: ${activity} activities (${finalHeightPercent.toFixed(1)}%)`}
                       ></div>
                     </div>
-                    <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
+                    <span class="text-xs text-muted-foreground font-medium mt-1 hidden sm:block">{day}</span>
+                    <span class="text-xs text-muted-foreground font-medium mt-1 sm:hidden">{day.charAt(0)}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div class="flex justify-between text-xs text-muted-foreground pt-2 border-t border-border">
+          <div class="flex flex-col sm:flex-row sm:justify-between text-xs text-muted-foreground pt-2 border-t border-border gap-1 sm:gap-0">
             <span>Total: {stats().weeklyActivity.reduce((a, b) => a + b, 0)} activities</span>
             <span>Avg: {Math.round(stats().weeklyActivity.reduce((a, b) => a + b, 0) / 7)} per day</span>
           </div>

@@ -1,0 +1,253 @@
+/* Date Range Picker Styling - Match Papra Design System */
+
+/* Papra color tokens for date picker */
+.bg-bg-white-0 {
+  background-color: hsl(var(--background));
+}
+
+.text-text-sub-600 {
+  color: hsl(var(--muted-foreground));
+}
+
+.text-text-strong-950 {
+  color: hsl(var(--foreground));
+}
+
+.text-text-soft-400 {
+  color: hsl(var(--muted-foreground));
+}
+
+.bg-bg-weak-50 {
+  background-color: hsl(var(--muted));
+}
+
+.text-static-white-0 {
+  color: white;
+}
+
+.bg-primary-base {
+  background-color: hsl(var(--primary));
+}
+
+.text-primary-base {
+  color: hsl(var(--primary));
+}
+
+.bg-primary-alpha-10 {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.border-stroke-soft-200 {
+  border-color: hsl(var(--border));
+}
+
+.shadow-regular-md {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.shadow-regular-xs {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Text size utilities */
+.text-label-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+
+.text-paragraph-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+
+/* Layout utilities */
+.rounded-20 {
+  border-radius: 1.25rem;
+}
+
+/* Date picker specific styling */
+.rdp-button_reset {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.rdp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+  position: relative;
+}
+
+/* Day range selection styling */
+.day-selected {
+  position: relative;
+}
+
+.day-range-start {
+  background-color: hsl(var(--primary));
+  color: white;
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.day-range-end {
+  background-color: hsl(var(--primary));
+  color: white;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.day-range-middle {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.day-today {
+  font-weight: 600;
+}
+
+/* Range selection background styling */
+.group\/cell[has=".day-range-middle"] {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.group\/cell[has=".day-range-start"]:not([has=".day-range-end"]) {
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.group\/cell[has=".day-range-end"]:not([has=".day-range-start"]) {
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* Dark mode specific styling */
+[data-kb-theme="dark"] .bg-bg-white-0 {
+  background-color: hsl(var(--card));
+}
+
+[data-kb-theme="dark"] .text-text-sub-600 {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-kb-theme="dark"] .text-text-strong-950 {
+  color: hsl(var(--foreground));
+}
+
+[data-kb-theme="dark"] .text-text-soft-400 {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-kb-theme="dark"] .bg-bg-weak-50 {
+  background-color: hsl(var(--muted));
+}
+
+[data-kb-theme="dark"] .border-stroke-soft-200 {
+  border-color: #262626;
+}
+
+[data-kb-theme="dark"] .shadow-regular-md {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+}
+
+[data-kb-theme="dark"] .shadow-regular-xs {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .sm\:w-\[632px\] {
+    width: 100%;
+    max-width: 632px;
+  }
+  
+  .md\:w-\[200px\] {
+    width: 100%;
+  }
+  
+  .md\:border-b-0 {
+    border-bottom-width: 1px;
+  }
+  
+  .md\:border-r {
+    border-right-width: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .sm\:w-\[632px\] {
+    width: 632px;
+  }
+  
+  .md\:w-\[200px\] {
+    width: 200px;
+  }
+  
+  .md\:border-b-0 {
+    border-bottom-width: 0;
+  }
+  
+  .md\:border-r {
+    border-right-width: 1px;
+  }
+}
+
+/* Calendar grid fixes */
+.rdp table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.rdp th,
+.rdp td {
+  padding: 0;
+  text-align: center;
+}
+
+/* Button hover states */
+.rdp-button:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.rdp-button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Selected day styling */
+.rdp-button[aria-selected="true"] {
+  background-color: hsl(var(--primary));
+  color: white;
+}
+
+/* Range selection continuity */
+.group\/cell[has=".day-range-middle"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 2px;
+  height: 100%;
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.group\/cell[has=".day-range-end"]::before {
+  left: 0;
+  right: auto;
+}
+
+.group\/cell:last-child[has=".day-range-middle"]::before {
+  display: none;
+}

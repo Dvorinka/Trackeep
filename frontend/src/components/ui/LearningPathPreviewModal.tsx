@@ -82,7 +82,7 @@ export const LearningPathPreviewModal = (props: LearningPathPreviewModalProps) =
   if (!props.isOpen || !props.learningPath) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0">
       <div class="bg-[#1a1a1a] rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4 my-4">
         {/* Header */}
         <div class="relative">

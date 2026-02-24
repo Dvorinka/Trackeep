@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ApiResponse, User, Bookmark, Task, Note, TimeEntry, CalendarEvent, SearchFilters, SavedSearch } from '../types';
 import { getStoredAuthData } from '../utils/storage';
-import { useServerConfig } from './ServerConfigContext';
 
 let API_BASE_URL = __DEV__ 
   ? 'http://localhost:8080/api' 

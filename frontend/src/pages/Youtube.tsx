@@ -144,6 +144,7 @@ export const Youtube = () => {
   const [editingChannel, setEditingChannel] = createSignal<FeaturedChannel | null>(null);
   const [successMessage, setSuccessMessage] = createSignal('');
   const [channelFilter, setChannelFilter] = createSignal('');
+  const [predefinedVideosLoadTime, setPredefinedVideosLoadTime] = createSignal(0);
 
   // Filter channels based on search query
   const filteredChannels = () => {
@@ -218,7 +219,15 @@ export const Youtube = () => {
 
   // Load predefined channel videos
   const loadPredefinedVideos = async () => {
+    // Prevent duplicate calls if already loading or if called within last 2 seconds
+    const now = Date.now();
+    if (isLoadingPredefined() || (now - predefinedVideosLoadTime() < 2000)) {
+      console.log('Skipping loadPredefinedVideos - already loading or called too recently');
+      return;
+    }
+
     setIsLoadingPredefined(true);
+    setPredefinedVideosLoadTime(now);
     setPredefinedError('');
 
     try {
@@ -605,7 +614,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class="w-4 h-4 text-white" 
+                class="w-4 h-4" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -621,7 +630,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class="w-4 h-4 text-white" 
+                class="w-4 h-4" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -637,7 +646,7 @@ export const Youtube = () => {
               class="flex items-center gap-2"
             >
               <svg 
-                class="w-4 h-4 text-white" 
+                class="w-4 h-4" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"

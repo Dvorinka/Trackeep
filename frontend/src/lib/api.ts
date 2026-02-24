@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
 
 // Check if we're in demo mode
 const isDemoMode = () => {

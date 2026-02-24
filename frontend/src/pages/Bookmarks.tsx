@@ -3,9 +3,10 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { BookmarkModal } from '@/components/ui/BookmarkModal';
 import { EditBookmarkModal } from '@/components/ui/EditBookmarkModal';
+import { VideoUploadModal } from '@/components/ui/VideoUploadModal';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
-import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo } from '@tabler/icons-solidjs';
+import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo, IconBookmark } from '@tabler/icons-solidjs';
 import { getMockBookmarks, getMockVideos } from '@/lib/mockData';
 
 interface BookmarkTag {
@@ -65,7 +66,21 @@ export const Bookmarks = () => {
     if (bookmark.favicon) return bookmark.favicon;
     try {
       const url = new URL(bookmark.url);
-      return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+      const baseUrl = `${url.protocol}//${url.hostname}`;
+      
+      // Try multiple favicon sources
+      const faviconSources = [
+        `${baseUrl}/favicon.ico`,
+        `${baseUrl}/favicon.png`,
+        `${baseUrl}/img/favicons/favicon-32x32.png`,
+        `${baseUrl}/img/favicons/favicon-16x16.png`,
+        `${baseUrl}/logo-without-border.svg`,
+        `${baseUrl}/logo.svg`,
+        `${baseUrl}/icon.svg`,
+        `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
+      ];
+      
+      return faviconSources[0]; // Return first source, fallback will be handled by error
     } catch {
       return '';
     }
@@ -88,8 +103,11 @@ export const Bookmarks = () => {
   const [isLoadingVideos, setIsLoadingVideos] = createSignal(true);
   const [searchTerm, setSearchTerm] = createSignal('');
   const [selectedTag, setSelectedTag] = createSignal('');
+  const [videoSearchTerm, setVideoSearchTerm] = createSignal('');
+  const [videoSelectedTag, setVideoSelectedTag] = createSignal('');
   const [showAddModal, setShowAddModal] = createSignal(false);
   const [showEditModal, setShowEditModal] = createSignal(false);
+  const [showVideoModal, setShowVideoModal] = createSignal(false);
   const [editingBookmark, setEditingBookmark] = createSignal<Bookmark | null>(null);
   const [activeTab, setActiveTab] = createSignal<'bookmarks' | 'videos'>('bookmarks');
   // We no longer show inline HTML content previews, only the bookmark cards themselves
@@ -127,22 +145,48 @@ export const Bookmarks = () => {
 
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1';
-      const response = await fetch(`${API_BASE_URL}/bookmarks`, {
+      
+      // Load regular bookmarks
+      const bookmarksResponse = await fetch(`${API_BASE_URL}/bookmarks`, {
         headers: {
           'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
         },
       });
-      if (!response.ok) {
+      if (!bookmarksResponse.ok) {
         throw new Error('Failed to load bookmarks');
       }
-      const data = await response.json();
+      const bookmarksData = await bookmarksResponse.json();
 
       // Normalize API response:
       // - Ensure we always work with an array
       // - Map Tag objects to simple string[]
-      const normalized: Bookmark[] = (Array.isArray(data) ? data : []).map(adaptBookmarkFromApi);
+      const normalized: Bookmark[] = (Array.isArray(bookmarksData) ? bookmarksData : []).map(adaptBookmarkFromApi);
 
       setBookmarks(normalized);
+
+      // Load video bookmarks
+      try {
+        const videosResponse = await fetch(`${API_BASE_URL}/youtube/videos`, {
+          headers: {
+            'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+          },
+        });
+        
+        if (videosResponse.ok) {
+          const videosData = await videosResponse.json();
+          setVideoBookmarks(Array.isArray(videosData) ? videosData : []);
+        } else {
+          // If video endpoint fails, load mock videos as fallback
+          const mockVideos = getMockVideos();
+          setVideoBookmarks(mockVideos);
+        }
+      } catch (videoError) {
+        console.warn('Failed to load video bookmarks, using mock data:', videoError);
+        const mockVideos = getMockVideos();
+        setVideoBookmarks(mockVideos);
+      }
+      
+      setIsLoadingVideos(false);
     } catch (error) {
       console.error('Failed to load bookmarks:', error);
       // Fallback to mock data if API fails
@@ -160,6 +204,11 @@ export const Bookmarks = () => {
         screenshot_medium: bookmark.screenshot,
       }));
       setBookmarks(adaptedBookmarks);
+      
+      // Also load mock videos as fallback
+      const mockVideos = getMockVideos();
+      setVideoBookmarks(mockVideos);
+      setIsLoadingVideos(false);
     } finally {
       setIsLoading(false);
     }
@@ -170,6 +219,15 @@ export const Bookmarks = () => {
     const tags = new Set<string>();
     bookmarks().forEach((bookmark) => {
       (bookmark.tags || []).forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  };
+
+  // Get all unique tags from video bookmarks
+  const getAllVideoTags = () => {
+    const tags = new Set<string>();
+    videoBookmarks().forEach((video) => {
+      (video.tags || []).forEach((tag: any) => tags.add(tag.name));
     });
     return Array.from(tags).sort();
   };
@@ -186,6 +244,23 @@ export const Bookmarks = () => {
         (bookmark.tags || []).some((t) => t.toLowerCase().includes(term));
       
       const matchesTag = !tag || (bookmark.tags || []).includes(tag);
+      
+      return matchesSearch && matchesTag;
+    });
+  };
+
+  const filteredVideoBookmarks = () => {
+    const term = videoSearchTerm().toLowerCase();
+    const tag = videoSelectedTag();
+    
+    return videoBookmarks().filter(video => {
+      const matchesSearch = !term || 
+        video.title.toLowerCase().includes(term) ||
+        video.description.toLowerCase().includes(term) ||
+        video.channel.toLowerCase().includes(term) ||
+        (video.tags || []).some((t: any) => t.name.toLowerCase().includes(term));
+      
+      const matchesTag = !tag || (video.tags || []).some((t: any) => t.name === tag);
       
       return matchesSearch && matchesTag;
     });
@@ -262,9 +337,19 @@ export const Bookmarks = () => {
     setSearchTerm(''); // Clear search when filtering by tag
   };
 
+  const handleVideoTagClick = (tag: string) => {
+    setVideoSelectedTag((current) => (current === tag ? '' : tag));
+    setVideoSearchTerm(''); // Clear search when filtering by tag
+  };
+
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedTag('');
+  };
+
+  const resetVideoFilters = () => {
+    setVideoSearchTerm('');
+    setVideoSelectedTag('');
   };
 
   const handleEditBookmark = async (bookmarkData: Partial<Bookmark>) => {
@@ -300,6 +385,30 @@ export const Bookmarks = () => {
     }
   };
 
+  const handleVideoSubmit = async (video: any) => {
+    try {
+      // Use the YouTube API to add video
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/youtube/video-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ video_id: video.video_id })
+      });
+      
+      if (response.ok) {
+        console.log('Video added:', video);
+      } else {
+        console.log('Video added (demo mode):', video);
+      }
+      setShowVideoModal(false);
+    } catch (error) {
+      console.error('Failed to add video:', error);
+      setShowVideoModal(false);
+    }
+  };
+
   return (
     <div class="p-6 space-y-6">
       <div class="flex justify-between items-center">
@@ -314,9 +423,18 @@ export const Bookmarks = () => {
             </div>
           </Show>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
-          Add Bookmark
-        </Button>
+        <Show when={activeTab() === 'bookmarks'}>
+          <Button onClick={() => setShowAddModal(true)}>
+            <IconBookmark class="size-4 mr-2" />
+            Add Bookmark
+          </Button>
+        </Show>
+        <Show when={activeTab() === 'videos'}>
+          <Button onClick={() => setShowVideoModal(true)}>
+            <IconVideo class="size-4 mr-2" />
+            Add Video
+          </Button>
+        </Show>
       </div>
 
       {/* Tabs */}
@@ -324,12 +442,13 @@ export const Bookmarks = () => {
         <nav class="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('bookmarks')}
-            class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+            class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab() === 'bookmarks'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
             }`}
           >
+            <IconBookmark class={`size-4 ${activeTab() === 'bookmarks' ? 'text-primary' : 'text-muted-foreground'}`} />
             Web Bookmarks
           </button>
           <button
@@ -340,7 +459,7 @@ export const Bookmarks = () => {
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
             }`}
           >
-            <IconVideo class="size-4" />
+            <IconVideo class={`size-4 ${activeTab() === 'videos' ? 'text-primary' : 'text-muted-foreground'}`} />
             Video Bookmarks
           </button>
         </nav>
@@ -419,8 +538,31 @@ export const Bookmarks = () => {
                               alt=""
                               class="w-6 h-6 object-contain"
                               onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${bookmark.title.charAt(0).toUpperCase()}</span>`;
+                                const img = e.currentTarget;
+                                const url = new URL(bookmark.url);
+                                const baseUrl = `${url.protocol}//${url.hostname}`;
+                                
+                                // Try next favicon source
+                                const faviconSources = [
+                                  `${baseUrl}/favicon.ico`,
+                                  `${baseUrl}/favicon.png`,
+                                  `${baseUrl}/img/favicons/favicon-32x32.png`,
+                                  `${baseUrl}/img/favicons/favicon-16x16.png`,
+                                  `${baseUrl}/logo-without-border.svg`,
+                                  `${baseUrl}/logo.svg`,
+                                  `${baseUrl}/icon.svg`,
+                                  `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
+                                ];
+                                
+                                const currentSrc = img.src;
+                                const currentIndex = faviconSources.findIndex(src => currentSrc.includes(src));
+                                
+                                if (currentIndex < faviconSources.length - 1) {
+                                  img.src = faviconSources[currentIndex + 1];
+                                } else {
+                                  img.style.display = 'none';
+                                  img.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${bookmark.title.charAt(0).toUpperCase()}</span>`;
+                                }
                               }}
                             />
                           ) : (
@@ -532,6 +674,16 @@ export const Bookmarks = () => {
       </Show>
 
       <Show when={activeTab() === 'videos'}>
+        <SearchTagFilterBar
+          searchPlaceholder="Search video bookmarks..."
+          searchValue={videoSearchTerm()}
+          onSearchChange={(value) => setVideoSearchTerm(value)}
+          tagOptions={getAllVideoTags()}
+          selectedTag={videoSelectedTag()}
+          onTagChange={(value) => setVideoSelectedTag(value)}
+          onReset={resetVideoFilters}
+        />
+
         {isLoadingVideos() ? (
           <div class="space-y-4">
             {[...Array(3)].map(() => (
@@ -546,58 +698,108 @@ export const Bookmarks = () => {
           </div>
         ) : (
           <div class="space-y-4">
-            {videoBookmarks().map((video) => (
-              <Card class="p-6 hover:bg-accent transition-colors">
-                <div class="flex gap-4">
-                  <div class="flex-shrink-0">
-                    <img
-                      src={video.thumbnail}
-                      alt={video.title}
-                      class="w-32 h-20 object-cover rounded-md"
-                    />
+            {filteredVideoBookmarks().map((video) => (
+              <Card class="p-6 hover:bg-accent transition-colors group">
+                <div class="flex justify-between items-start gap-4">
+                  <div class="flex gap-4 flex-1">
+                    <div class="flex-shrink-0">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        class="w-32 h-20 object-cover rounded-md"
+                      />
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="text-lg font-semibold text-foreground mb-2">
+                        <a
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                        >
+                          {video.title}
+                          <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current group-hover:text-white" />
+                        </a>
+                      </h3>
+                      <p class="text-muted-foreground text-sm mb-2">{video.description}</p>
+                      <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{video.channel}</span>
+                        <span>•</span>
+                        <span>{video.duration}</span>
+                        <span>•</span>
+                        <span>{video.publishedAt}</span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 mt-2">
+                        {video.tags.map((tag: any) => (
+                          <button
+                            onClick={() => handleVideoTagClick(tag.name)}
+                            class={`px-2 py-1 text-xs rounded-md border transition-colors cursor-pointer
+                              ${videoSelectedTag() === tag.name
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/80 text-muted-foreground border-transparent group-hover:bg-accent group-hover:text-accent-foreground group-hover:border-border'
+                              }`}
+                            title={`Click to filter by ${tag.name}`}
+                          >
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-foreground mb-2">
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                  <div class="flex items-center gap-2 ml-2">
+                    <DropdownMenu
+                      trigger={
+                        <button class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8">
+                          <IconDotsVertical class="size-4" />
+                        </button>
+                      }
+                    >
+                      <DropdownMenuItem
+                        onClick={() => window.open(video.url, '_blank')}
+                        icon={IconExternalLink}
                       >
-                        {video.title}
-                        <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current" />
-                      </a>
-                    </h3>
-                    <p class="text-muted-foreground text-sm mb-2">{video.description}</p>
-                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{video.channel}</span>
-                      <span>•</span>
-                      <span>{video.duration}</span>
-                      <span>•</span>
-                      <span>{video.publishedAt}</span>
-                    </div>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      {video.tags.map((tag: any) => (
-                        <span class="px-2 py-1 text-xs rounded-md bg-muted text-muted-foreground">
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
+                        Open in New Tab
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => navigator.clipboard.writeText(video.url)}
+                        icon={IconEdit}
+                      >
+                        Copy Link
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this video bookmark?')) {
+                            setVideoBookmarks(prev => prev.filter(v => v.id !== video.id));
+                          }
+                        }}
+                        icon={IconTrash}
+                        variant="destructive"
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenu>
                   </div>
                 </div>
               </Card>
             ))}
 
-            {videoBookmarks().length === 0 && (
+            {filteredVideoBookmarks().length === 0 && (
               <Card class="p-12 text-center">
                 <p class="text-muted-foreground">
-                  No video bookmarks yet. Save your first YouTube video!
+                  {videoSearchTerm() || videoSelectedTag() ? 'No video bookmarks found matching your search.' : 'No video bookmarks yet. Save your first YouTube video!'}
                 </p>
               </Card>
             )}
           </div>
         )}
       </Show>
+
+      {/* Video Upload Modal */}
+      <VideoUploadModal
+        isOpen={showVideoModal()}
+        onClose={() => setShowVideoModal(false)}
+        onSubmit={handleVideoSubmit}
+      />
     </div>
   );
 };

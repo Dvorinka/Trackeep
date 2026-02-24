@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onMount, For, Show } from 'solid-js'
-import { DateTimePicker } from '@/components/ui/DatePicker';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { 
   IconCalendar, 
   IconClock, 
@@ -12,6 +12,7 @@ import {
   IconFlag
 } from '@tabler/icons-solidjs'
 import { getMockCalendarEvents } from '@/lib/mockData';
+import { isDemoMode as isDemoModeEnabled } from '@/lib/demo-mode';
 
 interface CalendarEvent {
   id: number
@@ -80,21 +81,15 @@ export function Calendar() {
     return () => clearInterval(timer)
   })
 
-  // Check if we're in demo mode
-  const isDemoMode = () => {
-    return localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-  };
-
   // Fetch calendar data
   const fetchCalendarData = async () => {
     try {
       const token = localStorage.getItem('token');
 
-      if (isDemoMode() || !token) {
+      if (isDemoModeEnabled() || !token) {
         // Use mock data in demo mode or when not authenticated
         const mockEvents = getMockCalendarEvents();
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const weekFromNow = new Date();
@@ -213,7 +208,7 @@ export function Calendar() {
 
   const createEvent = async () => {
     try {
-      if (isDemoMode()) {
+      if (isDemoModeEnabled()) {
         // Simulate event creation in demo mode
         console.log('Creating event (demo mode):', newEvent());
         setShowEventModal(false);
@@ -277,7 +272,7 @@ export function Calendar() {
 
   const toggleEventCompletion = async (eventId: number) => {
     try {
-      if (isDemoMode()) {
+      if (isDemoModeEnabled()) {
         // Simulate event completion toggle in demo mode
         console.log('Toggling event completion (demo mode):', eventId);
         fetchCalendarData();
@@ -358,6 +353,18 @@ export function Calendar() {
 
   return (
     <div class="space-y-6">
+      {/* Demo Mode Indicator */}
+      <Show when={isDemoModeEnabled()}>
+        <div class="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-lg p-3 mb-4">
+          <p class="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
+            Demo Mode Active - Showing sample calendar data
+          </p>
+          <p class="text-yellow-700 dark:text-yellow-300 text-xs mt-1">
+            Today: {todayEvents().length} events | Upcoming: {upcomingEvents().length} events | Deadlines: {deadlines().length}
+          </p>
+        </div>
+      </Show>
+
       {/* Header with Current Time */}
       <div class="flex items-center justify-between">
         <div>
@@ -440,7 +447,7 @@ export function Calendar() {
             </div>
 
             {/* Enhanced Calendar Grid with Events */}
-            <div class="grid grid-cols-7 gap-1 text-sm auto-rows-fr">
+            <div class="grid grid-cols-7 gap-1 text-sm">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div class="text-center text-sm font-medium text-muted-foreground p-2">
                   {day}
@@ -461,18 +468,16 @@ export function Calendar() {
                 return (
                   <div
                     onClick={() => openEventModal(date)}
-                    class={`border border-border rounded-lg p-1 cursor-pointer hover:bg-accent transition-colors relative overflow-hidden ${
+                    class={`border border-border rounded-lg p-1 cursor-pointer hover:bg-accent transition-colors relative overflow-hidden h-24 flex flex-col ${
                       isToday ? 'bg-primary/10 border-primary' : ''
-                    } ${!isCurrentMonth ? 'opacity-40' : ''} ${
-                      dayEvents.length > 3 ? 'row-span-2 min-h-[5rem]' : 'min-h-[3.5rem]'
-                    }`}
+                    } ${!isCurrentMonth ? 'opacity-40' : ''}`}
                   >
-                    <div class="text-sm font-medium">{date.getDate()}</div>
+                    <div class="text-sm font-medium shrink-0">{date.getDate()}</div>
                     {/* Event indicators */}
-                    <div class="space-y-1 mt-1">
+                    <div class="flex-1 overflow-hidden flex flex-col justify-start space-y-0.5 mt-1">
                       {dayEvents.slice(0, 3).map((event: CalendarEvent) => (
                         <div 
-                          class={`text-xs px-1 py-0.5 rounded truncate w-full cursor-pointer hover:opacity-80 transition-opacity ${
+                          class={`text-xs px-1 py-0.5 rounded truncate w-full cursor-pointer hover:opacity-80 transition-opacity leading-none ${
                             event.type === 'deadline' 
                               ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800' 
                               : event.type === 'meeting'
@@ -481,19 +486,19 @@ export function Calendar() {
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                           }`}
-                          style={`font-size: 10px;`}
+                          style={`font-size: 9px; line-height: 1.2;`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedTask(event);
                             setShowTaskDetailModal(true);
                           }}
                         >
-                          {event.title.length > 12 ? event.title.substring(0, 12) + '...' : event.title}
+                          {event.title.length > 10 ? event.title.substring(0, 10) + '...' : event.title}
                         </div>
                       ))}
                       {dayEvents.length > 3 && (
                         <div 
-                          class="text-xs text-muted-foreground font-medium cursor-pointer hover:text-primary transition-colors underline"
+                          class="text-xs text-muted-foreground font-medium cursor-pointer hover:text-primary transition-colors underline leading-none mt-0.5"
                           onClick={(e) => {
                             e.stopPropagation();
                             // Show all events for this day
@@ -879,33 +884,33 @@ export function Calendar() {
                   <label class="block text-sm font-medium mb-1">
                     {newEvent().is_all_day ? 'Event Date' : 'Start Time'}
                   </label>
-                  <DateTimePicker
-                    value={newEvent().start_time ? new Date(newEvent().start_time) : undefined}
-                    onChange={(date) => {
-                      if (date) {
+                  <DateRangePicker
+                    value={newEvent().start_time ? { start: new Date(newEvent().start_time), end: new Date(newEvent().end_time || newEvent().start_time) } : undefined}
+                    onChange={(range) => {
+                      if (range && range.start) {
                         if (newEvent().is_all_day) {
                           // For all-day events, set time to beginning of day
-                          const startOfDay = new Date(date);
+                          const startOfDay = new Date(range.start);
                           startOfDay.setHours(0, 0, 0, 0);
                           setNewEvent({ ...newEvent(), start_time: startOfDay.toISOString() });
                         } else {
-                          setNewEvent({ ...newEvent(), start_time: date.toISOString() });
+                          setNewEvent({ ...newEvent(), start_time: range.start.toISOString() });
                         }
                       }
                     }}
                     placeholder={newEvent().is_all_day ? "Select event date" : "Select start time"}
                     class="w-full"
-                    dateOnly={newEvent().is_all_day}
                   />
                 </div>
+
                 {!newEvent().is_all_day && (
                   <div>
                     <label class="block text-sm font-medium mb-1">End Time</label>
-                    <DateTimePicker
-                      value={newEvent().end_time ? new Date(newEvent().end_time) : undefined}
-                      onChange={(date) => {
-                        if (date) {
-                          setNewEvent({ ...newEvent(), end_time: date.toISOString() });
+                    <DateRangePicker
+                      value={newEvent().start_time ? { start: new Date(newEvent().start_time), end: new Date(newEvent().end_time || newEvent().start_time) } : undefined}
+                      onChange={(range) => {
+                        if (range && range.start) {
+                          setNewEvent({ ...newEvent(), end_time: range.end ? range.end.toISOString() : range.start.toISOString() });
                         }
                       }}
                       placeholder="Select end time"
@@ -913,22 +918,22 @@ export function Calendar() {
                     />
                   </div>
                 )}
-              </div>
 
-              <div class="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowEventModal(false)}
-                  class="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={createEvent}
-                  disabled={!newEvent().title || !newEvent().start_time}
-                  class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Create Event
-                </button>
+                <div class="flex gap-2 mt-4">
+                  <button
+                    onClick={() => setShowEventModal(false)}
+                    class="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createEvent}
+                    disabled={!newEvent().title || !newEvent().start_time}
+                    class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Create Event
+                  </button>
+                </div>
               </div>
             </div>
           </div>

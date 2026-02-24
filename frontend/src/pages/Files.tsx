@@ -2,7 +2,7 @@ import { createSignal, onMount, For, Show } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
-import { FileUploadModal } from '@/components/ui/FileUploadModal';
+import { FileUpload } from '@/components/ui/FileUpload';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
 import { getFileTypeConfig, formatFileSize, getFileCategoryColor } from '@/utils/fileTypes';
 import { getMockFiles } from '@/lib/mockData';
@@ -218,28 +218,28 @@ export const Files = () => {
   };
 
 
-  const handleFileUpload = async (fileData: any) => {
+  const handleFileUpload = async (uploadedFiles: any[]) => {
     try {
-      // Mock upload - in real app, this would be an API call
-      const newFile: FileItem = {
-        id: Date.now(),
-        name: fileData.file?.name || fileData.linkUrl?.split('/').pop() || 'Untitled',
-        size: fileData.file?.size || 0,
-        type: fileData.file?.type || 'application/octet-stream',
+      // Convert uploaded files to FileItem format
+      const newFiles: FileItem[] = uploadedFiles.map((fileData) => ({
+        id: Date.now() + Math.random(),
+        name: fileData.name || 'Untitled',
+        size: fileData.size || 0,
+        type: fileData.type || 'application/octet-stream',
         uploadedAt: new Date().toISOString(),
-        description: fileData.description,
-        tags: fileData.tags,
-        associations: fileData.associations,
-        url: fileData.linkUrl,
-        isLink: fileData.isLinkMode,
-        downloadUrl: fileData.isLinkMode ? fileData.linkUrl : `/files/download/${Date.now()}`,
-        viewUrl: fileData.isLinkMode ? fileData.linkUrl : `/files/view/${Date.now()}`,
+        description: '',
+        tags: [],
+        url: fileData.url,
+        isLink: !!fileData.url,
+        downloadUrl: fileData.url || `/files/download/${Date.now()}`,
+        viewUrl: fileData.url || `/files/view/${Date.now()}`,
         shareUrl: `/files/share/${Date.now()}`
-      };
+      }));
 
-      setFiles(prev => [newFile, ...prev]);
+      setFiles(prev => [...newFiles, ...prev]);
+      setShowUploadModal(false);
     } catch (error) {
-      console.error('Failed to upload file:', error);
+      console.error('Failed to upload files:', error);
     }
   };
 
@@ -493,10 +493,12 @@ export const Files = () => {
       )}
 
       {/* File Upload Modal */}
-      <FileUploadModal
+      <FileUpload
         isOpen={showUploadModal()}
         onClose={() => setShowUploadModal(false)}
-        onUpload={handleFileUpload}
+        onFilesChange={handleFileUpload}
+        maxFileSize={50}
+        acceptedTypes={['image/jpeg', 'image/png', 'application/pdf', 'video/mp4']}
       />
 
       {/* File Preview Modal */}

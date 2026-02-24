@@ -1,6 +1,12 @@
 import { createContext, useContext, type ParentComponent, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { isDemoMode } from './demo-mode';
+
+// Check if we're in demo mode (same logic as api.ts)
+const isDemoMode = () => {
+  return localStorage.getItem('demoMode') === 'true' || 
+         document.title.includes('Demo Mode') ||
+         window.location.search.includes('demo=true');
+};
 
 // Types
 export interface User {
@@ -182,6 +188,23 @@ export const AuthProvider: ParentComponent = (props) => {
 
   const login = async (credentials: LoginRequest) => {
     try {
+      // In demo mode, use mock login
+      if (isDemoMode()) {
+        const mockUser: User = {
+          id: 1,
+          email: 'demo@trackeep.com',
+          username: 'demo',
+          full_name: 'Demo User',
+          theme: 'dark',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const mockToken = 'demo-token-' + Date.now();
+        setAuth(mockToken, mockUser);
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -191,8 +214,16 @@ export const AuthProvider: ParentComponent = (props) => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+        let error;
+        try {
+          const errorData = await response.json();
+          error = errorData.error || 'Login failed';
+        } catch (jsonError) {
+          // Handle non-JSON error responses
+          const text = await response.text();
+          error = text || `Login failed with status ${response.status}`;
+        }
+        throw new Error(error);
       }
 
       const data: AuthResponse = await response.json();
@@ -369,7 +400,21 @@ export const useAuth = () => {
 
 // Helper function to get auth headers for API requests
 export const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  // Check if we're in demo mode first
+  const isDemo = localStorage.getItem('demoMode') === 'true' || 
+         document.title.includes('Demo Mode') ||
+         window.location.search.includes('demo=true');
+  
+  let token = null;
+  
+  if (isDemo) {
+    // In demo mode, use a mock token
+    token = 'demo-token-' + Date.now();
+  } else {
+    // In normal mode, get token from localStorage
+    token = localStorage.getItem('token') || localStorage.getItem('trackeep_token');
+  }
+  
   return {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
