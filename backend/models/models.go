@@ -113,5 +113,15 @@ func AutoMigrate() {
 		&YouTubeChannelCache{},
 		// Video bookmark models
 		&VideoBookmark{},
+		// Messaging models
+		&Conversation{},
+		&ConversationMember{},
+		&Message{},
+		&MessageAttachment{},
+		&MessageReference{},
+		&MessageSuggestion{},
+		&MessageReaction{},
+		&PasswordVaultItem{},
+		&PasswordVaultShare{},
 	)
 }

@@ -17,7 +17,7 @@ import (
 // SemanticSearchRequest represents a semantic search request
 type SemanticSearchRequest struct {
 	Query       string  `json:"query" binding:"required"`
-	ContentType string  `json:"content_type"` // 'all' | 'bookmarks' | 'tasks' | 'notes' | 'files'
+	ContentType string  `json:"content_type"` // all | bookmarks | tasks | notes | files | calendar_events | youtube_videos | learning_paths | chat_messages
 	Limit       int     `json:"limit"`
 	Threshold   float64 `json:"threshold"` // Similarity threshold (0-1)
 }
@@ -32,24 +32,24 @@ type SemanticSearchResponse struct {
 
 // SemanticSearchResult represents a semantic search result
 type SemanticSearchResult struct {
-	ID          uint                   `json:"id"`
-	Type        string                 `json:"type"`
-	Title       string                 `json:"title"`
-	Description string                 `json:"description"`
-	Content     string                 `json:"content"`
-	Similarity  float64                `json:"similarity"`
-	Highlights  []string               `json:"highlights"`
-	Tags        []models.Tag           `json:"tags,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-	URL         string                 `json:"url,omitempty"`
-	Status      string                 `json:"status,omitempty"`
-	Priority    string                 `json:"priority,omitempty"`
+	ID          uint         `json:"id"`
+	Type        string       `json:"type"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	Content     string       `json:"content"`
+	Similarity  float64      `json:"similarity"`
+	Highlights  []string     `json:"highlights"`
+	Tags        []models.Tag `json:"tags,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	URL         string       `json:"url,omitempty"`
+	Status      string       `json:"status,omitempty"`
+	Priority    string       `json:"priority,omitempty"`
 }
 
 // GenerateEmbeddingRequest represents request to generate embeddings
 type GenerateEmbeddingRequest struct {
-	Text       string `json:"text" binding:"required"`
+	Text        string `json:"text" binding:"required"`
 	ContentType string `json:"content_type"`
 	ContentID   uint   `json:"content_id"`
 }
@@ -87,7 +87,7 @@ func SemanticSearch(c *gin.Context) {
 	queryEmbedding, err := generateEmbedding(req.Query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate query embedding",
+			"error":   "Failed to generate query embedding",
 			"details": err.Error(),
 		})
 		return
@@ -97,7 +97,7 @@ func SemanticSearch(c *gin.Context) {
 	results, err := findSimilarContent(db, userID, queryEmbedding, req.ContentType, req.Limit, req.Threshold)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to search similar content",
+			"error":   "Failed to search similar content",
 			"details": err.Error(),
 		})
 		return
@@ -127,7 +127,7 @@ func GenerateEmbedding(c *gin.Context) {
 	embedding, err := generateEmbedding(req.Text)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate embedding",
+			"error":   "Failed to generate embedding",
 			"details": err.Error(),
 		})
 		return
@@ -139,15 +139,15 @@ func GenerateEmbedding(c *gin.Context) {
 		userID := c.GetUint("user_id")
 
 		embeddingJSON, _ := json.Marshal(embedding)
-		
+
 		contentEmbedding := models.ContentEmbedding{
-			ContentType:  req.ContentType,
-			ContentID:    req.ContentID,
-			Embedding:    string(embeddingJSON),
-			Model:        "text-embedding-ada-002",
-			Dimensions:   len(embedding),
-			TextContent:  req.Text,
-			UserID:       userID,
+			ContentType: req.ContentType,
+			ContentID:   req.ContentID,
+			Embedding:   string(embeddingJSON),
+			Model:       "text-embedding-ada-002",
+			Dimensions:  len(embedding),
+			TextContent: req.Text,
+			UserID:      userID,
 		}
 
 		if err := db.Create(&contentEmbedding).Error; err != nil {
@@ -179,7 +179,7 @@ func ReindexContent(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Content reindexing started in background",
-		"status": "processing",
+		"status":  "processing",
 	})
 }
 
@@ -188,13 +188,13 @@ func generateEmbedding(text string) ([]float64, error) {
 	// TODO: Replace with actual OpenAI API call
 	// For now, return a mock embedding for demonstration
 	embedding := make([]float64, 1536) // OpenAI embedding dimensions
-	
+
 	// Generate pseudo-random but deterministic embedding based on text
 	hash := simpleHash(text)
 	for i := range embedding {
 		embedding[i] = math.Sin(float64(hash+i)) * 0.5
 	}
-	
+
 	return embedding, nil
 }
 
@@ -214,11 +214,11 @@ func findSimilarContent(db *gorm.DB, userID uint, queryEmbedding []float64, cont
 	// Get all embeddings for the user
 	var embeddings []models.ContentEmbedding
 	query := db.Where("user_id = ?", userID)
-	
+
 	if contentType != "all" && contentType != "" {
-		query = query.Where("content_type = ?", contentType)
+		query = query.Where("content_type = ?", normalizeSemanticContentType(contentType))
 	}
-	
+
 	if err := query.Find(&embeddings).Error; err != nil {
 		return results, err
 	}
@@ -228,15 +228,15 @@ func findSimilarContent(db *gorm.DB, userID uint, queryEmbedding []float64, cont
 		embedding models.ContentEmbedding
 		score     float64
 	}
-	
+
 	var scores []similarityScore
-	
+
 	for _, embedding := range embeddings {
 		var storedEmbedding []float64
 		if err := json.Unmarshal([]byte(embedding.Embedding), &storedEmbedding); err != nil {
 			continue
 		}
-		
+
 		similarity := cosineSimilarity(queryEmbedding, storedEmbedding)
 		if similarity >= threshold {
 			scores = append(scores, similarityScore{
@@ -279,17 +279,17 @@ func cosineSimilarity(a, b []float64) float64 {
 	}
 
 	var dotProduct, normA, normB float64
-	
+
 	for i := range a {
 		dotProduct += a[i] * b[i]
 		normA += a[i] * a[i]
 		normB += b[i] * b[i]
 	}
-	
+
 	if normA == 0 || normB == 0 {
 		return 0
 	}
-	
+
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
@@ -305,7 +305,7 @@ func buildSemanticSearchResult(db *gorm.DB, embedding models.ContentEmbedding, s
 		if err := db.Preload("Tags").First(&bookmark, embedding.ContentID).Error; err != nil {
 			return result, err
 		}
-		
+
 		result.ID = bookmark.ID
 		result.Type = "bookmark"
 		result.Title = bookmark.Title
@@ -321,7 +321,7 @@ func buildSemanticSearchResult(db *gorm.DB, embedding models.ContentEmbedding, s
 		if err := db.Preload("Tags").First(&task, embedding.ContentID).Error; err != nil {
 			return result, err
 		}
-		
+
 		result.ID = task.ID
 		result.Type = "task"
 		result.Title = task.Title
@@ -337,7 +337,7 @@ func buildSemanticSearchResult(db *gorm.DB, embedding models.ContentEmbedding, s
 		if err := db.Preload("Tags").First(&note, embedding.ContentID).Error; err != nil {
 			return result, err
 		}
-		
+
 		result.ID = note.ID
 		result.Type = "note"
 		result.Title = note.Title
@@ -352,7 +352,7 @@ func buildSemanticSearchResult(db *gorm.DB, embedding models.ContentEmbedding, s
 		if err := db.Preload("Tags").First(&file, embedding.ContentID).Error; err != nil {
 			return result, err
 		}
-		
+
 		result.ID = file.ID
 		result.Type = "file"
 		result.Title = file.OriginalName
@@ -361,6 +361,68 @@ func buildSemanticSearchResult(db *gorm.DB, embedding models.ContentEmbedding, s
 		result.Tags = file.Tags
 		result.CreatedAt = file.CreatedAt
 		result.UpdatedAt = file.UpdatedAt
+
+	case "calendar_event":
+		var event models.CalendarEvent
+		if err := db.First(&event, embedding.ContentID).Error; err != nil {
+			return result, err
+		}
+
+		result.ID = event.ID
+		result.Type = "calendar_event"
+		result.Title = event.Title
+		result.Description = event.Description
+		result.Content = event.Description
+		result.CreatedAt = event.CreatedAt
+		result.UpdatedAt = event.UpdatedAt
+		result.Priority = event.Priority
+
+	case "youtube_video":
+		var video models.VideoBookmark
+		if err := db.First(&video, embedding.ContentID).Error; err != nil {
+			return result, err
+		}
+
+		result.ID = video.ID
+		result.Type = "youtube_video"
+		result.Title = video.Title
+		result.Description = video.Description
+		result.Content = video.Description
+		result.CreatedAt = video.CreatedAt
+		result.UpdatedAt = video.UpdatedAt
+		result.URL = video.URL
+
+	case "learning_path":
+		var path models.LearningPath
+		if err := db.First(&path, embedding.ContentID).Error; err != nil {
+			return result, err
+		}
+
+		result.ID = path.ID
+		result.Type = "learning_path"
+		result.Title = path.Title
+		result.Description = path.Description
+		result.Content = path.Description
+		result.CreatedAt = path.CreatedAt
+		result.UpdatedAt = path.UpdatedAt
+
+	case "chat_message":
+		var message models.Message
+		if err := db.First(&message, embedding.ContentID).Error; err != nil {
+			return result, err
+		}
+		if message.IsSensitive {
+			return result, fmt.Errorf("sensitive message excluded from semantic search")
+		}
+
+		result.ID = message.ID
+		result.Type = "chat_message"
+		result.Title = "Chat message"
+		result.Description = compactSemanticText(message.Body, 140)
+		result.Content = message.Body
+		result.CreatedAt = message.CreatedAt
+		result.UpdatedAt = message.UpdatedAt
+		result.URL = fmt.Sprintf("/app/messages?conversationId=%d&messageId=%d", message.ConversationID, message.ID)
 	}
 
 	// Generate highlights (simplified)
@@ -402,35 +464,139 @@ func reindexUserContent(db *gorm.DB, userID uint) {
 	// Reindex bookmarks
 	var bookmarks []models.Bookmark
 	db.Where("user_id = ?", userID).Find(&bookmarks)
-	
+
 	for _, bookmark := range bookmarks {
 		text := bookmark.Title + " " + bookmark.Description + " " + bookmark.Content
-		embedding, err := generateEmbedding(text)
-		if err != nil {
-			continue
-		}
-
-		embeddingJSON, _ := json.Marshal(embedding)
-		
-		contentEmbedding := models.ContentEmbedding{
-			ContentType:  "bookmark",
-			ContentID:    bookmark.ID,
-			Embedding:    string(embeddingJSON),
-			Model:        "text-embedding-ada-002",
-			Dimensions:   len(embedding),
-			TextContent:  text,
-			UserID:       userID,
-		}
-
-		// Delete existing embedding for this content
-		db.Where("content_type = ? AND content_id = ?", "bookmark", bookmark.ID).Delete(&models.ContentEmbedding{})
-		
-		// Create new embedding
-		db.Create(&contentEmbedding)
+		upsertEmbedding(db, userID, "bookmark", bookmark.ID, text)
 	}
 
-	// Similar reindexing for tasks, notes, files...
-	// TODO: Implement reindexing for other content types
+	// Tasks
+	var tasks []models.Task
+	db.Where("user_id = ?", userID).Find(&tasks)
+	for _, task := range tasks {
+		text := task.Title + " " + task.Description
+		upsertEmbedding(db, userID, "task", task.ID, text)
+	}
+
+	// Notes
+	var notes []models.Note
+	db.Where("user_id = ?", userID).Find(&notes)
+	for _, note := range notes {
+		if note.IsEncrypted {
+			continue
+		}
+		text := note.Title + " " + note.Description + " " + note.Content
+		upsertEmbedding(db, userID, "note", note.ID, text)
+	}
+
+	// Files
+	var files []models.File
+	db.Where("user_id = ?", userID).Find(&files)
+	for _, file := range files {
+		text := file.OriginalName + " " + file.Description + " " + file.Content
+		upsertEmbedding(db, userID, "file", file.ID, text)
+	}
+
+	// Calendar events
+	var events []models.CalendarEvent
+	db.Where("user_id = ?", userID).Find(&events)
+	for _, event := range events {
+		text := event.Title + " " + event.Description + " " + event.Type + " " + event.Priority
+		upsertEmbedding(db, userID, "calendar_event", event.ID, text)
+	}
+
+	// YouTube bookmarks
+	var videos []models.VideoBookmark
+	db.Where("user_id = ?", userID).Find(&videos)
+	for _, video := range videos {
+		text := video.Title + " " + video.Description + " " + video.Channel + " " + video.URL
+		upsertEmbedding(db, userID, "youtube_video", video.ID, text)
+	}
+
+	// Learning paths
+	var learningPaths []models.LearningPath
+	db.Where("creator_id = ?", userID).Find(&learningPaths)
+	for _, path := range learningPaths {
+		text := path.Title + " " + path.Description + " " + path.Category + " " + path.Difficulty
+		upsertEmbedding(db, userID, "learning_path", path.ID, text)
+	}
+
+	// Chat messages (skip sensitive/vault content)
+	var messages []models.Message
+	db.Model(&models.Message{}).
+		Joins("JOIN conversation_members cm ON cm.conversation_id = messages.conversation_id").
+		Joins("JOIN conversations ON conversations.id = messages.conversation_id").
+		Where("cm.user_id = ?", userID).
+		Where("conversations.type <> ?", models.ConversationTypePasswordVault).
+		Where("messages.deleted_at IS NULL").
+		Find(&messages)
+	for _, message := range messages {
+		if message.IsSensitive {
+			continue
+		}
+		upsertEmbedding(db, userID, "chat_message", message.ID, message.Body)
+	}
 
 	fmt.Printf("Reindexing completed for user %d\n", userID)
+}
+
+func upsertEmbedding(db *gorm.DB, userID uint, contentType string, contentID uint, text string) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return
+	}
+
+	embedding, err := generateEmbedding(text)
+	if err != nil {
+		return
+	}
+
+	embeddingJSON, _ := json.Marshal(embedding)
+
+	contentEmbedding := models.ContentEmbedding{
+		ContentType: contentType,
+		ContentID:   contentID,
+		Embedding:   string(embeddingJSON),
+		Model:       "text-embedding-ada-002",
+		Dimensions:  len(embedding),
+		TextContent: text,
+		UserID:      userID,
+	}
+
+	db.Where("content_type = ? AND content_id = ? AND user_id = ?", contentType, contentID, userID).Delete(&models.ContentEmbedding{})
+	db.Create(&contentEmbedding)
+}
+
+func normalizeSemanticContentType(contentType string) string {
+	switch strings.ToLower(strings.TrimSpace(contentType)) {
+	case "bookmarks":
+		return "bookmark"
+	case "tasks":
+		return "task"
+	case "notes":
+		return "note"
+	case "files":
+		return "file"
+	case "calendar_events":
+		return "calendar_event"
+	case "youtube_videos":
+		return "youtube_video"
+	case "learning_paths":
+		return "learning_path"
+	case "chat_messages":
+		return "chat_message"
+	default:
+		return strings.ToLower(strings.TrimSpace(contentType))
+	}
+}
+
+func compactSemanticText(text string, limit int) string {
+	text = strings.TrimSpace(text)
+	if len(text) <= limit {
+		return text
+	}
+	if limit < 4 {
+		return text
+	}
+	return strings.TrimSpace(text[:limit-3]) + "..."
 }

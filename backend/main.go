@@ -349,6 +349,35 @@ func main() {
 			chat.DELETE("/sessions/:id", handlers.DeleteSession)
 		}
 
+		// Messaging routes (Discord-like user communication)
+		messages := v1.Group("/messages")
+		messages.Use(handlers.AuthMiddleware())
+		{
+			messages.GET("/conversations", handlers.GetConversations)
+			messages.POST("/conversations", handlers.CreateConversation)
+			messages.GET("/conversations/:id", handlers.GetConversation)
+			messages.PATCH("/conversations/:id", handlers.UpdateConversation)
+			messages.POST("/conversations/:id/members", handlers.AddConversationMember)
+			messages.DELETE("/conversations/:id/members/:userId", handlers.RemoveConversationMember)
+			messages.GET("/conversations/:id/messages", handlers.GetConversationMessages)
+			messages.POST("/conversations/:id/messages", handlers.CreateConversationMessage)
+			messages.PATCH("/messages/:id", handlers.UpdateMessage)
+			messages.DELETE("/messages/:id", handlers.DeleteMessage)
+			messages.POST("/messages/:id/reactions", handlers.AddMessageReaction)
+			messages.DELETE("/messages/:id/reactions/:emoji", handlers.RemoveMessageReaction)
+			messages.POST("/messages/search", handlers.SearchMessages)
+			messages.GET("/messages/:id/suggestions", handlers.GetMessageSuggestions)
+			messages.POST("/messages/:id/suggestions/:suggestionId/accept", handlers.AcceptMessageSuggestion)
+			messages.POST("/messages/:id/suggestions/:suggestionId/dismiss", handlers.DismissMessageSuggestion)
+			messages.GET("/ws", handlers.MessagesWebSocket)
+
+			messages.GET("/password-vault/items", handlers.GetPasswordVaultItems)
+			messages.POST("/password-vault/items", handlers.CreatePasswordVaultItem)
+			messages.POST("/password-vault/items/:id/share", handlers.SharePasswordVaultItem)
+			messages.POST("/password-vault/items/:id/reveal", handlers.RevealPasswordVaultItem)
+			messages.POST("/password-vault/items/:id/unshare", handlers.UnsharePasswordVaultItem)
+		}
+
 		// Member routes (protected)
 		members := v1.Group("/members")
 		members.Use(handlers.AuthMiddleware())

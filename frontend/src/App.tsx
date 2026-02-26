@@ -27,6 +27,7 @@ import { AuthCallback } from '@/pages/AuthCallback'
 import { AuthProvider } from '@/lib/auth'
 import { Search } from '@/pages/Search'
 import { Analytics } from '@/pages/Analytics'
+import { Messages } from '@/pages/Messages'
 import { initializeDemoMode, clearDemoMode, isEnvDemoMode } from '@/lib/demo-mode'
 import { onMount } from 'solid-js'
 
@@ -165,6 +166,13 @@ function App() {
             <ProtectedRoute>
               <Layout title="AI Chat" fullBleed>
                 <AIChat />
+              </Layout>
+            </ProtectedRoute>
+          )} />
+          <Route path="/app/messages" component={() => (
+            <ProtectedRoute>
+              <Layout title="Messages" fullBleed>
+                <Messages />
               </Layout>
             </ProtectedRoute>
           )} />

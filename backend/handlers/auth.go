@@ -138,6 +138,11 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			if tokenParam := c.Query("token"); tokenParam != "" {
+				authHeader = "Bearer " + tokenParam
+			}
+		}
+		if authHeader == "" {
 			c.JSON(401, gin.H{"error": "Authorization header required"})
 			c.Abort()
 			return
@@ -229,6 +234,9 @@ func Register(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Failed to create user"})
 		return
 	}
+
+	// Provision messaging defaults (self chat, password vault, global channels).
+	_ = ensureMessagingDefaults(db, user.ID)
 
 	// Generate JWT token
 	token, err := GenerateJWT(user)

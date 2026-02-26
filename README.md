@@ -67,6 +67,7 @@ Every feature you see is something I personally needed and use. Your feedback, b
 
 ### Advanced Features
 - **AI-Powered Recommendations**: Intelligent content suggestions and organization
+- **Integrated Messaging (V1)**: Discord-style conversations (self chat, DMs, groups, team channels, global channels), realtime updates, smart suggestions, deep-link references, encrypted password vault sharing, voice notes, and browser-local optional transcription/call signaling
 - **OAuth Integration**: Secure authentication with GitHub and other providers
 - **Mobile App**: Native React Native application for iOS and Android
 - **Email Ingestion**: Send/forward emails to automatically import content
