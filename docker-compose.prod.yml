@@ -2,15 +2,14 @@ version: '3.8'
 
 services:
   trackeep-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/dvorinka/trackeep/frontend:latest
     ports:
       - "80:80"
       - "443:443"
     environment:
       - NODE_ENV=production
       - VITE_DEMO_MODE=${VITE_DEMO_MODE}
+      - VITE_APP_VERSION=${APP_VERSION:-1.0.0}
     depends_on:
       - trackeep-backend
     restart: unless-stopped
@@ -18,17 +17,18 @@ services:
       - trackeep-network
 
   trackeep-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/dvorinka/trackeep/backend:latest
     ports:
       - "8080:8080"
     env_file:
       - .env
+    environment:
+      - APP_VERSION=${APP_VERSION:-1.0.0}
     volumes:
       - ./data:/data
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for updates
     restart: unless-stopped
     networks:
       - trackeep-network

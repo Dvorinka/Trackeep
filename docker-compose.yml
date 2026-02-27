@@ -25,9 +25,12 @@ services:
       - "${PORT:-8080}:8080"
     env_file:
       - .env
+    environment:
+      - APP_VERSION=${APP_VERSION:-1.0.0}
     volumes:
       - ./data:/data
       - ./uploads:/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for updates
     restart: unless-stopped
     depends_on:
       postgres:
@@ -45,6 +48,10 @@ services:
       dockerfile: ./frontend/Dockerfile
     ports:
       - "5173:80"
+    environment:
+      - VITE_APP_VERSION=${APP_VERSION:-1.0.0}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for updates
     depends_on:
       trackeep-backend:
         condition: service_healthy

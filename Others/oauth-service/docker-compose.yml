@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   oauth-service:
-    build: ./oauth-service
+    build: .
     container_name: github-oauth-service
     ports:
       - "9090:9090"
@@ -17,7 +17,7 @@ services:
       - DEFAULT_CLIENT_URL=http://localhost:5173
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
     volumes:
-      - ./oauth-service/.env:/app/.env:ro
+      - ./.env:/app/.env:ro
     restart: unless-stopped
     networks:
       - oauth-network
