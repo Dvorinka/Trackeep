@@ -191,8 +191,8 @@ DISABLE_CHINESE_AI=true
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/trackeep.git
-   cd trackeep
+   git clone https://github.com/Dvorinka/Trackeep.git
+   cd Trackeep
    ```
 
 2. **Configure environment**
@@ -214,6 +214,40 @@ DISABLE_CHINESE_AI=true
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:8080
    - Health Check: http://localhost:8080/health
+
+### Docker Updates (Easy Way)
+
+Trackeep now supports automatic Docker updates! Instead of rebuilding from source, you can pull pre-built images:
+
+#### **Method 1: Quick Update Script**
+```bash
+./update.sh
+```
+
+#### **Method 2: Using Published Images**
+```bash
+docker compose -f docker-compose.published.yml pull
+docker compose -f docker-compose.published.yml up -d
+```
+
+#### **Method 3: Manual Pull**
+```bash
+docker pull ghcr.io/Dvorinka/trackeep/backend:latest
+docker pull ghcr.io/Dvorinka/trackeep/frontend:latest
+docker compose up -d
+```
+
+### Available Docker Images
+
+Pre-built images are automatically published to GitHub Container Registry:
+- `ghcr.io/Dvorinka/trackeep/backend:latest`
+- `ghcr.io/Dvorinka/trackeep/frontend:latest`
+
+**Benefits:**
+- 🚀 **Faster updates** - No need to build from source
+- 🔄 **Automatic builds** - Images published on every push to main
+- 📦 **Version control** - Images tagged with commit SHAs and branches
+- 🛡️ **Stable releases** - Tested images ready for production
 
 ### Demo Login
 - Email: `demo@trackeep.com`
