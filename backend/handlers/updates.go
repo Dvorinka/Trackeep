@@ -71,10 +71,25 @@ func CheckForUpdates(c *gin.Context) {
 	updateMutex.Lock()
 	defer updateMutex.Unlock()
 
-	// Get current version from environment or default
-	currentVersion := os.Getenv("APP_VERSION")
-	if currentVersion == "" {
-		currentVersion = "1.0.0"
+	// Get current version from go.mod
+	currentVersion := "1.2.5"
+
+	// Try to read from go.mod if running in development
+	if _, err := os.Stat("go.mod"); err == nil {
+		if content, err := os.ReadFile("go.mod"); err == nil {
+			lines := strings.Split(string(content), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "go ") && strings.Contains(line, "1.2.5") {
+					// Extract version from go.mod
+					parts := strings.Fields(line)
+					if len(parts) >= 2 {
+						currentVersion = strings.TrimSpace(parts[1])
+						log.Printf("Found version in go.mod: %s", currentVersion)
+						break
+					}
+				}
+			}
+		}
 	}
 
 	log.Printf("Checking for updates using Docker registry (current version: %s)", currentVersion)

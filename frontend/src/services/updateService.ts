@@ -147,10 +147,24 @@ export const updateService = {
     }
   },
 
-  // Get current app version from build-time constant
+  // Get current app version from package.json
   getCurrentVersion(): string {
-    // Use build-time version from vite config, fallback to environment variable or default
-    return (typeof __APP_VERSION__ !== 'undefined') ? __APP_VERSION__ : import.meta.env.VITE_APP_VERSION || '1.0.0';
+    // Try to get version from package.json first, then fallback
+    try {
+      const response = await fetch('/package.json');
+      if (response.ok) {
+        const packageJson = await response.json();
+        if (packageJson.version) {
+          console.log('Version from package.json:', packageJson.version);
+          return packageJson.version;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not read package.json:', error);
+    }
+    
+    // Fallback to environment variable or default
+    return import.meta.env.VITE_APP_VERSION || '1.2.5';
   },
 
   // Poll for update progress during installation

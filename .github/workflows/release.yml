@@ -149,17 +149,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Update docker-compose.prod.yml with new version
+      - name: Update version in all files
         run: |
-          # Update the version in docker-compose.prod.yml for next development
-          sed -i "s/APP_VERSION=.*/APP_VERSION=${{ needs.extract-version.outputs.version }}/" docker-compose.prod.yml
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          echo "🏷️ Updating all version files to $VERSION"
           
-          echo "📝 Updated docker-compose.prod.yml with version ${{ needs.extract-version.outputs.version }}"
+          # Update frontend package.json
+          if [ -f "frontend/package.json" ]; then
+            echo "📝 Updating frontend/package.json..."
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" frontend/package.json
+            echo "✅ Frontend updated to $VERSION"
+          fi
           
-      - name: Commit updated docker-compose.prod.yml
+          # Update backend go.mod
+          if [ -f "backend/go.mod" ]; then
+            echo "📝 Updating backend/go.mod..."
+            sed -i "s/go [^\"]*\"/go $VERSION/" backend/go.mod
+            echo "✅ Backend updated to $VERSION"
+          fi
+          
+          # Update docker-compose files
+          if [ -f "docker-compose.yml" ]; then
+            sed -i "s/APP_VERSION=.*/APP_VERSION=$VERSION/" docker-compose.yml
+            echo "✅ docker-compose.yml updated"
+          fi
+          
+          if [ -f "docker-compose.prod.yml" ]; then
+            sed -i "s/APP_VERSION=.*/APP_VERSION=$VERSION/" docker-compose.prod.yml
+            echo "✅ docker-compose.prod.yml updated"
+          fi
+          
+          echo "🎉 All version files updated to $VERSION"
+          
+      - name: Commit updated version files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docker-compose.prod.yml
-          git commit -m "chore: Update APP_VERSION to ${{ needs.extract-version.outputs.version }}"
+          git add .
+          git commit -m "chore: Update version to ${{ needs.extract-version.outputs.version }}"
           git push
