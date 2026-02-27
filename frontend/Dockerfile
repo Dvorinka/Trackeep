@@ -8,7 +8,7 @@ COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install --include=dev
 
 # Copy environment variables and source code
-COPY .env ./frontend/
+COPY .env.example ./frontend/.env
 COPY frontend/ ./frontend/
 
 # Build the application
