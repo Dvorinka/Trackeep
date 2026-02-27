@@ -1,0 +1,257 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e7]:
+      - link "Trackeep Logo Trackeep" [ref=e9] [cursor=pointer]:
+        - /url: /app
+        - img "Trackeep Logo" [ref=e10]
+        - generic [ref=e11]: Trackeep
+      - group [ref=e13]:
+        - button "Trackeep Workspace" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]:
+            - img [ref=e17]
+            - generic [ref=e20]: Trackeep Workspace
+          - img [ref=e22]
+      - navigation [ref=e24]:
+        - link "Home" [ref=e25] [cursor=pointer]:
+          - /url: /app
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e31]: Home
+        - link "Bookmarks" [ref=e33] [cursor=pointer]:
+          - /url: /app/bookmarks
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Bookmarks
+        - link "Tasks" [ref=e39] [cursor=pointer]:
+          - /url: /app/tasks
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e44]: Tasks
+        - link "Time Tracking" [ref=e46] [cursor=pointer]:
+          - /url: /app/time-tracking
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e51]: Time Tracking
+        - link "Calendar" [ref=e53] [cursor=pointer]:
+          - /url: /app/calendar
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e57]: Calendar
+        - link "Files" [ref=e59] [cursor=pointer]:
+          - /url: /app/files
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e63]: Files
+        - link "Notes" [ref=e65] [cursor=pointer]:
+          - /url: /app/notes
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - generic [ref=e69]: Notes
+        - link "Messages" [ref=e71] [cursor=pointer]:
+          - /url: /app/messages
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - generic [ref=e75]: Messages
+        - link "YouTube" [ref=e77] [cursor=pointer]:
+          - /url: /app/youtube
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e82]: YouTube
+        - link "Members" [ref=e84] [cursor=pointer]:
+          - /url: /app/members
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e91]: Members
+        - link "Learning" [ref=e93] [cursor=pointer]:
+          - /url: /app/learning-paths
+          - generic [ref=e94]:
+            - img [ref=e95]
+            - generic [ref=e98]: Learning
+        - link "Stats" [ref=e100] [cursor=pointer]:
+          - /url: /app/stats
+          - generic [ref=e101]:
+            - img [ref=e102]
+            - generic [ref=e104]: Stats
+        - link "GitHub" [ref=e106] [cursor=pointer]:
+          - /url: /app/github
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - generic [ref=e110]: GitHub
+        - link "AI Assistant" [ref=e112] [cursor=pointer]:
+          - /url: /app/chat
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - generic [ref=e121]: AI Assistant
+      - generic [ref=e124]:
+        - generic [ref=e125]: Version 1.0.0
+        - button "Update Failed" [ref=e126] [cursor=pointer]:
+          - generic [ref=e127]:
+            - img [ref=e128]
+            - generic [ref=e130]: Update Failed
+      - navigation [ref=e132]:
+        - link "Removed stuff" [ref=e133] [cursor=pointer]:
+          - /url: /app/removed-stuff
+          - generic [ref=e134]:
+            - img [ref=e135]
+            - generic [ref=e138]: Removed stuff
+        - link "Settings" [ref=e140] [cursor=pointer]:
+          - /url: /app/settings
+          - generic [ref=e141]:
+            - img [ref=e142]
+            - generic [ref=e145]: Settings
+        - button "Logout" [ref=e147] [cursor=pointer]:
+          - generic [ref=e148]:
+            - img [ref=e149]
+            - generic [ref=e153]: Logout
+    - generic [ref=e155]:
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - button [ref=e158] [cursor=pointer]:
+            - img [ref=e159]
+          - button "Quick search" [ref=e160] [cursor=pointer]:
+            - img [ref=e161]
+            - text: Quick search
+        - generic [ref=e164]:
+          - button "Import a document" [ref=e165] [cursor=pointer]:
+            - img [ref=e166]
+            - text: Import a document
+          - button [ref=e170] [cursor=pointer]:
+            - img [ref=e171]
+            - img [ref=e176]
+          - button "AU" [ref=e180] [cursor=pointer]:
+            - generic [ref=e181]: AU
+            - img [ref=e182]
+      - main [ref=e184]:
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - heading "Tasks" [level=1] [ref=e188]
+            - button "Add Task" [ref=e189] [cursor=pointer]
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - paragraph [ref=e192]: "0"
+              - paragraph [ref=e193]: Total Tasks
+            - generic [ref=e194]:
+              - paragraph [ref=e195]: "0"
+              - paragraph [ref=e196]: Active
+            - generic [ref=e197]:
+              - paragraph [ref=e198]: "0"
+              - paragraph [ref=e199]: Completed
+          - generic [ref=e201]:
+            - textbox "Search tasks..." [ref=e202]
+            - combobox [ref=e203]:
+              - option "All Priorities" [selected]
+              - option "high"
+              - option "medium"
+              - option "low"
+          - generic [ref=e204]:
+            - button "all" [ref=e205] [cursor=pointer]
+            - button "active" [ref=e206] [cursor=pointer]
+            - button "completed" [ref=e207] [cursor=pointer]
+          - paragraph [ref=e210]: No tasks yet. Add your first task!
+    - button "AI Assistant" [ref=e211] [cursor=pointer]:
+      - img [ref=e212]
+    - generic [ref=e219]:
+      - generic [ref=e220]:
+        - generic [ref=e221]:
+          - img [ref=e223]
+          - generic [ref=e230]:
+            - heading "AI Assistant" [level=3] [ref=e231]
+            - paragraph [ref=e232]: Always here to help
+        - button [ref=e234] [cursor=pointer]:
+          - img [ref=e235]
+      - generic [ref=e239]:
+        - img [ref=e241]
+        - generic [ref=e248]:
+          - paragraph [ref=e249]: Hello! I'm your AI assistant. How can I help you today?
+          - paragraph [ref=e250]: 04:23 PM
+      - generic [ref=e251]:
+        - generic [ref=e252]:
+          - textbox "Type your message..." [ref=e253]
+          - button [disabled]:
+            - img
+        - generic [ref=e255]:
+          - button "longcat icon LongCat" [ref=e257] [cursor=pointer]:
+            - img "longcat icon" [ref=e258]
+            - generic [ref=e259]: LongCat
+            - img [ref=e260]
+          - generic [ref=e262]:
+            - generic [ref=e263]: longcat
+            - link "AI settings" [ref=e264] [cursor=pointer]:
+              - /url: /app/settings#ai
+  - generic:
+    - generic:
+      - generic:
+        - heading "Add New Task" [level=3]
+        - button:
+          - img
+      - generic:
+        - textbox "Task title *"
+        - textbox "Description (optional)"
+        - generic:
+          - combobox:
+            - option "Low Priority"
+            - option "Medium Priority" [selected]
+            - option "High Priority"
+          - generic:
+            - button "Due date (optional)":
+              - generic: Due date (optional)
+              - img
+      - generic:
+        - button "Cancel"
+        - button "Add Task" [disabled]
+  - generic:
+    - generic:
+      - generic:
+        - heading "Edit Task" [level=3]
+        - button:
+          - img
+      - generic:
+        - textbox "Task title *"
+        - textbox "Description (optional)"
+        - generic:
+          - combobox:
+            - option "Low Priority"
+            - option "Medium Priority" [selected]
+            - option "High Priority"
+          - generic:
+            - button "Due date (optional)":
+              - generic: Due date (optional)
+              - img
+      - generic:
+        - button "Cancel"
+        - button "Save Changes" [disabled]
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]
+  - generic [ref=e279]:
+    - generic [ref=e280]:
+      - heading "Create Workspace" [level=3] [ref=e281]
+      - paragraph [ref=e282]: Add a new workspace for your team or projects.
+    - generic [ref=e283]:
+      - generic [ref=e284]:
+        - text: Name
+        - textbox "Workspace name" [ref=e285]
+      - generic [ref=e286]:
+        - text: Description
+        - textbox "Description" [ref=e287]:
+          - /placeholder: Optional description
+      - generic [ref=e288]:
+        - generic [ref=e289]:
+          - paragraph [ref=e290]: Public workspace
+          - paragraph [ref=e291]: Allow all members to discover this workspace.
+        - switch [ref=e292] [cursor=pointer]
+      - generic [ref=e293]:
+        - button "Cancel" [ref=e294] [cursor=pointer]
+        - button "Create Workspace" [ref=e295] [cursor=pointer]

@@ -2,6 +2,7 @@ import { createSignal, For, Show, onMount, onCleanup } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { 
   IconX, 
   IconUpload, 
@@ -153,15 +154,16 @@ export const FileUploadModal = (props: FileUploadModalProps) => {
   };
 
   return (
-    <Show when={props.isOpen}>
-      <div 
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
-        onClick={props.onClose}
-      >
-        <div 
-          class="bg-card rounded-lg border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 my-4"
-          onClick={(e) => e.stopPropagation()}
+    <ModalPortal>
+      <Show when={props.isOpen}>
+        <div
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={props.onClose}
         >
+          <div
+            class="bg-card rounded-lg border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 my-4"
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Header */}
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-semibold">Upload File</h2>
@@ -382,8 +384,9 @@ export const FileUploadModal = (props: FileUploadModalProps) => {
               Upload
             </Button>
           </div>
+          </div>
         </div>
-      </div>
-    </Show>
+      </Show>
+    </ModalPortal>
   );
 };

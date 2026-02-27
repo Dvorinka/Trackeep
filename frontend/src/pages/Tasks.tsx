@@ -1,10 +1,12 @@
 import { createSignal, onMount } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { TaskModal } from '@/components/ui/TaskModal';
 import { IconEdit, IconTrash } from '@tabler/icons-solidjs';
-import { getMockTasks } from '@/lib/mockData';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface Task {
   id: number;
@@ -24,10 +26,10 @@ export const Tasks = () => {
   const [editingTask, setEditingTask] = createSignal<Task | null>(null);
   const [filter, setFilter] = createSignal<'all' | 'active' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = createSignal('');
+  const [selectedPriority, setSelectedPriority] = createSignal('');
 
   onMount(async () => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/tasks`, {
         headers: {
           'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
@@ -40,18 +42,7 @@ export const Tasks = () => {
       setTasks(data);
     } catch (error) {
       console.error('Failed to load tasks:', error);
-      // Fallback to mock data if API fails
-      const mockTasks = getMockTasks();
-      const adaptedTasks = mockTasks.map((task, index) => ({
-        id: index + 1,
-        title: task.title,
-        description: task.description,
-        completed: task.status === 'completed',
-        priority: task.priority,
-        createdAt: task.createdAt,
-        dueDate: task.dueDate
-      }));
-      setTasks(adaptedTasks);
+      setTasks([]);
     } finally {
       setIsLoading(false);
     }
@@ -63,13 +54,15 @@ export const Tasks = () => {
       const matchesSearch = !term || 
         task.title.toLowerCase().includes(term) ||
         (task.description && task.description.toLowerCase().includes(term));
+
+      const matchesPriority = !selectedPriority() || task.priority === selectedPriority();
       
       const matchesFilter = 
         (filter() === 'active' && !task.completed) ||
         (filter() === 'completed' && task.completed) ||
         filter() === 'all';
       
-      return matchesSearch && matchesFilter;
+      return matchesSearch && matchesFilter && matchesPriority;
     });
     
     return filtered.sort((a, b) => {
@@ -81,7 +74,6 @@ export const Tasks = () => {
 
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/tasks`, {
         method: 'POST',
         headers: {
@@ -108,7 +100,6 @@ export const Tasks = () => {
     if (!editingTask()) return;
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/tasks/${editingTask()!.id}`, {
         method: 'PUT',
         headers: {
@@ -150,7 +141,6 @@ export const Tasks = () => {
   const deleteTask = async (taskId: number) => {
     if (confirm('Are you sure you want to delete this task?')) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
         const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
           method: 'DELETE',
           headers: {
@@ -190,6 +180,9 @@ export const Tasks = () => {
     const active = total - completed;
     return { total, completed, active };
   };
+
+  const hasSearchOrPriorityFilters = () =>
+    Boolean(searchTerm().trim()) || Boolean(selectedPriority());
 
   return (
     <div class="p-6 space-y-6">
@@ -232,30 +225,30 @@ export const Tasks = () => {
         </Card>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 mb-6">
-        <div class="flex-1">
-          <Input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchTerm()}
-            onInput={(e) => {
-              const target = e.currentTarget as HTMLInputElement;
-              if (target) setSearchTerm(target.value);
-            }}
-            class="w-full"
-          />
-        </div>
-        <div class="flex space-x-2">
-          {(['all', 'active', 'completed'] as const).map((filterOption) => (
-            <Button
-              variant={filter() === filterOption ? 'default' : 'outline'}
-              onClick={() => setFilter(filterOption)}
-              class="capitalize"
-            >
-              {filterOption}
-            </Button>
-          ))}
-        </div>
+      <SearchTagFilterBar
+        searchPlaceholder="Search tasks..."
+        searchValue={searchTerm()}
+        onSearchChange={(value) => setSearchTerm(value)}
+        tagOptions={['high', 'medium', 'low']}
+        selectedTag={selectedPriority()}
+        onTagChange={(value) => setSelectedPriority(value)}
+        onReset={() => {
+          setSearchTerm('');
+          setSelectedPriority('');
+        }}
+        allOptionLabel="All Priorities"
+      />
+
+      <div class="flex flex-wrap gap-2 -mt-3 mb-6">
+        {(['all', 'active', 'completed'] as const).map((filterOption) => (
+          <Button
+            variant={filter() === filterOption ? 'default' : 'outline'}
+            onClick={() => setFilter(filterOption)}
+            class="capitalize"
+          >
+            {filterOption}
+          </Button>
+        ))}
       </div>
 
       {isLoading() ? (
@@ -337,7 +330,9 @@ export const Tasks = () => {
           {filteredTasks().length === 0 && (
             <Card class="p-12 text-center">
               <p class="text-[#a3a3a3]">
-                {filter() === 'completed' ? 'No completed tasks yet.' : 
+                {hasSearchOrPriorityFilters()
+                  ? 'No tasks found matching your search or filters.'
+                  : filter() === 'completed' ? 'No completed tasks yet.' : 
                  filter() === 'active' ? 'No active tasks. Great job!' : 
                  'No tasks yet. Add your first task!'}
               </p>

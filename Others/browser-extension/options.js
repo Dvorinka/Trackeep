@@ -3,13 +3,41 @@
 const apiBaseUrlInput = document.getElementById('apiBaseUrl');
 const authTokenInput = document.getElementById('authToken');
 const saveBtn = document.getElementById('saveBtn');
-const statusEl = document.getElementById('status');
+const statusMessageEl = document.getElementById('statusMessage');
 
-function setStatus(message, type) {
-  statusEl.textContent = message || '';
-  statusEl.classList.remove('success', 'error');
-  if (type) {
-    statusEl.classList.add(type);
+function showMessage(message, type = 'info', duration = 5000) {
+  statusMessageEl.textContent = message;
+  statusMessageEl.className = `status-message ${type}`;
+  statusMessageEl.style.display = 'flex';
+  
+  if (duration > 0) {
+    setTimeout(() => {
+      statusMessageEl.style.display = 'none';
+    }, duration);
+  }
+}
+
+function hideMessage() {
+  statusMessageEl.style.display = 'none';
+}
+
+function setButtonLoading(button, loading = true) {
+  if (loading) {
+    button.disabled = true;
+    const originalContent = button.innerHTML;
+    button.dataset.originalContent = originalContent;
+    button.innerHTML = `
+      <svg class="icon icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <span>Saving...</span>
+    `;
+  } else {
+    button.disabled = false;
+    if (button.dataset.originalContent) {
+      button.innerHTML = button.dataset.originalContent;
+      delete button.dataset.originalContent;
+    }
   }
 }
 
@@ -63,17 +91,17 @@ function saveSettings() {
   const authToken = authTokenInput.value.trim();
 
   if (!apiBaseUrl) {
-    setStatus('API base URL is required.', 'error');
+    showMessage('API base URL is required.', 'error');
     return;
   }
 
   if (!authToken) {
-    setStatus('Auth token is required.', 'error');
+    showMessage('Authentication token is required.', 'error');
     return;
   }
 
-  saveBtn.disabled = true;
-  setStatus('Saving…', null);
+  setButtonLoading(saveBtn, true);
+  hideMessage();
 
   chrome.storage.sync.set(
     {
@@ -81,18 +109,22 @@ function saveSettings() {
       trackeepAuthToken: authToken
     },
     () => {
-      saveBtn.disabled = false;
+      setButtonLoading(saveBtn, false);
       if (chrome.runtime.lastError) {
-        setStatus(`Failed to save: ${chrome.runtime.lastError.message}`, 'error');
+        showMessage(`Failed to save: ${chrome.runtime.lastError.message}`, 'error');
       } else {
-        setStatus('Settings saved. You can now use the popup to save bookmarks and files.', 'success');
+        showMessage(`
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>
+      Settings saved successfully! You can now use the extension to save bookmarks and files.
+    `, 'success');
       }
     }
   );
 }
 
-// Init
-
+// Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   detectAndPrefillApiBaseUrl(() => {
     loadSettings();

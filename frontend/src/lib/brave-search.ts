@@ -1,5 +1,8 @@
 // Brave Search API integration
-const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const BACKEND_API_URL = getApiV1BaseUrl();
 const BRAVE_API_KEY = import.meta.env.VITE_BRAVE_API_KEY || 'BSAw0HNI1v3rKmXlSTr0C_UfZDjw7fT';
 
 // Use the variable to avoid unused warning
@@ -7,10 +10,7 @@ console.log('Brave API key available:', !!BRAVE_API_KEY);
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  // Check if we're in demo mode
-  const isDemo = import.meta.env.VITE_DEMO_MODE === 'true' || 
-                 document.title.includes('Demo Mode') ||
-                 window.location.search.includes('demo=true');
+  const isDemo = isDemoMode();
   
   let token = null;
   

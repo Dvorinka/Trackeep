@@ -106,6 +106,15 @@ export interface VaultItem {
   target_conversation_id?: number | null;
 }
 
+export interface UserFile {
+  id: number;
+  original_name: string;
+  mime_type: string;
+  file_size: number;
+  created_at: string;
+  description?: string;
+}
+
 export interface WsEvent {
   type: string;
   conversation_id?: number;
@@ -186,6 +195,11 @@ export const messagesApi = {
       method: 'POST',
       body: JSON.stringify({}),
     }),
+  revealSensitiveMessage: (messageId: number) =>
+    apiRequest<{ message_id: number; plaintext: string }>(`/messages/${messageId}/reveal-sensitive`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
   listVaultItems: () => apiRequest<{ items: VaultItem[] }>('/password-vault/items'),
   createVaultItem: (payload: any) => apiRequest<any>('/password-vault/items', {
     method: 'POST',
@@ -206,6 +220,28 @@ export const messagesApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  listUserFiles: async (query: string = '', limit: number = 20): Promise<UserFile[]> => {
+    const token = getToken();
+    const params = new URLSearchParams();
+    if (query.trim()) {
+      params.set('q', query.trim());
+    }
+    if (Number.isFinite(limit) && limit > 0) {
+      params.set('limit', String(Math.min(100, Math.floor(limit))));
+    }
+
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE_URL}/api/v1/files${suffix}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `Request failed (${res.status})`);
+    }
+    return res.json();
+  },
 };
 
 export async function uploadChatFile(file: File): Promise<{ id: number; original_name: string; mime_type: string }> {

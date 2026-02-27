@@ -11,13 +11,7 @@ import {
   getMockLearningPaths, 
   getMockStats
 } from './mockData';
-
-// Check if we're in demo mode
-const isDemoMode = () => {
-  return localStorage.getItem('demoMode') === 'true' || 
-         document.title.includes('Demo Mode') ||
-         window.location.search.includes('demo=true');
-};
+import { isDemoMode } from './demo-mode';
 
 // Demo mode API client that falls back to mock data
 export class DemoModeApiClient {

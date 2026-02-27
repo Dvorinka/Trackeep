@@ -386,10 +386,6 @@
   inset: -5px;
 }
 
-.-translate-y-1\/2 {
-  transform: translateY(-50%);
-}
-
 /* Z-index utilities */
 .z-50 {
   z-index: 50;

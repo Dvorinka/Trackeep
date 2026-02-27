@@ -1,4 +1,6 @@
 // Update service for handling application updates
+import { isDemoMode } from '@/lib/demo-mode';
+
 export interface UpdateInfo {
   version: string;
   releaseNotes: string;
@@ -24,14 +26,6 @@ export interface UpdateCheckResponse {
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
-// Check if we're in demo mode
-const isDemoMode = () => {
-  return localStorage.getItem('demoMode') === 'true' || 
-         document.title.includes('Demo Mode') ||
-         window.location.search.includes('demo=true') ||
-         import.meta.env.VITE_DEMO_MODE === 'true';
-};
 
 export const updateService = {
   // Check for available updates

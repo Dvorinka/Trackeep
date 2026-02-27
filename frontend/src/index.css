@@ -890,3 +890,12 @@ button.hover\:text-primary\/80:hover,
 button.hover\:text-primary\/80:hover svg {
     color: hsl(var(--primary) / 0.8) !important;
 }
+
+/* Shared monochrome logo styling for consistent contrast */
+.app-logo-mono {
+    filter: brightness(0);
+}
+
+[data-kb-theme="dark"] .app-logo-mono {
+    filter: brightness(0) invert(1);
+}

@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show } from 'solid-js';
+import { createEffect, createSignal, onMount, Show } from 'solid-js';
 import { IconTrash, IconRestore, IconFileText, IconFileTypePpt, IconFileTypeDocx, IconClock, IconSettings, IconAlertTriangle } from '@tabler/icons-solidjs';
 
 interface RemovedItem {
@@ -28,6 +28,10 @@ export const RemovedStuff = () => {
   const [showSettings, setShowSettings] = createSignal(false);
   const [selectedItems, setSelectedItems] = createSignal<string[]>([]);
 
+  createEffect(() => {
+    localStorage.setItem('removedItems', JSON.stringify(removedItems()));
+  });
+
   onMount(() => {
     // Load auto-remove settings from localStorage
     const savedSettings = localStorage.getItem('autoRemoveSettings');
@@ -35,60 +39,15 @@ export const RemovedStuff = () => {
       setAutoRemoveSettings(JSON.parse(savedSettings));
     }
 
-    // Enhanced mock data with more realistic items
-    const mockItems: RemovedItem[] = [
-      {
-        id: '1',
-        name: 'Old Document',
-        type: 'docx',
-        removedAt: '2 days ago',
-        removedBy: 'John Doe',
-        size: '2.5 MB',
-        path: '/documents/old-document.docx',
-        daysInTrash: 2
-      },
-      {
-        id: '2',
-        name: 'Deleted Presentation',
-        type: 'pptx',
-        removedAt: '1 week ago',
-        removedBy: 'Jane Smith',
-        size: '15.3 MB',
-        path: '/presentations/deleted-presentation.pptx',
-        daysInTrash: 7
-      },
-      {
-        id: '3',
-        name: 'Removed Note',
-        type: 'note',
-        removedAt: '2 weeks ago',
-        removedBy: 'Admin',
-        size: '156 KB',
-        path: '/notes/removed-note.md',
-        daysInTrash: 14
-      },
-      {
-        id: '4',
-        name: 'Old Backup File',
-        type: 'zip',
-        removedAt: '3 weeks ago',
-        removedBy: 'System',
-        size: '125.7 MB',
-        path: '/backups/old-backup.zip',
-        daysInTrash: 21
-      },
-      {
-        id: '5',
-        name: 'Temporary Files',
-        type: 'folder',
-        removedAt: '1 month ago',
-        removedBy: 'John Doe',
-        size: '8.2 MB',
-        path: '/temp/temporary-files',
-        daysInTrash: 30
+    const savedItems = localStorage.getItem('removedItems');
+    if (savedItems) {
+      try {
+        const parsedItems = JSON.parse(savedItems);
+        setRemovedItems(Array.isArray(parsedItems) ? parsedItems : []);
+      } catch {
+        setRemovedItems([]);
       }
-    ];
-    setRemovedItems(mockItems);
+    }
 
     // Check for auto-remove on mount
     checkAutoRemove();

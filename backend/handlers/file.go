@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,10 +19,40 @@ import (
 func GetFiles(c *gin.Context) {
 	var files []models.File
 
-	// TODO: Get user ID from authentication context
-	userID := uint(1) // Placeholder
+	userID := c.GetUint("user_id")
+	if userID == 0 {
+		userID = c.GetUint("userID")
+	}
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 
-	if err := models.DB.Where("user_id = ?", userID).Find(&files).Error; err != nil {
+	query := models.DB.Where("user_id = ?", userID)
+
+	if rawQuery := strings.TrimSpace(c.Query("q")); rawQuery != "" {
+		needle := "%" + strings.ToLower(rawQuery) + "%"
+		query = query.Where("LOWER(original_name) LIKE ? OR LOWER(description) LIKE ?", needle, needle)
+	}
+
+	limitApplied := false
+	if limitRaw := strings.TrimSpace(c.Query("limit")); limitRaw != "" {
+		limit, err := strconv.Atoi(limitRaw)
+		if err != nil || limit <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit"})
+			return
+		}
+		if limit > 100 {
+			limit = 100
+		}
+		query = query.Limit(limit)
+		limitApplied = true
+	}
+	if !limitApplied && strings.TrimSpace(c.Query("q")) != "" {
+		query = query.Limit(20)
+	}
+
+	if err := query.Order("created_at DESC").Find(&files).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve files"})
 		return
 	}

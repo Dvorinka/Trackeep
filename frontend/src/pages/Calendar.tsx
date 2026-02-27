@@ -1,5 +1,6 @@
 import { createSignal, createEffect, onMount, For, Show } from 'solid-js'
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { 
   IconCalendar, 
   IconClock, 
@@ -86,8 +87,8 @@ export function Calendar() {
     try {
       const token = localStorage.getItem('token');
 
-      if (isDemoModeEnabled() || !token) {
-        // Use mock data in demo mode or when not authenticated
+      if (isDemoModeEnabled()) {
+        // Use mock data in demo mode
         const mockEvents = getMockCalendarEvents();
         
         const today = new Date();
@@ -131,6 +132,14 @@ export function Calendar() {
         return;
       }
 
+      if (!token) {
+        setMappedEvents([]);
+        setTodayEvents([]);
+        setUpcomingEvents([]);
+        setDeadlines([]);
+        return;
+      }
+
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -159,46 +168,52 @@ export function Calendar() {
       }
     } catch (error) {
       console.error('Failed to fetch calendar data:', error)
-      // Fallback to mock data if API fails
-      const mockEvents = getMockCalendarEvents();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const weekFromNow = new Date();
-      weekFromNow.setDate(weekFromNow.getDate() + 7);
-      
-      // Map mock events to calendar events and store for calendar grid
-      const mappedEvents: CalendarEvent[] = mockEvents.map(event => ({
-        id: parseInt(event.id),
-        title: event.title,
-        description: event.description,
-        start_time: event.start,
-        end_time: event.end,
-        type: event.type === 'personal' ? 'reminder' : event.type as 'task' | 'meeting' | 'deadline' | 'reminder' | 'habit',
-        priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
-        location: event.location,
-        is_completed: false,
-        is_all_day: event.allDay
-      }));
-      
-      setMappedEvents(mappedEvents);
-      
-      const todayEvents = mappedEvents.filter(event => {
-        const eventDate = new Date(event.start_time);
-        return eventDate.toDateString() === today.toDateString();
-      });
-      
-      const upcomingEvents = mappedEvents.filter(event => {
-        const eventDate = new Date(event.start_time);
-        return eventDate >= today && eventDate <= weekFromNow;
-      });
-      
-      const deadlines = mappedEvents.filter(event => 
-        event.type === 'deadline' && new Date(event.start_time) >= today
-      );
-      
-      setTodayEvents(todayEvents);
-      setUpcomingEvents(upcomingEvents);
-      setDeadlines(deadlines);
+      if (isDemoModeEnabled()) {
+        const mockEvents = getMockCalendarEvents();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weekFromNow = new Date();
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+        
+        const mappedEvents: CalendarEvent[] = mockEvents.map(event => ({
+          id: parseInt(event.id),
+          title: event.title,
+          description: event.description,
+          start_time: event.start,
+          end_time: event.end,
+          type: event.type === 'personal' ? 'reminder' : event.type as 'task' | 'meeting' | 'deadline' | 'reminder' | 'habit',
+          priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+          location: event.location,
+          is_completed: false,
+          is_all_day: event.allDay
+        }));
+        
+        setMappedEvents(mappedEvents);
+        
+        const todayEvents = mappedEvents.filter(event => {
+          const eventDate = new Date(event.start_time);
+          return eventDate.toDateString() === today.toDateString();
+        });
+        
+        const upcomingEvents = mappedEvents.filter(event => {
+          const eventDate = new Date(event.start_time);
+          return eventDate >= today && eventDate <= weekFromNow;
+        });
+        
+        const deadlines = mappedEvents.filter(event => 
+          event.type === 'deadline' && new Date(event.start_time) >= today
+        );
+        
+        setTodayEvents(todayEvents);
+        setUpcomingEvents(upcomingEvents);
+        setDeadlines(deadlines);
+        return;
+      }
+
+      setMappedEvents([]);
+      setTodayEvents([]);
+      setUpcomingEvents([]);
+      setDeadlines([]);
     }
   }
 
@@ -775,25 +790,26 @@ export function Calendar() {
 
       {/* Event Creation Modal */}
       <Show when={showEventModal()}>
-        <div 
-          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
-          onClick={(e) => {
-            // Close modal only when clicking the backdrop, not the modal content
-            if (e.target === e.currentTarget) {
-              setShowEventModal(false);
-            }
-          }}
-        >
-          <div class="bg-card rounded-lg border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">New Event</h3>
-              <button
-                onClick={() => setShowEventModal(false)}
-                class="p-1 hover:bg-accent rounded-lg transition-colors"
-              >
-                <IconX class="size-4" />
-              </button>
-            </div>
+        <ModalPortal>
+          <div 
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={(e) => {
+              // Close modal only when clicking the backdrop, not the modal content
+              if (e.target === e.currentTarget) {
+                setShowEventModal(false);
+              }
+            }}
+          >
+            <div class="bg-card rounded-lg border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">New Event</h3>
+                <button
+                  onClick={() => setShowEventModal(false)}
+                  class="p-1 hover:bg-accent rounded-lg transition-colors"
+                >
+                  <IconX class="size-4" />
+                </button>
+              </div>
 
             <div class="space-y-4">
               <div>
@@ -936,34 +952,36 @@ export function Calendar() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
 
       {/* Task Detail Modal */}
       <Show when={showTaskDetailModal() && selectedTask()}>
-        <div 
-          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowTaskDetailModal(false);
-              setSelectedTask(null);
-            }
-          }}
-        >
-          <div class="bg-card rounded-lg border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Task Details</h3>
-              <button
-                onClick={() => {
-                  setShowTaskDetailModal(false);
-                  setSelectedTask(null);
-                }}
-                class="p-1 hover:bg-accent rounded-lg transition-colors"
-              >
-                <IconX class="size-4" />
-              </button>
-            </div>
+        <ModalPortal>
+          <div 
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowTaskDetailModal(false);
+                setSelectedTask(null);
+              }
+            }}
+          >
+            <div class="bg-card rounded-lg border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Task Details</h3>
+                <button
+                  onClick={() => {
+                    setShowTaskDetailModal(false);
+                    setSelectedTask(null);
+                  }}
+                  class="p-1 hover:bg-accent rounded-lg transition-colors"
+                >
+                  <IconX class="size-4" />
+                </button>
+              </div>
 
             <Show when={selectedTask()}>
               {(task) => (
@@ -1106,8 +1124,9 @@ export function Calendar() {
                 </div>
               )}
             </Show>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
     </div>
   )

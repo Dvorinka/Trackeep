@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LearningPathPreviewModal } from '@/components/ui/LearningPathPreviewModal';
 import { getMockLearningPaths } from '@/lib/mockData';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 import { 
   IconClock, 
   IconUsers, 
@@ -24,6 +26,8 @@ import {
   IconBrain,
   IconBook
 } from '@tabler/icons-solidjs';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface LearningPath {
   id: number;
@@ -73,13 +77,6 @@ export const LearningPaths = () => {
   const [isPreviewOpen, setIsPreviewOpen] = createSignal(false);
   const [selectedPath, setSelectedPath] = createSignal<LearningPath | null>(null);
 
-  // Check if we're in demo mode
-  const isDemoMode = () => {
-    return localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-  };
-
   const fetchData = async () => {
     try {
       if (isDemoMode()) {
@@ -118,7 +115,6 @@ export const LearningPaths = () => {
       }
 
       // Fetch categories
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
       const categoriesResponse = await fetch(`${API_BASE_URL}/learning-paths/categories`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -214,7 +210,6 @@ export const LearningPaths = () => {
         return;
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
       const response = await fetch(`${API_BASE_URL}/learning-paths/${pathId}/enroll`, {
         method: 'POST',
         headers: {

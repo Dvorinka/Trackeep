@@ -1,7 +1,6 @@
 import { createSignal, For, Show, onCleanup, onMount } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
 import { toast } from '@/components/ui/Toast';
 import {
   MessagesRealtimeClient,
@@ -13,25 +12,74 @@ import type {
   ConversationMember,
   Message,
   MessageSuggestion,
-  VaultItem,
+  UserFile,
 } from '@/lib/messages';
 import {
+  IconAt,
   IconBell,
   IconBellOff,
-  IconLock,
+  IconBolt,
+  IconChevronLeft,
+  IconCircleCheck,
+  IconFile,
+  IconHeart,
   IconMessageCircle,
+  IconMicrophone,
+  IconMicrophoneOff,
+  IconPaperclip,
+  IconPhone,
+  IconPhoneOff,
   IconPlus,
   IconSearch,
   IconSend,
-  IconUsers,
+  IconSparkles,
+  IconThumbUp,
+  IconUpload,
   IconX,
 } from '@tabler/icons-solidjs';
+import './Messages.css';
 
 interface MemberOption {
   id: number;
   username: string;
   name: string;
 }
+
+interface TeamOption {
+  id: number;
+  name: string;
+}
+
+interface MentionUserOption {
+  type: 'user';
+  id: number;
+  username: string;
+  label: string;
+}
+
+interface MentionFileOption {
+  type: 'file';
+  file: UserFile;
+  label: string;
+}
+
+type MentionOption = MentionUserOption | MentionFileOption;
+
+interface ComposerLibraryFile {
+  id: number;
+  original_name: string;
+  mime_type: string;
+}
+
+type ReactionKey = 'thumb_up' | 'heart' | 'bolt' | 'check' | 'sparkles';
+
+const REACTION_PRESETS: Array<{ key: ReactionKey; label: string; icon: any }> = [
+  { key: 'thumb_up', label: 'Thumb up', icon: IconThumbUp },
+  { key: 'heart', label: 'Heart', icon: IconHeart },
+  { key: 'bolt', label: 'Bolt', icon: IconBolt },
+  { key: 'check', label: 'Check', icon: IconCircleCheck },
+  { key: 'sparkles', label: 'Sparkles', icon: IconSparkles },
+];
 
 const ATTACHMENT_KIND_OPTIONS = [
   'file',
@@ -57,7 +105,6 @@ const REFERENCE_TYPE_OPTIONS = [
   'learning_path',
   'saved_search',
   'github',
-  'password_vault_item',
 ];
 
 type TriStateFilter = 'any' | 'yes' | 'no';
@@ -67,6 +114,7 @@ export const Messages = () => {
   const [conversations, setConversations] = createSignal<ConversationListItem[]>([]);
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [selectedConversationId, setSelectedConversationId] = createSignal<number | null>(null);
+  const [activeScreen, setActiveScreen] = createSignal<'list' | 'conversation'>('list');
   const [loadingConversations, setLoadingConversations] = createSignal(false);
   const [loadingMessages, setLoadingMessages] = createSignal(false);
   const [inputText, setInputText] = createSignal('');
@@ -77,19 +125,16 @@ export const Messages = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
   const [searchResults, setSearchResults] = createSignal<Message[]>([]);
   const [searching, setSearching] = createSignal(false);
-  const [showVault, setShowVault] = createSignal(false);
-  const [vaultItems, setVaultItems] = createSignal<VaultItem[]>([]);
-  const [revealedSecrets, setRevealedSecrets] = createSignal<Record<number, { secret: string; notes: string }>>({});
-  const [shareTargets, setShareTargets] = createSignal<Record<number, string>>({});
   const [members, setMembers] = createSignal<MemberOption[]>([]);
+  const [teams, setTeams] = createSignal<TeamOption[]>([]);
   const [conversationMembers, setConversationMembers] = createSignal<ConversationMember[]>([]);
   const [typingByConversation, setTypingByConversation] = createSignal<Record<number, Record<number, number>>>({});
   const [newConversationType, setNewConversationType] = createSignal<'dm' | 'group' | 'team'>('dm');
   const [newConversationName, setNewConversationName] = createSignal('');
   const [newConversationTopic, setNewConversationTopic] = createSignal('');
-  const [targetUserId, setTargetUserId] = createSignal('');
-  const [groupUserIds, setGroupUserIds] = createSignal('');
-  const [teamId, setTeamId] = createSignal('');
+  const [targetUserId, setTargetUserId] = createSignal<number | null>(null);
+  const [groupUserIds, setGroupUserIds] = createSignal<number[]>([]);
+  const [teamId, setTeamId] = createSignal<number | null>(null);
   const [showCreateConversation, setShowCreateConversation] = createSignal(false);
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = createSignal(
     localStorage.getItem('messages_browser_notifications') === 'true'
@@ -118,6 +163,15 @@ export const Messages = () => {
     localStorage.getItem('messages_call_transcript') !== 'false'
   );
   const [callTranscriptPreview, setCallTranscriptPreview] = createSignal('');
+  const [attachedLibraryFiles, setAttachedLibraryFiles] = createSignal<ComposerLibraryFile[]>([]);
+  const [mentionQuery, setMentionQuery] = createSignal('');
+  const [mentionOpen, setMentionOpen] = createSignal(false);
+  const [mentionOptions, setMentionOptions] = createSignal<MentionOption[]>([]);
+  const [mentionHighlightedIndex, setMentionHighlightedIndex] = createSignal(0);
+  const [mentionLoading, setMentionLoading] = createSignal(false);
+  const [isDragOverComposer, setIsDragOverComposer] = createSignal(false);
+  const [revealedSensitiveMessages, setRevealedSensitiveMessages] = createSignal<Record<number, string>>({});
+  const [uploadProgress, setUploadProgress] = createSignal<{ done: number; total: number } | null>(null);
 
   const getCurrentUserId = () => {
     const raw = localStorage.getItem('trackeep_user') || localStorage.getItem('user');
@@ -151,6 +205,11 @@ export const Messages = () => {
   let callRecognition: any = null;
   let callFinalTranscript = '';
   let callInterimTranscript = '';
+  let mentionSearchTimer: number | null = null;
+  let mentionSearchToken = 0;
+  let composerTextareaRef: HTMLTextAreaElement | null = null;
+  let hiddenFileInputRef: HTMLInputElement | null = null;
+  const sensitiveRevealTimers = new Map<number, number>();
 
   const sortedConversations = () =>
     [...conversations()].sort((a, b) => {
@@ -161,6 +220,61 @@ export const Messages = () => {
 
   const activeConversation = () =>
     conversations().find((item) => item.conversation.id === selectedConversationId()) || null;
+
+  const openConversation = (conversationId: number) => {
+    setSelectedConversationId(conversationId);
+    setActiveScreen('conversation');
+  };
+
+  const closeConversation = () => {
+    const conversationID = selectedConversationId();
+    if (conversationID) {
+      markTypingStopped(conversationID);
+    }
+    if (isCallActive()) {
+      endVoiceCall(true);
+    }
+    setActiveScreen('list');
+  };
+
+  const shouldUseSensitiveReveal = () => {
+    const type = activeConversation()?.conversation.type;
+    return type === 'dm' || type === 'self';
+  };
+
+  const conversationNameById = (id: number) =>
+    conversations().find((item) => item.conversation.id === id)?.conversation.name || 'Conversation';
+
+  const normalizeReactionKey = (value: string): ReactionKey => {
+    const raw = value.trim().toLowerCase();
+    if (!raw) return 'thumb_up';
+    if (raw === 'thumb_up' || raw === '👍' || raw === ':+1:') return 'thumb_up';
+    if (raw === 'heart' || raw === '❤️' || raw === '❤') return 'heart';
+    if (raw === 'bolt' || raw === '🔥') return 'bolt';
+    if (raw === 'check' || raw === '✅') return 'check';
+    if (raw === 'sparkles' || raw === '✨' || raw === '⭐' || raw === 'star') return 'sparkles';
+    return 'thumb_up';
+  };
+
+  const reactionIconForKey = (key: ReactionKey) =>
+    REACTION_PRESETS.find((preset) => preset.key === key)?.icon || IconThumbUp;
+
+  const groupedReactions = (message: Message) => {
+    const grouped = new Map<ReactionKey, { count: number; mine: boolean; rawMine: string[] }>();
+    for (const reaction of message.reactions || []) {
+      const key = normalizeReactionKey(reaction.emoji);
+      const current = grouped.get(key) || { count: 0, mine: false, rawMine: [] };
+      current.count += 1;
+      if (reaction.user_id === currentUserId()) {
+        current.mine = true;
+        current.rawMine.push(reaction.emoji);
+      }
+      grouped.set(key, current);
+    }
+    return grouped;
+  };
+
+  const reactionEntries = (message: Message) => Array.from(groupedReactions(message).entries());
 
   const getSpeechRecognitionCtor = () => {
     if (typeof window === 'undefined') return null;
@@ -222,10 +336,73 @@ export const Messages = () => {
       .filter((id) => id !== currentUserId())
       .map((id) => {
         const member = conversationMembers().find((m) => m.user_id === id);
-        return member?.user?.full_name || member?.user?.username || `User ${id}`;
+        return member?.user?.full_name || member?.user?.username || 'Unknown user';
       });
 
     return names;
+  };
+
+  const activeMentionToken = (text: string, caret: number) => {
+    const beforeCaret = text.slice(0, caret);
+    const atIndex = beforeCaret.lastIndexOf('@');
+    if (atIndex < 0) return null;
+    if (atIndex > 0 && /\S/.test(beforeCaret.charAt(atIndex - 1))) {
+      return null;
+    }
+
+    const token = beforeCaret.slice(atIndex + 1);
+    if (/\s/.test(token)) return null;
+
+    return {
+      query: token.trim().toLowerCase(),
+      start: atIndex,
+      end: caret,
+    };
+  };
+
+  const refreshMentionOptions = (query: string) => {
+    const conversationUserOptions: MentionUserOption[] = conversationMembers()
+      .map((member) => {
+        const username = (member.user?.username || '').trim();
+        const label = member.user?.full_name || username || 'Unknown user';
+        return {
+          type: 'user' as const,
+          id: member.user_id,
+          username: username || label.toLowerCase().replace(/\s+/g, '.'),
+          label,
+        };
+      })
+      .filter((option) => option.id !== currentUserId())
+      .filter((option, index, arr) => arr.findIndex((entry) => entry.id === option.id) === index)
+      .filter((option) =>
+        !query ? true : `${option.label} ${option.username}`.toLowerCase().includes(query)
+      )
+      .slice(0, 6);
+
+    setMentionLoading(true);
+    const token = ++mentionSearchToken;
+    void messagesApi
+      .listUserFiles(query, 8)
+      .then((files) => {
+        if (token !== mentionSearchToken) return;
+        const fileOptions: MentionFileOption[] = (files || []).map((file) => ({
+          type: 'file',
+          file,
+          label: file.original_name || 'Attachment',
+        }));
+        const merged: MentionOption[] = [...conversationUserOptions, ...fileOptions];
+        setMentionOptions(merged);
+        setMentionHighlightedIndex(0);
+      })
+      .catch(() => {
+        if (token !== mentionSearchToken) return;
+        setMentionOptions(conversationUserOptions);
+      })
+      .finally(() => {
+        if (token === mentionSearchToken) {
+          setMentionLoading(false);
+        }
+      });
   };
 
   const requestNotificationPermission = async () => {
@@ -429,10 +606,6 @@ export const Messages = () => {
 
       const created = response.message;
       setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
-
-      if (response.warning) {
-        toast.warning('Sensitive Content Warning', response.warning);
-      }
 
       loadConversations();
     } catch (error) {
@@ -660,8 +833,8 @@ export const Messages = () => {
       }
 
       setActiveCallConversationId(conversationID);
-      if (selectedConversationId() !== conversationID) {
-        setSelectedConversationId(conversationID);
+      if (selectedConversationId() !== conversationID || activeScreen() !== 'conversation') {
+        openConversation(conversationID);
       }
 
       const pc = buildPeerConnection(conversationID, senderID);
@@ -800,9 +973,17 @@ export const Messages = () => {
     setLoadingConversations(true);
     try {
       const data = await messagesApi.listConversations();
-      setConversations(data.conversations || []);
-      if (!selectedConversationId() && data.conversations?.length) {
-        setSelectedConversationId(data.conversations[0].conversation.id);
+      const nextConversations = data.conversations || [];
+      setConversations(nextConversations);
+
+      const selectedID = selectedConversationId();
+      if (selectedID && !nextConversations.some((item) => item.conversation.id === selectedID)) {
+        setSelectedConversationId(null);
+        setActiveScreen('list');
+      }
+      if (nextConversations.length === 0) {
+        setSelectedConversationId(null);
+        setActiveScreen('list');
       }
     } catch (error) {
       toast.error('Failed to load conversations', error instanceof Error ? error.message : 'Unknown error');
@@ -843,7 +1024,7 @@ export const Messages = () => {
       const mapped: MemberOption[] = (data.members || []).map((m: any) => ({
         id: Number(m.id),
         username: m.username || '',
-        name: m.name || m.full_name || m.email || `User ${m.id}`,
+        name: m.name || m.full_name || m.username || m.email || 'Member',
       }));
       setMembers(mapped);
     } catch {
@@ -851,12 +1032,21 @@ export const Messages = () => {
     }
   };
 
-  const loadVaultItems = async () => {
+  const loadTeams = async () => {
+    const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     try {
-      const data = await messagesApi.listVaultItems();
-      setVaultItems(data.items || []);
-    } catch (error) {
-      toast.error('Failed to load vault items', error instanceof Error ? error.message : 'Unknown error');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/teams?limit=200`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const mapped: TeamOption[] = (data.teams || []).map((team: any) => ({
+        id: Number(team.id),
+        name: team.name || 'Team',
+      }));
+      setTeams(mapped.filter((team) => Number.isFinite(team.id) && team.id > 0));
+    } catch {
+      // ignore
     }
   };
 
@@ -1011,17 +1201,116 @@ export const Messages = () => {
   const onFileSelect = (event: Event) => {
     const target = event.currentTarget as HTMLInputElement;
     const files = Array.from(target.files || []);
-    setSelectedFiles(files);
+    if (files.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...files]);
+    }
+    if (target) {
+      target.value = '';
+    }
+  };
+
+  const removeLocalFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+  };
+
+  const removeAttachedLibraryFile = (id: number) => {
+    setAttachedLibraryFiles((prev) => prev.filter((file) => file.id !== id));
+  };
+
+  const selectMentionOption = (option: MentionOption, range: { start: number; end: number }) => {
+    const currentText = inputText();
+    let inserted = '';
+
+    if (option.type === 'user') {
+      inserted = `@${option.username} `;
+    } else {
+      const readableFileName = (option.file.original_name || 'file').trim() || 'file';
+      inserted = `@${readableFileName.replace(/\s+/g, '_')} `;
+      setAttachedLibraryFiles((prev) =>
+        prev.some((entry) => entry.id === option.file.id)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: option.file.id,
+                original_name: option.file.original_name || 'Attachment',
+                mime_type: option.file.mime_type,
+              },
+            ]
+      );
+    }
+
+    const updated = `${currentText.slice(0, range.start)}${inserted}${currentText.slice(range.end)}`;
+    setInputText(updated);
+    setMentionOpen(false);
+    setMentionOptions([]);
+    setMentionQuery('');
+
+    window.requestAnimationFrame(() => {
+      if (!composerTextareaRef) return;
+      const caret = range.start + inserted.length;
+      composerTextareaRef.focus();
+      composerTextareaRef.setSelectionRange(caret, caret);
+    });
+  };
+
+  const handleComposerInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+    const value = event.currentTarget.value;
+    const caret = event.currentTarget.selectionStart || value.length;
+    setInputText(value);
+
+    if (value.trim()) {
+      markTypingStarted();
+    } else {
+      markTypingStopped();
+    }
+
+    const mentionToken = activeMentionToken(value, caret);
+    if (!mentionToken) {
+      setMentionOpen(false);
+      setMentionOptions([]);
+      setMentionQuery('');
+      return;
+    }
+
+    const nextQuery = mentionToken.query;
+    setMentionOpen(true);
+    setMentionQuery(nextQuery);
+
+    if (mentionSearchTimer) {
+      window.clearTimeout(mentionSearchTimer);
+      mentionSearchTimer = null;
+    }
+    mentionSearchTimer = window.setTimeout(() => {
+      refreshMentionOptions(nextQuery);
+    }, 120);
+  };
+
+  const handleComposerDrop = (event: DragEvent) => {
+    event.preventDefault();
+    setIsDragOverComposer(false);
+    const droppedFiles = Array.from(event.dataTransfer?.files || []);
+    if (droppedFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...droppedFiles]);
+    }
   };
 
   const sendMessage = async () => {
     if (!selectedConversationId()) return;
     const body = inputText().trim();
-    if (!body && selectedFiles().length === 0) return;
+    if (!body && selectedFiles().length === 0 && attachedLibraryFiles().length === 0) return;
 
     try {
+      const localFiles = [...selectedFiles()];
+      if (localFiles.length > 0) {
+        setUploadProgress({ done: 0, total: localFiles.length });
+      } else {
+        setUploadProgress(null);
+      }
+
       const attachments: any[] = [];
-      for (const file of selectedFiles()) {
+      for (let i = 0; i < localFiles.length; i += 1) {
+        const file = localFiles[i];
         const uploaded = await uploadChatFile(file);
         attachments.push({
           kind: uploaded.mime_type?.startsWith('image/') ? 'image' : 'file',
@@ -1029,13 +1318,29 @@ export const Messages = () => {
           title: uploaded.original_name,
           url: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/${uploaded.id}/download`,
         });
+        setUploadProgress({ done: i + 1, total: localFiles.length });
+      }
+
+      for (const file of attachedLibraryFiles()) {
+        attachments.push({
+          kind: file.mime_type?.startsWith('image/') ? 'image' : 'file',
+          file_id: file.id,
+          title: file.original_name,
+          url: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/${file.id}/download`,
+        });
       }
 
       await postMessage(body, attachments);
       setInputText('');
       setSelectedFiles([]);
+      setAttachedLibraryFiles([]);
+      setMentionOptions([]);
+      setMentionOpen(false);
+      setMentionQuery('');
     } catch (error) {
       toast.error('Failed to send message', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setUploadProgress(null);
     }
   };
 
@@ -1052,9 +1357,6 @@ export const Messages = () => {
       if (selectedConversationId()) {
         await loadMessages(selectedConversationId()!);
       }
-      if (suggestion.type === 'move_to_password_vault') {
-        await loadVaultItems();
-      }
     } catch (error) {
       toast.error('Failed to apply suggestion', error instanceof Error ? error.message : 'Unknown error');
     }
@@ -1065,6 +1367,53 @@ export const Messages = () => {
       await messagesApi.addReaction(messageId, emoji);
     } catch {
       // ignore reaction errors in quick UI
+    }
+  };
+
+  const removeReaction = async (messageId: number, emoji: string) => {
+    try {
+      await messagesApi.removeReaction(messageId, emoji);
+    } catch {
+      // ignore reaction errors in quick UI
+    }
+  };
+
+  const toggleReaction = async (message: Message, key: ReactionKey) => {
+    const grouped = groupedReactions(message);
+    const group = grouped.get(key);
+    if (group?.mine) {
+      for (const raw of group.rawMine) {
+        await removeReaction(message.id, raw);
+      }
+      return;
+    }
+    await addReaction(message.id, key);
+  };
+
+  const revealSensitiveMessage = async (messageId: number) => {
+    try {
+      const data = await messagesApi.revealSensitiveMessage(messageId);
+      setRevealedSensitiveMessages((prev) => ({
+        ...prev,
+        [messageId]: data.plaintext,
+      }));
+
+      const existing = sensitiveRevealTimers.get(messageId);
+      if (existing) {
+        window.clearTimeout(existing);
+      }
+
+      const timer = window.setTimeout(() => {
+        setRevealedSensitiveMessages((prev) => {
+          const next = { ...prev };
+          delete next[messageId];
+          return next;
+        });
+        sensitiveRevealTimers.delete(messageId);
+      }, 15000);
+      sensitiveRevealTimers.set(messageId, timer);
+    } catch (error) {
+      toast.error('Reveal failed', error instanceof Error ? error.message : 'Unable to reveal message');
     }
   };
 
@@ -1095,7 +1444,7 @@ export const Messages = () => {
   };
 
   const openSearchResult = async (result: Message) => {
-    setSelectedConversationId(result.conversation_id);
+    openConversation(result.conversation_id);
     setSearchOpen(false);
     await loadMessages(result.conversation_id);
   };
@@ -1110,65 +1459,42 @@ export const Messages = () => {
       };
 
       if (type === 'dm') {
-        payload.user_ids = [Number(targetUserId())];
+        if (!targetUserId()) {
+          toast.warning('Select a member', 'Choose who to message directly.');
+          return;
+        }
+        payload.user_ids = [targetUserId()];
       } else if (type === 'group') {
-        payload.user_ids = groupUserIds()
-          .split(',')
-          .map((part) => Number(part.trim()))
-          .filter((id) => Number.isFinite(id) && id > 0);
+        if (groupUserIds().length === 0) {
+          toast.warning('Select members', 'Choose at least one member for the group.');
+          return;
+        }
+        payload.user_ids = groupUserIds();
       } else if (type === 'team') {
-        payload.team_id = Number(teamId());
+        if (!teamId()) {
+          toast.warning('Select a team', 'Choose a team to create the channel.');
+          return;
+        }
+        payload.team_id = teamId();
       }
 
       const data = await messagesApi.createConversation(payload);
       setShowCreateConversation(false);
       setNewConversationName('');
       setNewConversationTopic('');
-      setTargetUserId('');
-      setGroupUserIds('');
-      setTeamId('');
+      setTargetUserId(null);
+      setGroupUserIds([]);
+      setTeamId(null);
       await loadConversations();
-      setSelectedConversationId(data.conversation.id);
+      openConversation(data.conversation.id);
       await loadMessages(data.conversation.id);
     } catch (error) {
       toast.error('Failed to create conversation', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
-  const revealVaultItem = async (item: VaultItem) => {
-    try {
-      const revealed = await messagesApi.revealVaultItem(item.id);
-      setRevealedSecrets((prev) => ({
-        ...prev,
-        [item.id]: { secret: revealed.secret, notes: revealed.notes || '' },
-      }));
-      toast.warning('Password Safety', revealed.warning || 'Handle revealed secrets with care.');
-    } catch (error) {
-      toast.error('Failed to reveal vault item', error instanceof Error ? error.message : 'Unknown error');
-    }
-  };
-
-  const shareVaultItem = async (item: VaultItem) => {
-    const targetRaw = shareTargets()[item.id];
-    const targetConversationID = Number(targetRaw);
-    if (!targetConversationID) {
-      toast.warning('Target required', 'Enter a valid conversation ID.');
-      return;
-    }
-    try {
-      await messagesApi.shareVaultItem(item.id, {
-        target_conversation_id: targetConversationID,
-        allow_reveal: true,
-      });
-      toast.success('Vault item shared');
-      await loadVaultItems();
-    } catch (error) {
-      toast.error('Failed to share vault item', error instanceof Error ? error.message : 'Unknown error');
-    }
-  };
-
   onMount(async () => {
-    await Promise.all([loadConversations(), loadMembers(), loadVaultItems()]);
+    await Promise.all([loadConversations(), loadMembers(), loadTeams()]);
     startRealtime();
     typingCleanupTimer = window.setInterval(() => {
       const cutoff = Date.now() - 6000;
@@ -1192,11 +1518,35 @@ export const Messages = () => {
     }, 1500);
   });
 
+  onMount(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (searchOpen()) {
+        setSearchOpen(false);
+      }
+      if (showCreateConversation()) {
+        setShowCreateConversation(false);
+      }
+      if (mentionOpen()) {
+        setMentionOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    onCleanup(() => {
+      window.removeEventListener('keydown', handleEscape);
+    });
+  });
+
   onCleanup(() => {
     markTypingStopped();
     discardVoiceRecording = true;
     stopVoiceRecording();
     cleanupCallResources();
+    if (mentionSearchTimer) {
+      window.clearTimeout(mentionSearchTimer);
+      mentionSearchTimer = null;
+    }
     if (typingCleanupTimer) {
       window.clearInterval(typingCleanupTimer);
       typingCleanupTimer = null;
@@ -1205,6 +1555,10 @@ export const Messages = () => {
       window.clearTimeout(typingStopTimer);
       typingStopTimer = null;
     }
+    for (const timer of Array.from(sensitiveRevealTimers.values())) {
+      window.clearTimeout(timer);
+    }
+    sensitiveRevealTimers.clear();
     stopPollingFallback();
     realtime?.disconnect();
   });
@@ -1243,23 +1597,22 @@ export const Messages = () => {
   onCleanup(() => clearInterval(wsWatcher));
 
   return (
-    <div class="h-full flex">
-      {/* Left rail */}
-      <div class="w-80 border-r bg-card flex flex-col">
-        <div class="p-4 border-b">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
+    <div class={`messages-shell ${activeScreen() === 'conversation' ? 'messages-shell-conversation' : 'messages-shell-list'}`}>
+      <aside class="messages-sidebar">
+        <div class="messages-sidebar-header">
+          <div class="messages-title-row">
+            <div class="messages-title-wrap">
               <IconMessageCircle class="size-5 text-primary" />
-              <h2 class="text-lg font-semibold">Messages</h2>
+              <h2 class="messages-title">Messages</h2>
             </div>
             <Button size="sm" variant="outline" onClick={() => setSearchOpen(true)}>
               <IconSearch class="size-4" />
             </Button>
           </div>
-          <div class="mt-3 flex items-center gap-2">
+          <div class="messages-sidebar-actions">
             <Button size="sm" onClick={() => setShowCreateConversation(true)} class="flex-1">
               <IconPlus class="size-4 mr-1" />
-              New
+              New Chat
             </Button>
             <Button
               size="sm"
@@ -1278,56 +1631,61 @@ export const Messages = () => {
               </Show>
             </Button>
           </div>
+          <div class="messages-status-row">
+            <span>Realtime: {wsStatus()}</span>
+            <Show when={loadingConversations()}>
+              <span>Refreshing…</span>
+            </Show>
+          </div>
         </div>
 
-        <div class="px-4 py-2 text-xs text-muted-foreground flex items-center justify-between">
-          <span>Status: {wsStatus()}</span>
-          <Show when={loadingConversations()}>
-            <span>Refreshing…</span>
-          </Show>
-        </div>
-
-        <div class="flex-1 overflow-y-auto p-2 space-y-1">
-          <For each={sortedConversations()}>
-            {(item) => (
-              <button
-                class={`w-full text-left rounded-lg p-3 transition-colors border ${
-                  selectedConversationId() === item.conversation.id
-                    ? 'bg-primary/10 border-primary/30'
-                    : 'border-transparent hover:bg-muted'
-                }`}
-                onClick={() => setSelectedConversationId(item.conversation.id)}
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="font-medium truncate">{item.conversation.name}</p>
-                    <p class="text-xs text-muted-foreground truncate">
-                      {item.conversation.type}
-                      {item.last_message ? ` • ${item.last_message.body}` : ''}
+        <div class="messages-sidebar-list">
+          <Show
+            when={sortedConversations().length > 0}
+            fallback={
+              <div class="messages-list-empty">
+                No chats yet. Start one with <span class="font-medium">New Chat</span>.
+              </div>
+            }
+          >
+            <For each={sortedConversations()}>
+              {(item) => (
+                <button
+                  class={`conversation-item ${
+                    selectedConversationId() === item.conversation.id ? 'conversation-item-active' : ''
+                  }`}
+                  onClick={() => openConversation(item.conversation.id)}
+                >
+                  <div class="conversation-item-main">
+                    <p class="conversation-item-name">{item.conversation.name}</p>
+                    <p class="conversation-item-preview">
+                      {item.last_message?.body || item.conversation.topic || item.conversation.type}
                     </p>
                   </div>
                   <Show when={item.unread_count > 0}>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                      {item.unread_count}
-                    </span>
+                    <span class="conversation-item-unread">{item.unread_count}</span>
                   </Show>
-                </div>
-              </button>
-            )}
-          </For>
+                </button>
+              )}
+            </For>
+          </Show>
         </div>
-      </div>
+      </aside>
 
-      {/* Center timeline */}
-      <div class="flex-1 flex flex-col min-w-0">
-        <div class="border-b p-4 flex items-center justify-between">
-          <div>
-            <h3 class="font-semibold text-lg">{activeConversation()?.conversation.name || 'Select a conversation'}</h3>
-            <p class="text-xs text-muted-foreground">
-              {activeConversation()?.conversation.topic || activeConversation()?.conversation.type || ''}
-            </p>
+      <section class="messages-main">
+        <header class="messages-main-header">
+          <div class="messages-header-main">
+            <Button size="sm" variant="ghost" class="messages-back-button" onClick={closeConversation}>
+              <IconChevronLeft class="size-4" />
+            </Button>
+            <div class="messages-header-meta">
+              <h3 class="messages-header-title">{activeConversation()?.conversation.name || 'Conversation'}</h3>
+              <p class="messages-header-subtitle">
+                {activeConversation()?.conversation.topic || activeConversation()?.conversation.type || 'No topic'}
+              </p>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="messages-header-actions">
             <Button
               size="sm"
               variant={isCallActive() ? 'outline' : 'default'}
@@ -1340,32 +1698,40 @@ export const Messages = () => {
               }}
               disabled={!selectedConversationId()}
             >
-              {isCallActive() ? 'End Call' : 'Call'}
+              <Show when={isCallActive()} fallback={<IconPhone class="size-4" />}>
+                <IconPhoneOff class="size-4" />
+              </Show>
             </Button>
             <Show when={isCallActive()}>
               <Button size="sm" variant="outline" onClick={toggleCallMute}>
-                {callMuted() ? 'Unmute' : 'Mute'}
+                <Show when={callMuted()} fallback={<IconMicrophone class="size-4" />}>
+                  <IconMicrophoneOff class="size-4" />
+                </Show>
               </Button>
             </Show>
-            <Button size="sm" variant="outline" onClick={() => setShowVault(!showVault())}>
-              <IconLock class="size-4 mr-1" />
-              Vault
-            </Button>
             <Button size="sm" variant="outline" onClick={() => setSearchOpen(true)}>
-              <IconSearch class="size-4 mr-1" />
-              Search
+              <IconSearch class="size-4" />
             </Button>
           </div>
-        </div>
+        </header>
+
+        <Show
+          when={selectedConversationId()}
+          fallback={
+            <div class="messages-main-empty">
+              Select a conversation from the list.
+            </div>
+          }
+        >
         <Show when={isCallActive()}>
-          <div class="px-4 pb-3 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
+          <div class="messages-call-strip">
             <span>
               Call status: {callStatus()}
               <Show when={activeCallPeerIds().length > 0}>
-                <span> • with {activeCallPeerIds().length} peer{activeCallPeerIds().length > 1 ? 's' : ''}</span>
+                <span> • with {activeCallPeerIds().length} participant{activeCallPeerIds().length > 1 ? 's' : ''}</span>
               </Show>
             </span>
-            <label class="inline-flex items-center gap-2">
+            <label class="messages-inline-toggle">
               <input
                 type="checkbox"
                 checked={callTranscriptEnabled()}
@@ -1379,33 +1745,28 @@ export const Messages = () => {
                   }
                 }}
               />
-              Local call transcription
+              Local call transcript
             </label>
           </div>
         </Show>
+
         <Show when={callTranscriptPreview()}>
-          <div class="px-4 pb-3 text-xs text-muted-foreground">
-            <span class="font-medium">Call transcript preview:</span> {callTranscriptPreview()}
+          <div class="messages-transcript-preview">
+            <span class="font-medium">Call transcript:</span> {callTranscriptPreview()}
           </div>
         </Show>
 
-        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="messages-timeline">
           <Show when={loadingMessages()}>
             <p class="text-sm text-muted-foreground">Loading messages…</p>
           </Show>
 
           <For each={messages()}>
             {(message) => (
-              <div class={`flex ${message.sender_id === currentUserId() ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  class={`max-w-[80%] rounded-lg p-3 border ${
-                    message.sender_id === currentUserId()
-                      ? 'bg-primary text-primary-foreground border-primary/40'
-                      : 'bg-card border-border'
-                  }`}
-                >
-                  <div class="text-xs opacity-80 mb-1 flex items-center gap-2">
-                    <div class="size-6 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[10px] font-semibold">
+              <div class={`message-row ${message.sender_id === currentUserId() ? 'message-row-me' : 'message-row-them'}`}>
+                <div class={`message-bubble ${message.sender_id === currentUserId() ? 'message-bubble-me' : 'message-bubble-them'}`}>
+                  <div class="message-meta">
+                    <div class="message-avatar">
                       <Show
                         when={message.sender?.avatar_url}
                         fallback={
@@ -1416,46 +1777,52 @@ export const Messages = () => {
                       >
                         <img
                           src={message.sender?.avatar_url}
-                          alt={message.sender?.username || `User ${message.sender_id}`}
+                          alt={message.sender?.username || 'Member'}
                           class="w-full h-full object-cover"
                         />
                       </Show>
                     </div>
-                    <span class="truncate">
-                      {message.sender?.full_name || message.sender?.username || `User ${message.sender_id}`}
-                    </span>
+                    <span class="truncate">{message.sender?.full_name || message.sender?.username || 'Unknown user'}</span>
+                    <span class="message-time">{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     <Show when={message.edited_at}>
-                      <span class="ml-1">(edited)</span>
+                      <span class="message-edited">edited</span>
                     </Show>
                   </div>
-                  <p class="whitespace-pre-wrap break-words">{message.body}</p>
 
-                  <Show when={message.is_sensitive}>
-                    <div class="mt-2 text-xs rounded-md p-2 bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                      Sensitive content detected. We recommend Proton Pass (not affiliated).
+                  <p class="message-body">
+                    {message.is_sensitive && shouldUseSensitiveReveal() && !revealedSensitiveMessages()[message.id]
+                      ? message.body || '[sensitive content hidden]'
+                      : revealedSensitiveMessages()[message.id] || message.body}
+                  </p>
+
+                  <Show when={message.is_sensitive && shouldUseSensitiveReveal()}>
+                    <div class="message-sensitive-banner">
+                      <span>Sensitive content hidden by default.</span>
+                      <Show when={revealedSensitiveMessages()[message.id]} fallback={
+                        <Button size="sm" variant="outline" onClick={() => revealSensitiveMessage(message.id)}>
+                          Reveal
+                        </Button>
+                      }>
+                        <span class="text-xs text-muted-foreground">Visible for 15 seconds</span>
+                      </Show>
                     </div>
                   </Show>
 
                   <Show when={(message.attachments || []).length > 0}>
-                    <div class="mt-3 space-y-1">
+                    <div class="message-attachments">
                       <For each={message.attachments || []}>
                         {(att) => (
                           <Show
                             when={att.kind === 'voice_note' && att.url}
                             fallback={
-                              <a
-                                href={att.url || '#'}
-                                target="_blank"
-                                rel="noreferrer"
-                                class="block text-xs rounded border border-border/50 p-2 hover:bg-muted/40"
-                              >
-                                <span class="font-medium">{att.kind}</span>
-                                <span class="ml-2">{att.title || att.url}</span>
+                              <a href={att.url || '#'} target="_blank" rel="noreferrer" class="message-attachment-link">
+                                <IconFile class="size-4" />
+                                <span>{att.title || 'Attachment'}</span>
                               </a>
                             }
                           >
-                            <div class="block text-xs rounded border border-border/50 p-2">
-                              <div class="font-medium mb-1">{att.title || 'Voice note'}</div>
+                            <div class="message-voice-note">
+                              <span class="font-medium">{att.title || 'Voice note'}</span>
                               <audio controls src={att.url || ''} class="w-full" />
                             </div>
                           </Show>
@@ -1465,13 +1832,10 @@ export const Messages = () => {
                   </Show>
 
                   <Show when={(message.references || []).length > 0}>
-                    <div class="mt-2 flex flex-wrap gap-1">
+                    <div class="message-reference-wrap">
                       <For each={message.references || []}>
                         {(ref) => (
-                          <a
-                            href={ref.deep_link}
-                            class="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                          >
+                          <a href={ref.deep_link} class="message-reference-pill">
                             {ref.entity_type}
                           </a>
                         )}
@@ -1479,18 +1843,21 @@ export const Messages = () => {
                     </div>
                   </Show>
 
-                  <Show when={(message.suggestions || []).some((s) => s.status === 'pending')}>
-                    <div class="mt-3 space-y-2">
-                      <For each={(message.suggestions || []).filter((s) => s.status === 'pending')}>
+                  <Show
+                    when={(message.suggestions || []).some(
+                      (suggestion) => suggestion.status === 'pending' && suggestion.type !== 'move_to_password_vault'
+                    )}
+                  >
+                    <div class="message-suggestions">
+                      <For
+                        each={(message.suggestions || []).filter(
+                          (suggestion) => suggestion.status === 'pending' && suggestion.type !== 'move_to_password_vault'
+                        )}
+                      >
                         {(suggestion) => (
-                          <div class="rounded border border-border/60 p-2 bg-muted/40">
-                            <div class="text-xs font-medium">{suggestion.type}</div>
-                            <Show when={suggestion.type === 'password_warning'}>
-                              <div class="text-xs mt-1">
-                                We do not recommend storing passwords in chat. If needed, move it to encrypted vault storage.
-                              </div>
-                            </Show>
-                            <div class="mt-2 flex gap-2">
+                          <div class="message-suggestion-card">
+                            <div class="message-suggestion-title">{suggestion.type.replace(/_/g, ' ')}</div>
+                            <div class="message-suggestion-actions">
                               <Button size="sm" onClick={() => handleSuggestionAction(message.id, suggestion, 'accept')}>
                                 Apply
                               </Button>
@@ -1504,19 +1871,41 @@ export const Messages = () => {
                     </div>
                   </Show>
 
-                  <div class="mt-2 flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => addReaction(message.id, '👍')}>
-                      👍
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => addReaction(message.id, '🔥')}>
-                      🔥
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => addReaction(message.id, '✅')}>
-                      ✅
-                    </Button>
-                    <Show when={(message.reactions || []).length > 0}>
-                      <div class="text-xs text-muted-foreground ml-2">
-                        {(message.reactions || []).map((r) => r.emoji).join(' ')}
+                  <div class="message-reaction-panel">
+                    <div class="message-reaction-add-row">
+                      <For each={REACTION_PRESETS}>
+                        {(preset) => {
+                          const Icon = preset.icon;
+                          return (
+                            <button
+                              class="reaction-add-btn"
+                              onClick={() => toggleReaction(message, preset.key)}
+                              title={preset.label}
+                            >
+                              <Icon class="size-3.5" />
+                            </button>
+                          );
+                        }}
+                      </For>
+                    </div>
+                    <Show when={reactionEntries(message).length > 0}>
+                      <div class="message-reaction-summary">
+                        <For each={reactionEntries(message)}>
+                          {(entry) => {
+                            const key = entry[0];
+                            const data = entry[1];
+                            const Icon = reactionIconForKey(key);
+                            return (
+                              <button
+                                class={`reaction-pill ${data.mine ? 'reaction-pill-me' : ''}`}
+                                onClick={() => toggleReaction(message, key)}
+                              >
+                                <Icon class="size-3.5" />
+                                <span>{data.count}</span>
+                              </button>
+                            );
+                          }}
+                        </For>
                       </div>
                     </Show>
                   </div>
@@ -1526,16 +1915,81 @@ export const Messages = () => {
           </For>
         </div>
 
-        <div class="border-t p-4">
+        <div
+          class={`messages-composer ${isDragOverComposer() ? 'messages-composer-drag' : ''}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragOverComposer(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            setIsDragOverComposer(false);
+          }}
+          onDrop={handleComposerDrop}
+        >
           <Show when={activeTypingUserNames().length > 0}>
-            <div class="mb-2 text-xs text-muted-foreground">
-              {activeTypingUserNames().length === 1
-                ? `${activeTypingUserNames()[0]} is typing...`
-                : `${activeTypingUserNames().slice(0, 2).join(', ')}${activeTypingUserNames().length > 2 ? ' and others' : ''} are typing...`}
+            <div class="messages-typing-line">
+              <span class="typing-dots"><span /><span /><span /></span>
+              <span>
+                {activeTypingUserNames().length === 1
+                  ? `${activeTypingUserNames()[0]} is typing`
+                  : `${activeTypingUserNames().slice(0, 2).join(', ')}${activeTypingUserNames().length > 2 ? ' and others' : ''} are typing`}
+              </span>
             </div>
           </Show>
-          <div class="flex items-center gap-2 mb-2">
-            <input type="file" multiple onChange={onFileSelect} class="text-xs" />
+
+          <Show when={selectedFiles().length > 0 || attachedLibraryFiles().length > 0}>
+            <div class="composer-chip-wrap">
+              <For each={selectedFiles()}>
+                {(file, index) => (
+                  <div class="composer-chip">
+                    <IconUpload class="size-3.5" />
+                    <span>{file.name}</span>
+                    <button class="composer-chip-remove" onClick={() => removeLocalFile(index())}>
+                      <IconX class="size-3.5" />
+                    </button>
+                  </div>
+                )}
+              </For>
+              <For each={attachedLibraryFiles()}>
+                {(file) => (
+                  <div class="composer-chip">
+                    <IconFile class="size-3.5" />
+                    <span>{file.original_name}</span>
+                    <button class="composer-chip-remove" onClick={() => removeAttachedLibraryFile(file.id)}>
+                      <IconX class="size-3.5" />
+                    </button>
+                  </div>
+                )}
+              </For>
+            </div>
+          </Show>
+
+          <Show when={voiceTranscriptPreview()}>
+            <div class="messages-transcript-preview">
+              <span class="font-medium">Voice transcript:</span> {voiceTranscriptPreview()}
+            </div>
+          </Show>
+
+          <Show when={isRecordingVoice()}>
+            <div class="messages-recording-line">Recording {formatMs(voiceRecordingMs())}</div>
+          </Show>
+
+          <div class="messages-composer-row">
+            <input
+              type="file"
+              multiple
+              class="hidden"
+              ref={(el) => {
+                hiddenFileInputRef = el;
+              }}
+              onChange={onFileSelect}
+            />
+
+            <Button size="sm" variant="outline" onClick={() => hiddenFileInputRef?.click()}>
+              <IconPaperclip class="size-4" />
+            </Button>
+
             <Button
               size="sm"
               variant={isRecordingVoice() ? 'default' : 'outline'}
@@ -1548,9 +2002,114 @@ export const Messages = () => {
               }}
               disabled={sendingMessage()}
             >
-              {isRecordingVoice() ? 'Stop Voice' : 'Voice Note'}
+              <Show when={isRecordingVoice()} fallback={<IconMicrophone class="size-4" />}>
+                <IconMicrophoneOff class="size-4" />
+              </Show>
             </Button>
-            <label class="text-xs inline-flex items-center gap-1">
+
+            <div class="messages-composer-input-wrap">
+              <textarea
+                ref={(el) => {
+                  composerTextareaRef = el;
+                }}
+                value={inputText()}
+                class="messages-composer-textarea"
+                placeholder='Type a message. Use "@" for people or files.'
+                rows={1}
+                onInput={(event) => handleComposerInput(event as any)}
+                onKeyDown={(event) => {
+                  if (mentionOpen()) {
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      setMentionHighlightedIndex((prev) =>
+                        mentionOptions().length === 0 ? 0 : (prev + 1) % mentionOptions().length
+                      );
+                      return;
+                    }
+                    if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      setMentionHighlightedIndex((prev) =>
+                        mentionOptions().length === 0
+                          ? 0
+                          : (prev - 1 + mentionOptions().length) % mentionOptions().length
+                      );
+                      return;
+                    }
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      const option = mentionOptions()[mentionHighlightedIndex()];
+                      const caret = composerTextareaRef?.selectionStart || inputText().length;
+                      const token = activeMentionToken(inputText(), caret);
+                      if (option && token) {
+                        selectMentionOption(option, token);
+                        return;
+                      }
+                    }
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setMentionOpen(false);
+                      return;
+                    }
+                  }
+
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+              />
+
+              <Show when={mentionOpen()}>
+                <div class="mention-menu">
+                  <Show when={mentionLoading()}>
+                    <div class="mention-menu-empty">Loading suggestions…</div>
+                  </Show>
+                  <Show when={!mentionLoading() && mentionOptions().length === 0}>
+                    <div class="mention-menu-empty">No matches for @{mentionQuery()}</div>
+                  </Show>
+                  <For each={mentionOptions()}>
+                    {(option, index) => (
+                      <button
+                        class={`mention-option ${mentionHighlightedIndex() === index() ? 'mention-option-active' : ''}`}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          const caret = composerTextareaRef?.selectionStart || inputText().length;
+                          const token = activeMentionToken(inputText(), caret);
+                          if (!token) return;
+                          selectMentionOption(option, token);
+                        }}
+                      >
+                        <Show when={option.type === 'user'} fallback={<IconFile class="size-4" />}>
+                          <IconAt class="size-4" />
+                        </Show>
+                        <div class="mention-option-copy">
+                          <div class="mention-option-title">{option.label}</div>
+                          <Show when={option.type === 'user'} fallback={
+                            <div class="mention-option-sub">Attach file to message</div>
+                          }>
+                            <div class="mention-option-sub">@{(option as MentionUserOption).username}</div>
+                          </Show>
+                        </div>
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </div>
+
+            <Button
+              onClick={() => sendMessage()}
+              disabled={
+                sendingMessage() ||
+                (!inputText().trim() && selectedFiles().length === 0 && attachedLibraryFiles().length === 0)
+              }
+            >
+              <IconSend class="size-4" />
+            </Button>
+          </div>
+
+          <div class="messages-composer-footer">
+            <label class="messages-inline-toggle">
               <input
                 type="checkbox"
                 checked={voiceTranscriptEnabled()}
@@ -1565,174 +2124,32 @@ export const Messages = () => {
                   }
                 }}
               />
-              Local transcript
+              Voice transcript
             </label>
-            <Show when={selectedFiles().length > 0}>
-              <span class="text-xs text-muted-foreground">
-                {selectedFiles().length} file{selectedFiles().length > 1 ? 's' : ''} selected
-              </span>
-            </Show>
-            <Show when={isRecordingVoice()}>
-              <span class="text-xs text-rose-600 dark:text-rose-400">
-                Recording {formatMs(voiceRecordingMs())}
-              </span>
-            </Show>
-          </div>
-          <Show when={voiceTranscriptPreview()}>
-            <div class="mb-2 text-xs text-muted-foreground">
-              <span class="font-medium">Voice transcript preview:</span> {voiceTranscriptPreview()}
-            </div>
-          </Show>
-          <div class="flex gap-2">
-            <Input
-              value={inputText()}
-              onInput={(e) => {
-                const value = (e.currentTarget as HTMLInputElement).value;
-                setInputText(value);
-                if (value.trim()) {
-                  markTypingStarted();
-                } else {
-                  markTypingStopped();
-                }
-              }}
-              placeholder='Message (try links, tasks, events, or "@username" mentions)'
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-            />
-            <Button onClick={sendMessage} disabled={sendingMessage() || (!inputText().trim() && selectedFiles().length === 0)}>
-              <IconSend class="size-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Right rail */}
-      <div class="w-88 border-l bg-card overflow-y-auto">
-        <div class="p-4 border-b">
-          <h3 class="font-semibold flex items-center gap-2">
-            <IconUsers class="size-4" />
-            Details
-          </h3>
-          <p class="text-xs text-muted-foreground mt-1">
-            Members, vault items, and quick actions
-          </p>
-        </div>
-
-        <div class="p-4 space-y-4">
-          <Card class="p-3">
-            <h4 class="text-sm font-medium mb-2">Conversation Info</h4>
-            <p class="text-xs text-muted-foreground">ID: {selectedConversationId() || '-'}</p>
-            <p class="text-xs text-muted-foreground">Type: {activeConversation()?.conversation.type || '-'}</p>
-          </Card>
-
-          <Card class="p-3">
-            <h4 class="text-sm font-medium mb-2">Members</h4>
             <Show
-              when={conversationMembers().length > 0}
-              fallback={<p class="text-xs text-muted-foreground">No members loaded.</p>}
+              when={uploadProgress()}
+              fallback={<span class="text-xs text-muted-foreground">Drop files here or use the attachment icon.</span>}
             >
-              <div class="space-y-2 max-h-56 overflow-y-auto">
-                <For each={conversationMembers()}>
-                  {(member) => (
-                    <div class="flex items-center justify-between rounded-md border p-2">
-                      <div class="flex items-center gap-2 min-w-0">
-                        <div class="size-7 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[10px] font-semibold">
-                          <Show
-                            when={member.user?.avatar_url}
-                            fallback={
-                              <span>
-                                {(member.user?.full_name || member.user?.username || 'U').charAt(0).toUpperCase()}
-                              </span>
-                            }
-                          >
-                            <img
-                              src={member.user?.avatar_url}
-                              alt={member.user?.username || `User ${member.user_id}`}
-                              class="w-full h-full object-cover"
-                            />
-                          </Show>
-                        </div>
-                        <div class="min-w-0">
-                          <div class="text-xs font-medium truncate">
-                            {member.user?.full_name || member.user?.username || `User ${member.user_id}`}
-                          </div>
-                          <div class="text-[11px] text-muted-foreground truncate">@{member.user?.username || member.user_id}</div>
-                        </div>
-                      </div>
-                      <span class="text-[10px] uppercase tracking-wide text-muted-foreground">{member.role}</span>
-                    </div>
-                  )}
-                </For>
-              </div>
+              {(progress) => (
+                <span class="text-xs text-muted-foreground">
+                  Uploading files {progress().done}/{progress().total}
+                </span>
+              )}
             </Show>
-          </Card>
-
-          <Card class="p-3">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="text-sm font-medium">Password Vault</h4>
-              <Button size="sm" variant="outline" onClick={() => setShowVault(!showVault())}>
-                <Show when={showVault()} fallback="Show">Hide</Show>
-              </Button>
-            </div>
-            <Show when={showVault()}>
-              <div class="space-y-2 max-h-96 overflow-y-auto">
-                <For each={vaultItems()}>
-                  {(item) => (
-                    <div class="border rounded-md p-2">
-                      <div class="text-sm font-medium">{item.label}</div>
-                      <div class="text-xs text-muted-foreground">
-                        Owner: {item.owner_user_id} {item.shared ? '• Shared' : ''}
-                      </div>
-                      <Show when={revealedSecrets()[item.id]}>
-                        <div class="mt-2 text-xs rounded bg-muted p-2 break-all">
-                          <div><strong>Secret:</strong> {revealedSecrets()[item.id].secret}</div>
-                          <Show when={revealedSecrets()[item.id].notes}>
-                            <div class="mt-1"><strong>Notes:</strong> {revealedSecrets()[item.id].notes}</div>
-                          </Show>
-                        </div>
-                      </Show>
-                      <div class="mt-2 flex gap-2">
-                        <Button size="sm" onClick={() => revealVaultItem(item)}>Reveal</Button>
-                      </div>
-                      <div class="mt-2 flex gap-2">
-                        <Input
-                          value={shareTargets()[item.id] || ''}
-                          onInput={(e) =>
-                            setShareTargets((prev) => ({
-                              ...prev,
-                              [item.id]: (e.currentTarget as HTMLInputElement).value,
-                            }))
-                          }
-                          placeholder="Conversation ID"
-                        />
-                        <Button size="sm" variant="outline" onClick={() => shareVaultItem(item)}>
-                          Share
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </Show>
-          </Card>
-
-          <Card class="p-3">
-            <h4 class="text-sm font-medium mb-2">Quick Create Conversation</h4>
-            <Button class="w-full" size="sm" onClick={() => setShowCreateConversation(true)}>
-              <IconPlus class="size-4 mr-1" />
-              Create
-            </Button>
-          </Card>
+          </div>
         </div>
-      </div>
+        </Show>
+      </section>
 
-      {/* Create conversation modal */}
       <Show when={showCreateConversation()}>
-        <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <div
+          class="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowCreateConversation(false);
+            }
+          }}
+        >
           <div class="bg-card border rounded-lg w-full max-w-lg p-4 space-y-3">
             <div class="flex items-center justify-between">
               <h3 class="font-semibold">Create Conversation</h3>
@@ -1743,7 +2160,7 @@ export const Messages = () => {
 
             <div class="grid grid-cols-3 gap-2">
               <Button variant={newConversationType() === 'dm' ? 'default' : 'outline'} onClick={() => setNewConversationType('dm')}>
-                DM
+                Direct
               </Button>
               <Button variant={newConversationType() === 'group' ? 'default' : 'outline'} onClick={() => setNewConversationType('group')}>
                 Group
@@ -1760,6 +2177,7 @@ export const Messages = () => {
                 placeholder="Conversation name"
               />
             </Show>
+
             <Input
               value={newConversationTopic()}
               onInput={(e) => setNewConversationTopic((e.currentTarget as HTMLInputElement).value)}
@@ -1769,14 +2187,14 @@ export const Messages = () => {
             <Show when={newConversationType() === 'dm'}>
               <select
                 class="w-full h-10 rounded-md border bg-background px-3"
-                value={targetUserId()}
-                onChange={(e) => setTargetUserId(e.currentTarget.value)}
+                value={targetUserId() ? String(targetUserId()) : ''}
+                onChange={(event) => setTargetUserId(event.currentTarget.value ? Number(event.currentTarget.value) : null)}
               >
-                <option value="">Select user</option>
-                <For each={members()}>
+                <option value="">Select member</option>
+                <For each={members().filter((member) => member.id !== currentUserId())}>
                   {(member) => (
                     <option value={member.id}>
-                      {member.name} ({member.username || member.id})
+                      {member.name} {member.username ? `(@${member.username})` : ''}
                     </option>
                   )}
                 </For>
@@ -1784,19 +2202,42 @@ export const Messages = () => {
             </Show>
 
             <Show when={newConversationType() === 'group'}>
-              <Input
-                value={groupUserIds()}
-                onInput={(e) => setGroupUserIds((e.currentTarget as HTMLInputElement).value)}
-                placeholder="Member user IDs, comma-separated (e.g. 2,3,7)"
-              />
+              <div class="max-h-52 overflow-y-auto rounded-md border p-2 space-y-2">
+                <For each={members().filter((member) => member.id !== currentUserId())}>
+                  {(member) => (
+                    <label class="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={groupUserIds().includes(member.id)}
+                        onChange={(event) =>
+                          setGroupUserIds((prev) =>
+                            event.currentTarget.checked
+                              ? [...prev, member.id]
+                              : prev.filter((id) => id !== member.id)
+                          )
+                        }
+                      />
+                      <span>{member.name}</span>
+                      <span class="text-xs text-muted-foreground">{member.username ? `@${member.username}` : ''}</span>
+                    </label>
+                  )}
+                </For>
+              </div>
             </Show>
 
             <Show when={newConversationType() === 'team'}>
-              <Input
-                value={teamId()}
-                onInput={(e) => setTeamId((e.currentTarget as HTMLInputElement).value)}
-                placeholder="Team ID"
-              />
+              <select
+                class="w-full h-10 rounded-md border bg-background px-3"
+                value={teamId() ? String(teamId()) : ''}
+                onChange={(event) => setTeamId(event.currentTarget.value ? Number(event.currentTarget.value) : null)}
+              >
+                <option value="">Select team</option>
+                <For each={teams()}>
+                  {(team) => (
+                    <option value={team.id}>{team.name}</option>
+                  )}
+                </For>
+              </select>
             </Show>
 
             <div class="flex justify-end gap-2">
@@ -1807,9 +2248,15 @@ export const Messages = () => {
         </div>
       </Show>
 
-      {/* Search modal */}
       <Show when={searchOpen()}>
-        <div class="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4">
+        <div
+          class="fixed inset-0 z-50 bg-black/45 flex items-start justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setSearchOpen(false);
+            }
+          }}
+        >
           <div class="bg-card border rounded-lg w-full max-w-2xl mt-12">
             <div class="p-4 border-b flex items-center justify-between">
               <h3 class="font-semibold">Search Messages</h3>
@@ -1822,9 +2269,11 @@ export const Messages = () => {
                 <Input
                   value={searchQuery()}
                   onInput={(e) => setSearchQuery((e.currentTarget as HTMLInputElement).value)}
-                  placeholder="Search text, file type, URLs, mentions..."
-                  onKeyDown={(e: KeyboardEvent) => {
-                    if (e.key === 'Enter') performSearch();
+                  placeholder="Search by text, file type, URL, or mention"
+                  onKeyDown={(event: KeyboardEvent) => {
+                    if (event.key === 'Enter') {
+                      void performSearch();
+                    }
                   }}
                 />
                 <Button onClick={performSearch} disabled={searching()}>
@@ -1832,6 +2281,7 @@ export const Messages = () => {
                   Search
                 </Button>
               </div>
+
               <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs text-muted-foreground mb-1">Sender</label>
@@ -1844,7 +2294,7 @@ export const Messages = () => {
                     <For each={members()}>
                       {(member) => (
                         <option value={member.id}>
-                          {member.name} ({member.username || member.id})
+                          {member.name} {member.username ? `(@${member.username})` : ''}
                         </option>
                       )}
                     </For>
@@ -1913,7 +2363,7 @@ export const Messages = () => {
                     checked={searchMentionOnly()}
                     onChange={(e) => setSearchMentionOnly(e.currentTarget.checked)}
                   />
-                  Mention-only
+                  Mention only
                 </label>
               </div>
 
@@ -1952,9 +2402,7 @@ export const Messages = () => {
                             ? 'bg-primary text-primary-foreground border-primary/50'
                             : 'bg-background hover:bg-muted border-border'
                         }`}
-                        onClick={() =>
-                          setSearchAttachmentKinds((prev) => toggleStringFilter(prev, kind))
-                        }
+                        onClick={() => setSearchAttachmentKinds((prev) => toggleStringFilter(prev, kind))}
                       >
                         {kind}
                       </button>
@@ -1974,9 +2422,7 @@ export const Messages = () => {
                             ? 'bg-primary text-primary-foreground border-primary/50'
                             : 'bg-background hover:bg-muted border-border'
                         }`}
-                        onClick={() =>
-                          setSearchReferenceTypes((prev) => toggleStringFilter(prev, refType))
-                        }
+                        onClick={() => setSearchReferenceTypes((prev) => toggleStringFilter(prev, refType))}
                       >
                         {refType}
                       </button>
@@ -1984,14 +2430,12 @@ export const Messages = () => {
                   </For>
                 </div>
               </div>
+
               <div class="mt-4 max-h-96 overflow-y-auto space-y-2">
                 <For each={searchResults()}>
                   {(result) => (
-                    <button
-                      class="w-full text-left border rounded-md p-3 hover:bg-muted"
-                      onClick={() => openSearchResult(result)}
-                    >
-                      <div class="text-sm font-medium">Conversation #{result.conversation_id}</div>
+                    <button class="w-full text-left border rounded-md p-3 hover:bg-muted" onClick={() => openSearchResult(result)}>
+                      <div class="text-sm font-medium">{conversationNameById(result.conversation_id)}</div>
                       <div class="text-xs text-muted-foreground mt-1 line-clamp-2">{result.body}</div>
                     </button>
                   )}

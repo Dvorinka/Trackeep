@@ -7,6 +7,7 @@ import {
   IconLoader2
 } from '@tabler/icons-solidjs';
 import { updateStore } from '../../stores/updateStore';
+import { ModalPortal } from './ModalPortal';
 
 interface UpdateCheckerProps {
   class?: string;
@@ -115,9 +116,10 @@ export function UpdateChecker(props: UpdateCheckerProps) {
 
       {/* Update Modal */}
       <Show when={showUpdateModal() && updateStore.updateInfo()}>
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 mt-0">
-          <div class="bg-card border border-border rounded-lg shadow-lg max-w-md w-full max-h-[80vh] overflow-auto">
-            <div class="p-6">
+        <ModalPortal>
+          <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card border border-border rounded-lg shadow-lg max-w-md w-full max-h-[80vh] overflow-auto">
+              <div class="p-6">
               <div class="flex items-center gap-3 mb-4">
                 <IconDownload class="size-6 text-blue-500" />
                 <h2 class="text-lg font-semibold">Update Available</h2>
@@ -243,9 +245,10 @@ export function UpdateChecker(props: UpdateCheckerProps) {
                   </button>
                 </Show>
               </div>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
     </>
   );

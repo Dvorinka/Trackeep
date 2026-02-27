@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { For, Show, createEffect } from 'solid-js';
 import { IconX, IconEdit, IconPin, IconTrash, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
 
@@ -65,23 +66,24 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
   });
   
   return (
-    <>
-      {/* Backdrop */}
-      <Show when={props.isOpen && props.note}>
-        <div 
-          class="fixed inset-0 bg-black/60 z-50" 
-          onClick={props.onClose} 
-        />
-      </Show>
+    <ModalPortal>
+      <>
+        {/* Backdrop */}
+        <Show when={props.isOpen && props.note}>
+          <div
+            class="fixed inset-0 bg-black/60 z-50"
+            onClick={props.onClose}
+          />
+        </Show>
 
-      {/* Modal */}
-      <Show when={props.isOpen && props.note}>
-        <div 
-          class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-2xl transition-all duration-300 z-50"
-          style="width: 800px; max-width: 90vw; max-height: 85vh; overflow-y: auto;"
-        >
-          {props.note && (
-            <>
+        {/* Modal */}
+        <Show when={props.isOpen && props.note}>
+          <div
+            class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-2xl transition-all duration-300 z-50"
+            style="width: 800px; max-width: 90vw; max-height: 85vh; overflow-y: auto;"
+          >
+            {props.note && (
+              <>
         {/* Header */}
         <div class="flex items-center justify-between p-6 border-b border-border">
           <div class="flex items-center gap-3">
@@ -239,10 +241,11 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
             </div>
           </div>
         </div>
-            </>
-          )}
-        </div>
-      </Show>
-    </>
+              </>
+            )}
+          </div>
+        </Show>
+      </>
+    </ModalPortal>
   );
 };

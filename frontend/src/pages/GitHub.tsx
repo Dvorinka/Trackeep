@@ -2,6 +2,7 @@ import { createSignal, onMount } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { GitHubActivity } from '@/components/ui/GitHubActivity';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 import { 
   IconBrandGithub, 
   IconTrendingUp, 
@@ -50,6 +51,8 @@ interface GitHubStats {
   repos: GitHubRepo[];
 }
 
+const API_BASE_URL = getApiV1BaseUrl();
+
 export const GitHub = () => {
   const [githubStats, setGithubStats] = createSignal<GitHubStats>({
     totalRepos: 0,
@@ -65,21 +68,35 @@ export const GitHub = () => {
   
   const [username, setUsername] = createSignal('');
   const [isConnected, setIsConnected] = createSignal(false);
+  const weeklyTotal = () => weeklyActivity().reduce((a, b) => a + b, 0);
 
   onMount(() => {
     // Check if user is authenticated and has GitHub connected
     checkGitHubConnection();
   });
 
+  const resetGitHubData = () => {
+    setWeeklyActivity([0, 0, 0, 0, 0, 0, 0]);
+    setGithubStats({
+      totalRepos: 0,
+      totalStars: 0,
+      totalForks: 0,
+      totalWatchers: 0,
+      languages: [],
+      recentActivity: [],
+      repos: []
+    });
+  };
+
   const checkGitHubConnection = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
       if (!token) {
-        loadMockData();
+        resetGitHubData();
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -92,24 +109,24 @@ export const GitHub = () => {
           setUsername(userData.user.username);
           await fetchGitHubStats();
         } else {
-          loadMockData();
+          resetGitHubData();
         }
       } else {
-        loadMockData();
+        resetGitHubData();
       }
     } catch (error) {
       console.error('Failed to check GitHub connection:', error);
-      loadMockData();
+      resetGitHubData();
     }
   };
   const fetchGitHubStats = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/github/repos`, {
+      const response = await fetch(`${API_BASE_URL}/github/repos`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -142,8 +159,7 @@ export const GitHub = () => {
 
     } catch (error) {
       console.error('Failed to fetch GitHub stats:', error);
-      // Fallback to mock data
-      loadMockData();
+      resetGitHubData();
     }
   };
 
@@ -177,81 +193,6 @@ export const GitHub = () => {
     }));
   };
 
-  const loadMockData = () => {
-    // Load mock data for demonstration
-    const mockRepos: GitHubRepo[] = [
-      {
-        id: 1,
-        name: 'trackeep',
-        full_name: 'demo/trackeep',
-        description: 'A comprehensive productivity and bookmark management system',
-        html_url: 'https://github.com/demo/trackeep',
-        stargazers_count: 156,
-        forks_count: 42,
-        watchers_count: 28,
-        language: 'TypeScript',
-        updated_at: '2024-01-28T10:30:00Z',
-        created_at: '2023-06-15T14:20:00Z',
-        size: 2456,
-        open_issues_count: 3,
-        default_branch: 'main'
-      },
-      {
-        id: 2,
-        name: 'solid-components',
-        full_name: 'demo/solid-components',
-        description: 'Reusable SolidJS components for modern web applications',
-        html_url: 'https://github.com/demo/solid-components',
-        stargazers_count: 89,
-        forks_count: 23,
-        watchers_count: 15,
-        language: 'TypeScript',
-        updated_at: '2024-01-27T16:45:00Z',
-        created_at: '2023-08-22T09:15:00Z',
-        size: 1234,
-        open_issues_count: 1,
-        default_branch: 'main'
-      }
-    ];
-
-    const languages = [
-      { name: 'TypeScript', count: 2, color: '#3178c6' },
-      { name: 'Go', count: 1, color: '#00ADD8' }
-    ];
-
-    const recentActivity = [
-      {
-        type: 'push',
-        repo: 'trackeep',
-        date: '2024-01-28',
-        message: 'feat: add GitHub integration'
-      }
-    ];
-
-    // Generate mock weekly activity data
-    const mockWeeklyActivity = [
-      Math.floor(Math.random() * 20) + 5,  // Monday
-      Math.floor(Math.random() * 25) + 8,  // Tuesday
-      Math.floor(Math.random() * 22) + 6,  // Wednesday
-      Math.floor(Math.random() * 18) + 4,  // Thursday
-      Math.floor(Math.random() * 15) + 3,  // Friday
-      Math.floor(Math.random() * 12) + 2,  // Saturday
-      Math.floor(Math.random() * 10) + 1   // Sunday
-    ];
-
-    setWeeklyActivity(mockWeeklyActivity);
-
-    setGithubStats({
-      totalRepos: mockRepos.length,
-      totalStars: mockRepos.reduce((sum, repo) => sum + repo.stargazers_count, 0),
-      totalForks: mockRepos.reduce((sum, repo) => sum + repo.forks_count, 0),
-      totalWatchers: mockRepos.reduce((sum, repo) => sum + repo.watchers_count, 0),
-      languages,
-      recentActivity,
-      repos: mockRepos
-    });
-  };
-
   const connectGitHub = () => {
     // Redirect to centralized OAuth service
     window.location.href = 'https://oauth.tdvorak.dev/auth/github?redirect_uri=' + encodeURIComponent(window.location.origin + '/api/v1/auth/oauth/callback');
@@ -263,7 +204,7 @@ export const GitHub = () => {
       // For now, we'll just clear the local state
       setIsConnected(false);
       setUsername('');
-      loadMockData();
+      resetGitHubData();
     } catch (error) {
       console.error('Failed to disconnect GitHub:', error);
     }
@@ -412,20 +353,24 @@ export const GitHub = () => {
         {/* Languages - Right Column (smaller) */}
         <Card class="p-6 lg:col-span-1">
           <h3 class="text-lg font-semibold text-foreground mb-4">Languages</h3>
-          <div class="space-y-3">
-            {githubStats().languages.map((language) => (
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div 
-                    class="w-3 h-3 rounded-full flex-shrink-0"
-                    style={`background-color: ${language.color}`}
-                  ></div>
-                  <span class="text-sm text-foreground truncate">{language.name}</span>
+          {githubStats().languages.length === 0 ? (
+            <p class="text-sm text-muted-foreground">No language data yet.</p>
+          ) : (
+            <div class="space-y-3">
+              {githubStats().languages.map((language) => (
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div 
+                      class="w-3 h-3 rounded-full flex-shrink-0"
+                      style={`background-color: ${language.color}`}
+                    ></div>
+                    <span class="text-sm text-foreground truncate">{language.name}</span>
+                  </div>
+                  <span class="text-sm text-muted-foreground flex-shrink-0">{language.count} repos</span>
                 </div>
-                <span class="text-sm text-muted-foreground flex-shrink-0">{language.count} repos</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -436,48 +381,49 @@ export const GitHub = () => {
           <h3 class="text-lg font-semibold text-foreground">Weekly Activity</h3>
         </div>
         <div class="space-y-4">
-          <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
-            <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
-              <div class="border-t border-border/60"></div>
-              <div class="border-t border-border/40"></div>
-              <div class="border-t border-border/30"></div>
-              <div class="border-t border-border/20"></div>
+          {weeklyTotal() === 0 ? (
+            <div class="h-32 md:h-36 border border-dashed border-border rounded-lg flex items-center justify-center">
+              <p class="text-sm text-muted-foreground">No weekly GitHub activity yet.</p>
             </div>
-            <div class="relative flex items-end justify-between h-full gap-3 md:gap-4">
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
-                const weeklyActivityData = weeklyActivity() || [12, 19, 8, 15, 22, 18, 25]; // Fallback data
-                const activity = weeklyActivityData[index];
-                const maxActivity = Math.max(...weeklyActivityData);
-                // Use dynamic scale based on actual data
-                const fixedMax = Math.max(maxActivity, 30); // Ensure minimum scale for better visualization
-                const containerHeight = 128; // h-32 = 128px (base), md:h-36 = 144px
-                const availableHeight = containerHeight * 0.75; // Use 75% of container height to leave room for labels
-                const heightPercent = (activity / fixedMax) * (availableHeight / containerHeight) * 100;
-                const minHeightPercent = (8 / containerHeight) * 100; // Minimum 8px height
-                const finalHeightPercent = Math.max(heightPercent, minHeightPercent);
+          ) : (
+            <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
+              <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
+                <div class="border-t border-border/60"></div>
+                <div class="border-t border-border/40"></div>
+                <div class="border-t border-border/30"></div>
+                <div class="border-t border-border/20"></div>
+              </div>
+              <div class="relative flex items-end justify-between h-full gap-3 md:gap-4">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                  const weeklyActivityData = weeklyActivity();
+                  const activity = weeklyActivityData[index];
+                  const maxActivity = Math.max(...weeklyActivityData, 1);
+                  const heightPercent = (activity / maxActivity) * 85;
+                  const finalHeightPercent = activity > 0 ? Math.max(heightPercent, 6) : 0;
 
-                return (
-                  <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-8 h-full">
-                    <div class="relative w-full max-w-4 md:max-w-5 flex flex-col items-center justify-end h-full">
-                      <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10">
-                        {activity}
-                      </span>
-                      <div 
-                        class="w-full max-w-4 md:max-w-5 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
-                        style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 8px;`}
-                        title={`${day}: ${activity} contributions`}
-                      ></div>
+                  return (
+                    <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-8 h-full">
+                      <div class="relative w-full max-w-4 md:max-w-5 flex flex-col items-center justify-end h-full">
+                        <span class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10">
+                          {activity}
+                        </span>
+                        <div 
+                          class="w-full max-w-4 md:max-w-5 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
+                          style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%);`}
+                          title={`${day}: ${activity} contributions`}
+                        ></div>
+                      </div>
+                      <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
                     </div>
-                    <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div class="flex justify-between text-xs text-muted-foreground pt-2 border-t border-border">
-            <span>Total: {weeklyActivity().reduce((a, b) => a + b, 0)} contributions</span>
-            <span>Avg: {Math.round(weeklyActivity().reduce((a, b) => a + b, 0) / 7)} per day</span>
+            <span>Total: {weeklyTotal()} contributions</span>
+            <span>Avg: {Math.round(weeklyTotal() / 7)} per day</span>
           </div>
         </div>
       </Card>
@@ -486,67 +432,75 @@ export const GitHub = () => {
       {/* Recent Activity */}
       <Card class="p-6">
         <h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
-        <div class="space-y-3">
-          {githubStats().recentActivity.map((activity) => (
-            <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div class="flex items-center gap-3">
-                <div class="bg-primary/10 p-2 rounded-lg">
-                  <IconTrendingUp class="size-4 text-primary" />
+        {githubStats().recentActivity.length === 0 ? (
+          <p class="text-sm text-muted-foreground">No recent GitHub events yet.</p>
+        ) : (
+          <div class="space-y-3">
+            {githubStats().recentActivity.map((activity) => (
+              <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div class="bg-primary/10 p-2 rounded-lg">
+                    <IconTrendingUp class="size-4 text-primary" />
+                  </div>
+                  <div>
+                    <p class="text-sm text-foreground">{activity.message}</p>
+                    <p class="text-xs text-muted-foreground">{activity.repo} • {activity.date}</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-sm text-foreground">{activity.message}</p>
-                  <p class="text-xs text-muted-foreground">{activity.repo} • {activity.date}</p>
-                </div>
+                <span class="text-xs text-muted-foreground capitalize">{activity.type.replace('_', ' ')}</span>
               </div>
-              <span class="text-xs text-muted-foreground capitalize">{activity.type.replace('_', ' ')}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Repositories */}
       <Card class="p-6">
         <h3 class="text-lg font-semibold text-foreground mb-4">Repositories</h3>
-        <div class="space-y-4">
-          {githubStats().repos.map((repo) => (
-            <div class="border border-border rounded-lg p-4">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <h4 class="text-lg font-medium text-foreground">{repo.name}</h4>
-                    {repo.language && (
-                      <span 
-                        class="text-xs px-2 py-1 rounded-full"
-                        style={`background-color: ${getLanguageColor()}20; color: ${getLanguageColor()}`}
-                      >
-                        {repo.language}
-                      </span>
-                    )}
+        {githubStats().repos.length === 0 ? (
+          <p class="text-sm text-muted-foreground">No repositories available yet.</p>
+        ) : (
+          <div class="space-y-4">
+            {githubStats().repos.map((repo) => (
+              <div class="border border-border rounded-lg p-4">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <h4 class="text-lg font-medium text-foreground">{repo.name}</h4>
+                      {repo.language && (
+                        <span 
+                          class="text-xs px-2 py-1 rounded-full"
+                          style={`background-color: ${getLanguageColor()}20; color: ${getLanguageColor()}`}
+                        >
+                          {repo.language}
+                        </span>
+                      )}
+                    </div>
+                    <p class="text-sm text-muted-foreground mb-3">{repo.description}</p>
+                    <div class="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div class="flex items-center gap-1">
+                        <IconStar class="size-3" />
+                        <span>{repo.stargazers_count}</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <IconGitFork class="size-3" />
+                        <span>{repo.forks_count}</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <IconEye class="size-3" />
+                        <span>{repo.watchers_count}</span>
+                      </div>
+                      <span>Updated {formatDate(repo.updated_at)}</span>
+                    </div>
                   </div>
-                  <p class="text-sm text-muted-foreground mb-3">{repo.description}</p>
-                  <div class="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div class="flex items-center gap-1">
-                      <IconStar class="size-3" />
-                      <span>{repo.stargazers_count}</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <IconGitFork class="size-3" />
-                      <span>{repo.forks_count}</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <IconEye class="size-3" />
-                      <span>{repo.watchers_count}</span>
-                    </div>
-                    <span>Updated {formatDate(repo.updated_at)}</span>
-                  </div>
+                  <Button variant="ghost" size="sm">
+                    <IconExternalLink class="size-4" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <IconExternalLink class="size-4" />
-                </Button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

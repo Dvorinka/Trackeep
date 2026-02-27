@@ -369,6 +369,7 @@ func main() {
 			messages.GET("/messages/:id/suggestions", handlers.GetMessageSuggestions)
 			messages.POST("/messages/:id/suggestions/:suggestionId/accept", handlers.AcceptMessageSuggestion)
 			messages.POST("/messages/:id/suggestions/:suggestionId/dismiss", handlers.DismissMessageSuggestion)
+			messages.POST("/messages/:id/reveal-sensitive", handlers.RevealSensitiveMessage)
 			messages.GET("/ws", handlers.MessagesWebSocket)
 
 			messages.GET("/password-vault/items", handlers.GetPasswordVaultItems)

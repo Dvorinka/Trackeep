@@ -1,0 +1,18 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img "Trackeep Logo" [ref=e7]
+    - heading "Trackeep" [level=1] [ref=e8]
+    - paragraph [ref=e9]: Welcome back
+  - generic [ref=e10]:
+    - generic [ref=e13]: Registration Disabled
+    - paragraph [ref=e14]: Accounts can only be created by the administrator. Please contact your admin to get an account.
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: Email
+      - textbox "Email" [ref=e18]:
+        - /placeholder: your@email.com
+    - generic [ref=e19]:
+      - generic [ref=e20]: Password
+      - textbox "Password" [ref=e21]:
+        - /placeholder: ••••••••
+    - button "Sign In" [ref=e22] [cursor=pointer]

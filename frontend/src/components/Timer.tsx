@@ -16,6 +16,7 @@ import {
   type TimeEntry 
 } from '../lib/api';
 import { TagPicker } from '@/components/ui/TagPicker';
+import { isDemoMode } from '@/lib/demo-mode';
 
 interface TimerProps {
   onTimeEntryCreated?: (timeEntry: TimeEntry) => void;
@@ -37,13 +38,6 @@ export const Timer = (props: TimerProps) => {
   const [currentTimeEntry, setCurrentTimeEntry] = createSignal<TimeEntry | null>(null);
   const [showSettings, setShowSettings] = createSignal(false);
   const [availableTags, setAvailableTags] = createSignal<string[]>([]);
-
-  // Check if we're in demo mode
-  const isDemoMode = () => {
-    return localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-  };
 
   // Use appropriate API based on demo mode
   const getApi = () => isDemoMode() ? demoTimeEntriesApi : timeEntriesApi;

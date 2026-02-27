@@ -1,11 +1,11 @@
 import { createContext, useContext, type ParentComponent, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { isEnvDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 
-// Check if we're in demo mode (same logic as api.ts)
+// Demo mode is controlled by environment only.
 const isDemoMode = () => {
-  return localStorage.getItem('demoMode') === 'true' || 
-         document.title.includes('Demo Mode') ||
-         window.location.search.includes('demo=true');
+  return isEnvDemoMode();
 };
 
 // Types
@@ -44,7 +44,7 @@ export interface AuthResponse {
 }
 
 // API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = getApiV1BaseUrl();
 
 // Create auth context
 const AuthContext = createContext<AuthContextType>();
@@ -67,7 +67,7 @@ export const AuthProvider: ParentComponent = (props) => {
     user: null,
     token: null,
     isAuthenticated: false,
-    isLoading: false, // Start with false to avoid loading spinner in ProtectedRoute
+    isLoading: true,
   });
 
   // Initialize auth state from localStorage
@@ -400,18 +400,12 @@ export const useAuth = () => {
 
 // Helper function to get auth headers for API requests
 export const getAuthHeaders = () => {
-  // Check if we're in demo mode first
-  const isDemo = localStorage.getItem('demoMode') === 'true' || 
-         document.title.includes('Demo Mode') ||
-         window.location.search.includes('demo=true');
-  
+  const isDemo = isDemoMode();
   let token = null;
   
   if (isDemo) {
-    // In demo mode, use a mock token
-    token = 'demo-token-' + Date.now();
+    token = localStorage.getItem('token') || localStorage.getItem('trackeep_token') || ('demo-token-' + Date.now());
   } else {
-    // In normal mode, get token from localStorage
     token = localStorage.getItem('token') || localStorage.getItem('trackeep_token');
   }
   

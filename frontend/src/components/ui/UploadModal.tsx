@@ -1,6 +1,11 @@
 import { createSignal } from 'solid-js';
 import { Button } from '@/components/ui/Button';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { IconX, IconUpload } from '@tabler/icons-solidjs';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -39,13 +44,8 @@ export const UploadModal = (props: UploadModalProps) => {
     const files = uploadedFiles();
     if (files.length === 0) return;
 
-    // Check if we're in demo mode
-    const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                      document.title.includes('Demo Mode') ||
-                      window.location.search.includes('demo=true');
-
     try {
-      if (isDemoMode) {
+      if (isDemoMode()) {
         // Simulate upload in demo mode
         console.log('Demo mode: Simulating upload for files:', files.map(f => f.name));
         // Simulate upload delay
@@ -62,7 +62,7 @@ export const UploadModal = (props: UploadModalProps) => {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/upload`, {
+        const response = await fetch(`${API_BASE_URL}/files/upload`, {
           method: 'POST',
           body: formData
         });
@@ -86,26 +86,27 @@ export const UploadModal = (props: UploadModalProps) => {
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      {props.isOpen && (
-        <div class="fixed inset-0 bg-black/50 z-[60] mt-0" onClick={props.onClose} />
-      )}
+    <ModalPortal>
+      <>
+        {/* Backdrop */}
+        {props.isOpen && (
+          <div class="fixed inset-0 bg-black/50 z-[60]" onClick={props.onClose} />
+        )}
 
-      {/* Modal */}
-      <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-[70] ${
-        props.isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-      }`} style="width: min(600px, 90vw); max-height: min(80vh, 600px); overflow-y: auto;">
-        {/* Header */}
-        <div class="flex items-center justify-between p-6 border-b border-border">
-          <h3 class="text-lg font-semibold">Import Documents</h3>
-          <button
-            onClick={props.onClose}
-            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
-          >
-            <IconX class="size-4" />
-          </button>
-        </div>
+        {/* Modal */}
+        <div class={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl transition-all duration-300 z-[70] ${
+          props.isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+        }`} style="width: min(600px, 90vw); max-height: min(80vh, 600px); overflow-y: auto;">
+          {/* Header */}
+          <div class="flex items-center justify-between p-6 border-b border-border">
+            <h3 class="text-lg font-semibold">Import Documents</h3>
+            <button
+              onClick={props.onClose}
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+            >
+              <IconX class="size-4" />
+            </button>
+          </div>
 
         {/* Content */}
         <div class="p-4 sm:p-6 space-y-4">
@@ -175,7 +176,8 @@ export const UploadModal = (props: UploadModalProps) => {
             Upload {uploadedFiles().length} {uploadedFiles().length === 1 ? 'File' : 'Files'}
           </Button>
         </div>
-      </div>
-    </>
+        </div>
+      </>
+    </ModalPortal>
   );
 };

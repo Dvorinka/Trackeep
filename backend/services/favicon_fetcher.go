@@ -196,6 +196,10 @@ func (ff *FaviconFetcher) makeAbsoluteURL(href string, baseURL *url.URL) string 
 	if idx := strings.Index(href, "#"); idx != -1 {
 		href = href[:idx]
 	}
+	href = strings.TrimSpace(href)
+	if href == "" {
+		return ""
+	}
 
 	// Handle different URL types
 	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
@@ -206,22 +210,11 @@ func (ff *FaviconFetcher) makeAbsoluteURL(href string, baseURL *url.URL) string 
 		return baseURL.Scheme + ":" + href
 	}
 
-	if strings.HasPrefix(href, "/") {
-		return baseURL.Scheme + "://" + baseURL.Host + href
+	ref, err := url.Parse(href)
+	if err != nil {
+		return href
 	}
-
-	// Relative path - construct proper URL
-	if baseURL.Path == "" || baseURL.Path == "/" {
-		return baseURL.Scheme + "://" + baseURL.Host + "/" + href
-	}
-
-	// Remove filename from base path
-	basePath := baseURL.Path
-	if lastSlash := strings.LastIndex(basePath, "/"); lastSlash != -1 {
-		basePath = basePath[:lastSlash+1]
-	}
-
-	return baseURL.Scheme + "://" + baseURL.Host + basePath + href
+	return baseURL.ResolveReference(ref).String()
 }
 
 // tryCommonLocations tries common favicon file paths

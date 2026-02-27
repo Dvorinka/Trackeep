@@ -1,0 +1,14 @@
+- generic [ref=e5]:
+  - generic [ref=e7]:
+    - img "Trackeep Logo" [ref=e10]
+    - heading "Authentication Required" [level=1] [ref=e11]
+    - paragraph [ref=e12]: Please sign in to access Trackeep
+  - generic [ref=e13]:
+    - generic [ref=e15]:
+      - img [ref=e17]
+      - generic [ref=e19]:
+        - heading "Authentication Required" [level=3] [ref=e20]
+        - paragraph [ref=e21]: You need to be authenticated to access this page. Please sign in or create an account to continue.
+    - generic [ref=e22]:
+      - button "Sign In" [ref=e23] [cursor=pointer]
+      - button "Create Account" [ref=e24] [cursor=pointer]

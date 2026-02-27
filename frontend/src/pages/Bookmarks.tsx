@@ -7,7 +7,9 @@ import { VideoUploadModal } from '@/components/ui/VideoUploadModal';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo, IconBookmark } from '@tabler/icons-solidjs';
-import { getMockBookmarks, getMockVideos } from '@/lib/mockData';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface BookmarkTag {
   id: number;
@@ -113,39 +115,7 @@ export const Bookmarks = () => {
   // We no longer show inline HTML content previews, only the bookmark cards themselves
 
   onMount(async () => {
-    // Check if we're in demo mode and load mock data directly
-    const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                     document.title.includes('Demo Mode') ||
-                     window.location.search.includes('demo=true');
-    
-    if (isDemoMode) {
-      console.log('Demo mode detected, loading mock bookmarks');
-      const mockBookmarks = getMockBookmarks();
-      const adaptedBookmarks: Bookmark[] = mockBookmarks.map((bookmark, index) => ({
-        id: index + 1,
-        title: bookmark.title,
-        url: bookmark.url,
-        description: bookmark.description,
-        tags: bookmark.tags.map((tag) => tag.name),
-        created_at: bookmark.createdAt,
-        isImportant: bookmark.tags.some((tag) => tag.name === 'important' || tag.name === 'favorite'),
-        favicon: bookmark.favicon,
-        screenshot: bookmark.screenshot,
-        screenshot_medium: bookmark.screenshot,
-      }));
-      setBookmarks(adaptedBookmarks);
-      setIsLoading(false);
-
-      // Load mock video bookmarks
-      const mockVideos = getMockVideos();
-      setVideoBookmarks(mockVideos);
-      setIsLoadingVideos(false);
-      return;
-    }
-
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1';
-      
       // Load regular bookmarks
       const bookmarksResponse = await fetch(`${API_BASE_URL}/bookmarks`, {
         headers: {
@@ -176,38 +146,18 @@ export const Bookmarks = () => {
           const videosData = await videosResponse.json();
           setVideoBookmarks(Array.isArray(videosData) ? videosData : []);
         } else {
-          // If video endpoint fails, load mock videos as fallback
-          const mockVideos = getMockVideos();
-          setVideoBookmarks(mockVideos);
+          setVideoBookmarks([]);
         }
       } catch (videoError) {
-        console.warn('Failed to load video bookmarks, using mock data:', videoError);
-        const mockVideos = getMockVideos();
-        setVideoBookmarks(mockVideos);
+        console.warn('Failed to load video bookmarks:', videoError);
+        setVideoBookmarks([]);
       }
       
       setIsLoadingVideos(false);
     } catch (error) {
       console.error('Failed to load bookmarks:', error);
-      // Fallback to mock data if API fails
-      const mockBookmarks = getMockBookmarks();
-      const adaptedBookmarks: Bookmark[] = mockBookmarks.map((bookmark, index) => ({
-        id: index + 1,
-        title: bookmark.title,
-        url: bookmark.url,
-        description: bookmark.description,
-        tags: bookmark.tags.map((tag) => tag.name),
-        created_at: bookmark.createdAt,
-        isImportant: bookmark.tags.some((tag) => tag.name === 'important' || tag.name === 'favorite'),
-        favicon: bookmark.favicon,
-        screenshot: bookmark.screenshot,
-        screenshot_medium: bookmark.screenshot,
-      }));
-      setBookmarks(adaptedBookmarks);
-      
-      // Also load mock videos as fallback
-      const mockVideos = getMockVideos();
-      setVideoBookmarks(mockVideos);
+      setBookmarks([]);
+      setVideoBookmarks([]);
       setIsLoadingVideos(false);
     } finally {
       setIsLoading(false);
@@ -392,7 +342,7 @@ export const Bookmarks = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('trackeep_token') || localStorage.getItem('token') || ''}`
         },
         body: JSON.stringify({ video_id: video.video_id })
       });
@@ -400,7 +350,7 @@ export const Bookmarks = () => {
       if (response.ok) {
         console.log('Video added:', video);
       } else {
-        console.log('Video added (demo mode):', video);
+        console.warn('Video save endpoint returned non-OK status');
       }
       setShowVideoModal(false);
     } catch (error) {
@@ -414,14 +364,6 @@ export const Bookmarks = () => {
       <div class="flex justify-between items-center">
         <div>
           <h1 class="text-3xl font-bold text-foreground">Bookmarks</h1>
-          <Show when={localStorage.getItem('demoMode') === 'true' || window.location.search.includes('demo=true')}>
-            <div class="flex items-center gap-2 mt-2">
-              <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-                Demo Mode
-              </span>
-              <span class="text-sm text-muted-foreground">Showing sample bookmarks</span>
-            </div>
-          </Show>
         </div>
         <Show when={activeTab() === 'bookmarks'}>
           <Button onClick={() => setShowAddModal(true)}>

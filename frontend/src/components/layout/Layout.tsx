@@ -14,9 +14,16 @@ export interface LayoutProps {
 export function Layout(props: LayoutProps) {
   const resolved = children(() => props.children)
   const [isChatOpen, setIsChatOpen] = createSignal(false)
-  const [isSidebarOpen, setIsSidebarOpen] = createSignal(false)
+  const [isSidebarOpen, setIsSidebarOpen] = createSignal(true)
 
   onMount(() => {
+    const savedSidebarState = localStorage.getItem('trackeep_sidebar_open')
+    if (savedSidebarState !== null) {
+      setIsSidebarOpen(savedSidebarState === 'true')
+    } else {
+      setIsSidebarOpen(window.innerWidth >= 768)
+    }
+
     // Initialize dark mode from localStorage or system preference
     const savedTheme = localStorage.getItem('theme')
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -143,11 +150,14 @@ export function Layout(props: LayoutProps) {
   }
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen())
+    const nextValue = !isSidebarOpen()
+    setIsSidebarOpen(nextValue)
+    localStorage.setItem('trackeep_sidebar_open', String(nextValue))
   }
 
   const closeSidebar = () => {
     setIsSidebarOpen(false)
+    localStorage.setItem('trackeep_sidebar_open', 'false')
   }
 
   return (
@@ -157,7 +167,7 @@ export function Layout(props: LayoutProps) {
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen() && (
           <div 
-            class="fixed inset-0 bg-black/50 z-40" 
+            class="fixed inset-0 bg-black/50 z-40 md:hidden" 
             onClick={closeSidebar}
           />
         )}

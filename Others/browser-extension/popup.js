@@ -1,9 +1,16 @@
 /* global chrome */
 
-const statusEl = document.getElementById('status');
-const configHintEl = document.getElementById('configHint');
+// DOM Elements
+const statusIndicatorEl = document.getElementById('statusIndicator');
+const statusTextEl = document.getElementById('statusText');
+const statusMessageEl = document.getElementById('statusMessage');
 const openOptionsBtn = document.getElementById('openOptions');
 
+// Tab elements
+const tabBtns = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// Bookmark elements
 const bookmarkTitleInput = document.getElementById('bookmarkTitle');
 const bookmarkUrlInput = document.getElementById('bookmarkUrl');
 const bookmarkDescriptionInput = document.getElementById('bookmarkDescription');
@@ -11,6 +18,7 @@ const bookmarkTagsInput = document.getElementById('bookmarkTags');
 const bookmarkPublicInput = document.getElementById('bookmarkPublic');
 const saveBookmarkBtn = document.getElementById('saveBookmarkBtn');
 
+// File elements
 const fileInput = document.getElementById('fileInput');
 const fileDescriptionInput = document.getElementById('fileDescription');
 const uploadFileBtn = document.getElementById('uploadFileBtn');
@@ -20,19 +28,86 @@ let trackeepConfig = {
   authToken: ''
 };
 
-function setStatus(message, type) {
-  statusEl.textContent = message || '';
-  statusEl.classList.remove('error', 'success');
-  if (type) {
-    statusEl.classList.add(type);
+// Tab switching functionality
+function initTabs() {
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      
+      // Update button states
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Update content visibility
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+        if (content.id === `${targetTab}-tab`) {
+          content.classList.add('active');
+        }
+      });
+    });
+  });
+}
+
+// Status management
+function updateStatus(text, type = 'info') {
+  statusTextEl.textContent = text;
+  statusIndicatorEl.className = 'status-indicator';
+  
+  if (type === 'success') {
+    statusIndicatorEl.classList.add('connected');
+  } else if (type === 'error') {
+    statusIndicatorEl.classList.add('error');
+  }
+}
+
+function showMessage(message, type = 'info', duration = 5000) {
+  statusMessageEl.textContent = message;
+  statusMessageEl.className = `status-message ${type}`;
+  statusMessageEl.style.display = 'flex';
+  
+  // Auto-hide after duration
+  if (duration > 0) {
+    setTimeout(() => {
+      statusMessageEl.style.display = 'none';
+    }, duration);
+  }
+}
+
+function hideMessage() {
+  statusMessageEl.style.display = 'none';
+}
+
+// Loading states
+function setButtonLoading(button, loading = true) {
+  if (loading) {
+    button.disabled = true;
+    const originalContent = button.innerHTML;
+    button.dataset.originalContent = originalContent;
+    button.innerHTML = `
+      <svg class="icon icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <span>Processing...</span>
+    `;
+  } else {
+    button.disabled = false;
+    if (button.dataset.originalContent) {
+      button.innerHTML = button.dataset.originalContent;
+      delete button.dataset.originalContent;
+    }
   }
 }
 
 function disableForms(disabled) {
-  [bookmarkTitleInput, bookmarkUrlInput, bookmarkDescriptionInput, bookmarkTagsInput, bookmarkPublicInput, saveBookmarkBtn,
-   fileInput, fileDescriptionInput, uploadFileBtn].forEach((el) => {
-    if (!el) return;
-    el.disabled = disabled;
+  const elements = [
+    bookmarkTitleInput, bookmarkUrlInput, bookmarkDescriptionInput, 
+    bookmarkTagsInput, bookmarkPublicInput, saveBookmarkBtn,
+    fileInput, fileDescriptionInput, uploadFileBtn
+  ];
+  
+  elements.forEach(el => {
+    if (el) el.disabled = disabled;
   });
 }
 
@@ -44,10 +119,12 @@ function loadConfig(callback) {
     trackeepConfig = { apiBaseUrl, authToken };
 
     if (!apiBaseUrl || !authToken) {
-      configHintEl.textContent = 'Configure API URL and token in Options to enable saving.';
+      updateStatus('Configuration required', 'error');
+      showMessage('Configure API URL and token in Options to enable saving.', 'error');
       disableForms(true);
     } else {
-      configHintEl.textContent = `Using API: ${apiBaseUrl}`;
+      updateStatus(`Connected to ${apiBaseUrl}`, 'success');
+      hideMessage();
       disableForms(false);
     }
 
@@ -67,11 +144,9 @@ function detectTrackeepDomain(callback) {
 
     try {
       const url = new URL(tab.url);
-      // Common Trackeep domains: localhost, trackeep.*, etc.
       const isTrackeepDomain = url.hostname.includes('trackeep') || url.hostname === 'localhost';
       if (isTrackeepDomain && url.protocol === 'https:') {
         const candidate = `${url.origin}/api/v1`;
-        // Only pre-fill if not already set
         chrome.storage.sync.get(['trackeepApiBaseUrl'], (items) => {
           if (!items.trackeepApiBaseUrl) {
             chrome.storage.sync.set({ trackeepApiBaseUrl: candidate }, () => {
@@ -96,11 +171,9 @@ function initActiveTab() {
     const tab = tabs && tabs[0];
     if (!tab) return;
 
-    // Check for context menu data first
     chrome.storage.local.get(['contextMenuData'], (items) => {
       const ctx = items.contextMenuData;
       if (ctx && ctx.timestamp && Date.now() - ctx.timestamp < 5000) {
-        // Use context menu data if recent
         if (ctx.url && !bookmarkUrlInput.value) {
           bookmarkUrlInput.value = ctx.url;
         }
@@ -110,10 +183,8 @@ function initActiveTab() {
         if (ctx.selection && !bookmarkDescriptionInput.value) {
           bookmarkDescriptionInput.value = ctx.selection;
         }
-        // Clear after using
         chrome.storage.local.remove(['contextMenuData']);
       } else {
-        // Fallback to active tab
         if (tab.title && !bookmarkTitleInput.value) {
           bookmarkTitleInput.value = tab.title;
         }
@@ -127,17 +198,17 @@ function initActiveTab() {
 
 async function saveBookmark(event) {
   event.preventDefault();
-  setStatus('', null);
+  hideMessage();
 
   const { apiBaseUrl, authToken } = trackeepConfig;
   if (!apiBaseUrl || !authToken) {
-    setStatus('Missing API URL or auth token. Open options first.', 'error');
+    showMessage('Missing API URL or auth token. Open options first.', 'error');
     return;
   }
 
   const url = bookmarkUrlInput.value.trim();
   if (!url) {
-    setStatus('URL is required.', 'error');
+    showMessage('URL is required.', 'error');
     return;
   }
 
@@ -158,8 +229,8 @@ async function saveBookmark(event) {
     is_public: isPublic
   };
 
-  saveBookmarkBtn.disabled = true;
-  setStatus('Saving bookmark…', null);
+  setButtonLoading(saveBookmarkBtn, true);
+  showMessage('Saving bookmark...', 'info', 0);
 
   try {
     const base = apiBaseUrl.replace(/\/$/, '');
@@ -185,28 +256,41 @@ async function saveBookmark(event) {
       throw new Error(errorMessage);
     }
 
-    setStatus('Bookmark saved to Trackeep.', 'success');
+    showMessage(`
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>
+      Bookmark saved successfully!
+    `, 'success');
+    
+    // Clear form after successful save
+    setTimeout(() => {
+      bookmarkDescriptionInput.value = '';
+      bookmarkTagsInput.value = '';
+      bookmarkPublicInput.checked = false;
+    }, 2000);
+    
   } catch (err) {
     console.error('Error saving bookmark', err);
-    setStatus(err && err.message ? err.message : 'Failed to save bookmark.', 'error');
+    showMessage(err && err.message ? err.message : 'Failed to save bookmark.', 'error');
   } finally {
-    saveBookmarkBtn.disabled = false;
+    setButtonLoading(saveBookmarkBtn, false);
   }
 }
 
 async function uploadFile(event) {
   event.preventDefault();
-  setStatus('', null);
+  hideMessage();
 
   const { apiBaseUrl, authToken } = trackeepConfig;
   if (!apiBaseUrl || !authToken) {
-    setStatus('Missing API URL or auth token. Open options first.', 'error');
+    showMessage('Missing API URL or auth token. Open options first.', 'error');
     return;
   }
 
   const file = fileInput.files && fileInput.files[0];
   if (!file) {
-    setStatus('Please choose a file to upload.', 'error');
+    showMessage('Please choose a file to upload.', 'error');
     return;
   }
 
@@ -218,8 +302,8 @@ async function uploadFile(event) {
     formData.append('description', description);
   }
 
-  uploadFileBtn.disabled = true;
-  setStatus('Uploading file…', null);
+  setButtonLoading(uploadFileBtn, true);
+  showMessage('Uploading file...', 'info', 0);
 
   try {
     const base = apiBaseUrl.replace(/\/$/, '');
@@ -244,14 +328,24 @@ async function uploadFile(event) {
       throw new Error(errorMessage);
     }
 
-    setStatus('File uploaded to Trackeep.', 'success');
-    fileInput.value = '';
-    fileDescriptionInput.value = '';
+    showMessage(`
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>
+      File uploaded successfully!
+    `, 'success');
+    
+    // Clear form after successful upload
+    setTimeout(() => {
+      fileInput.value = '';
+      fileDescriptionInput.value = '';
+    }, 2000);
+    
   } catch (err) {
     console.error('Error uploading file', err);
-    setStatus(err && err.message ? err.message : 'Failed to upload file.', 'error');
+    showMessage(err && err.message ? err.message : 'Failed to upload file.', 'error');
   } finally {
-    uploadFileBtn.disabled = false;
+    setButtonLoading(uploadFileBtn, false);
   }
 }
 
@@ -263,9 +357,12 @@ function openOptions() {
   }
 }
 
-// Init
-
+// Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize tabs
+  initTabs();
+  
+  // Event listeners
   openOptionsBtn.addEventListener('click', openOptions);
   saveBookmarkBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -276,6 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadFile(e);
   });
 
+  // Initialize configuration and active tab
   detectTrackeepDomain(() => {
     loadConfig(() => {
       initActiveTab();

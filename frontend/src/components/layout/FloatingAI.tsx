@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js'
 import { IconX, IconSend, IconUser, IconChevronDown } from '@tabler/icons-solidjs'
 import longcatIcon from '@/assets/longcat-color.svg'
+import { ModalPortal } from '@/components/ui/ModalPortal'
 
 interface FloatingAIProps {
   onToggleChat: () => void
@@ -79,8 +80,9 @@ export function FloatingAI(props: FloatingAIProps) {
 
       {/* AI Chat Modal */}
       <Show when={props.isChatOpen}>
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0 p-4">
-          <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full max-h-[600px] flex flex-col" style="width: 420px;">
+        <ModalPortal>
+          <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full max-h-[600px] flex flex-col" style="width: 420px;">
             {/* Header */}
             <div class="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">
               <div class="flex items-center gap-3">
@@ -177,8 +179,9 @@ export function FloatingAI(props: FloatingAIProps) {
                 </button>
               </div>
             </div>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
     </>
   )

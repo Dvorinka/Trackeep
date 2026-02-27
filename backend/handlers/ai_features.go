@@ -588,7 +588,7 @@ Provide a JSON array of task objects with:
 - context_data: Additional context
 - deadline: Suggested deadline (ISO date or null)
 - estimated_time: Estimated time in minutes
-- confidence: Confidence score 0-1`, contextData, limit)
+- confidence: Confidence score 0-1`, limit, contextData)
 
 	messages := []services.Message{
 		{Role: "system", Content: "You are a productivity assistant. Always respond with valid JSON array."},

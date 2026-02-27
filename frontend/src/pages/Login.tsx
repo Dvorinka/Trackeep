@@ -1,16 +1,27 @@
 import { createSignal, onMount } from 'solid-js';
 import { useAuth, type LoginRequest, type RegisterRequest } from '@/lib/auth';
 import { isEnvDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 import { useNavigate } from '@solidjs/router';
+
+const API_BASE_URL = getApiV1BaseUrl();
+
+interface LoginFormData {
+  email: string;
+  password: string;
+  username: string;
+  fullName: string;
+}
 
 export const Login = () => {
   const { login, register } = useAuth();
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = createSignal(true);
-  const [formData, setFormData] = createSignal<LoginRequest | RegisterRequest>({
+  const [isLogin, setIsLogin] = createSignal(false);
+  const [formData, setFormData] = createSignal<LoginFormData>({
     email: '',
     password: '',
-    ...(isLogin() ? {} : { username: '', fullName: '' }),
+    username: '',
+    fullName: '',
   });
   const [error, setError] = createSignal('');
   const [noAccountsExist, setNoAccountsExist] = createSignal(false);
@@ -24,13 +35,14 @@ export const Login = () => {
       setFormData({
         email: 'demo@trackeep.com',
         password: 'demo123',
-        ...(isLogin() ? {} : { username: 'demo', fullName: 'Demo User' }),
+        username: 'demo',
+        fullName: 'Demo User',
       });
       return;
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}/auth/check-users`, {
+      const response = await fetch(`${API_BASE_URL}/auth/check-users`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -45,12 +57,24 @@ export const Login = () => {
           setNoAccountsExist(false);
           // Force to login mode
           setIsLogin(true);
+          setFormData({
+            email: '',
+            password: '',
+            username: '',
+            fullName: '',
+          });
         } else {
           // No users exist - allow registration for first user (admin)
           setRegistrationDisabled(false);
           setNoAccountsExist(true);
           // Force to registration mode
           setIsLogin(false);
+          setFormData({
+            email: '',
+            password: '',
+            username: '',
+            fullName: '',
+          });
         }
       }
     } catch (err) {
@@ -65,9 +89,19 @@ export const Login = () => {
 
     try {
       if (isLogin()) {
-        await login(formData() as LoginRequest);
+        const loginPayload: LoginRequest = {
+          email: formData().email,
+          password: formData().password,
+        };
+        await login(loginPayload);
       } else {
-        await register(formData() as RegisterRequest);
+        const registerPayload: RegisterRequest = {
+          email: formData().email,
+          password: formData().password,
+          username: formData().username,
+          fullName: formData().fullName,
+        };
+        await register(registerPayload);
       }
       // Navigate to app after successful login/registration
       navigate('/app');
@@ -88,13 +122,21 @@ export const Login = () => {
       setError('Registration is disabled. Please contact your administrator to create an account.');
       return;
     }
+
+    // If there are no users, force registration only (no sign in yet)
+    if (noAccountsExist()) {
+      setIsLogin(false);
+      setError('No accounts exist yet. Create the first administrator account first.');
+      return;
+    }
     
     setIsLogin(!isLogin());
     setError('');
     setFormData({
       email: '',
       password: '',
-      ...(isLogin() ? { username: '', fullName: '' } : {}),
+      username: '',
+      fullName: '',
     });
   };
 
@@ -102,6 +144,13 @@ export const Login = () => {
     <div class="min-h-screen bg-[#18181b] flex items-center justify-center px-4">
       <div class="max-w-md w-full bg-[#141415] border border-[#262626] rounded-lg p-8">
         <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center p-3 rounded-xl border border-[#262626] bg-[#0f0f10] mb-4">
+            <img
+              src="/trackeep.svg"
+              alt="Trackeep Logo"
+              class="w-11 h-11 app-logo-mono"
+            />
+          </div>
           <h1 class="text-3xl font-bold text-[#fafafa] mb-2">Trackeep</h1>
           <p class="text-[#a3a3a3]">
             {isEnvDemoMode() ? 'Demo Mode' : (isLogin() ? 'Welcome back' : 'Create your account')}
@@ -189,7 +238,7 @@ export const Login = () => {
                       id="username"
                       type="text"
                       required
-                      value={(formData() as RegisterRequest).username}
+                      value={formData().username}
                       onInput={(e) => handleInputChange('username', e.currentTarget.value)}
                       class="w-full px-3 py-2 bg-[#18181b] border border-[#262626] rounded-md text-[#fafafa] placeholder-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#39b9ff] focus:border-transparent"
                       placeholder="username"
@@ -204,7 +253,7 @@ export const Login = () => {
                       id="fullName"
                       type="text"
                       required
-                      value={(formData() as RegisterRequest).fullName}
+                      value={formData().fullName}
                       onInput={(e) => handleInputChange('fullName', e.currentTarget.value)}
                       class="w-full px-3 py-2 bg-[#18181b] border border-[#262626] rounded-md text-[#fafafa] placeholder-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#39b9ff] focus:border-transparent"
                       placeholder="Your Name"
@@ -239,7 +288,7 @@ export const Login = () => {
             </form>
 
             <div class="mt-6 text-center">
-              {!registrationDisabled() && (
+              {!registrationDisabled() && !noAccountsExist() && (
                 <p class="text-[#a3a3a3]">
                   {isLogin() ? "Don't have an account?" : 'Already have an account?'}
                   <button

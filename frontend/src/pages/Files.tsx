@@ -5,7 +5,7 @@ import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
 import { getFileTypeConfig, formatFileSize, getFileCategoryColor } from '@/utils/fileTypes';
-import { getMockFiles } from '@/lib/mockData';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 import { 
   IconUpload,
   IconEye,
@@ -14,6 +14,8 @@ import {
   IconCopy,
   IconShare
 } from '@tabler/icons-solidjs';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface FileItem {
   id: number;
@@ -48,137 +50,41 @@ export const Files = () => {
   const [selectedFile, setSelectedFile] = createSignal<FileItem | null>(null);
   const [copiedLink, setCopiedLink] = createSignal(false);
 
-  // Check if we're in demo mode
-  const isDemoMode = () => {
-    return localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-  };
-
   onMount(async () => {
     try {
-      if (isDemoMode()) {
-        // Use mock data in demo mode
-        const mockFiles = getMockFiles();
-        const mappedFiles: FileItem[] = mockFiles.map(file => ({
-          id: parseInt(file.id),
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          uploadedAt: file.uploadedAt,
-          description: file.description,
-          tags: file.tags.map(tag => tag.name),
-          associations: file.associations?.map(assoc => ({
-            id: assoc.id,
-            type: assoc.type as 'task' | 'bookmark' | 'note' | 'project',
-            title: assoc.title
-          })),
-          url: file.url,
-          isLink: file.isLink,
-          preview: file.preview,
-          downloadUrl: file.downloadUrl,
-          viewUrl: file.viewUrl,
-          shareUrl: file.shareUrl
-        }));
-        setFiles(mappedFiles);
-        setIsLoading(false);
-        return;
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/files`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load files');
       }
 
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/v1/files');
-      // const data = await response.json();
-      
-      // Mock data for now
-      setFiles([
-        {
-          id: 1,
-          name: 'project-plan.pdf',
-          size: 2048576,
-          type: 'application/pdf',
-          uploadedAt: '2024-01-15T10:30:00Z',
-          description: 'Q1 2024 project roadmap and milestones',
-          tags: ['planning', 'q1-2024'],
-          downloadUrl: '/files/download/1',
-          viewUrl: '/files/view/1',
-          shareUrl: '/files/share/1'
-        },
-        {
-          id: 2,
-          name: 'meeting-notes.docx',
-          size: 524288,
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          uploadedAt: '2024-01-14T15:45:00Z',
-          description: 'Team sync meeting notes',
-          tags: ['meetings', 'team'],
-          downloadUrl: '/files/download/2',
-          viewUrl: '/files/view/2',
-          shareUrl: '/files/share/2'
-        },
-        {
-          id: 3,
-          name: 'screenshot.png',
-          size: 1024000,
-          type: 'image/png',
-          uploadedAt: '2024-01-13T09:20:00Z',
-          description: 'UI design mockup',
-          tags: ['design', 'ui'],
-          preview: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-          associations: [
-            { id: '1', type: 'project', title: 'Website Redesign' },
-            { id: '2', type: 'task', title: 'Create mockups' }
-          ],
-          downloadUrl: '/files/download/3',
-          viewUrl: '/files/view/3',
-          shareUrl: '/files/share/3'
-        },
-        {
-          id: 4,
-          name: 'app.js',
-          size: 256000,
-          type: 'text/javascript',
-          uploadedAt: '2024-01-12T14:15:00Z',
-          description: 'Main application logic',
-          tags: ['javascript', 'frontend'],
-          preview: 'console.log("Hello World");\n\nfunction main() {\n  // Main application logic\n  return true;\n}',
-          associations: [
-            { id: '3', type: 'project', title: 'Frontend App' }
-          ],
-          downloadUrl: '/files/download/4',
-          viewUrl: '/files/view/4',
-          shareUrl: '/files/share/4'
-        },
-        {
-          id: 5,
-          name: 'database.sql',
-          size: 512000,
-          type: 'application/sql',
-          uploadedAt: '2024-01-11T11:30:00Z',
-          description: 'Database schema',
-          tags: ['database', 'sql'],
-          preview: 'CREATE TABLE users (\n  id INT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL\n);',
-          associations: [
-            { id: '4', type: 'project', title: 'Backend API' }
-          ],
-          downloadUrl: '/files/download/5',
-          viewUrl: '/files/view/5',
-          shareUrl: '/files/share/5'
-        },
-        {
-          id: 6,
-          name: 'presentation.pptx',
-          size: 3072000,
-          type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-          uploadedAt: '2024-01-10T16:45:00Z',
-          description: 'Q4 review presentation',
-          tags: ['presentation', 'q4'],
-          downloadUrl: '/files/download/6',
-          viewUrl: '/files/view/6',
-          shareUrl: '/files/share/6'
-        }
-      ]);
+      const filesData = await response.json();
+      const mappedFiles: FileItem[] = (Array.isArray(filesData) ? filesData : []).map((file: any, index) => ({
+        id: Number(file.id || index + 1),
+        name: file.original_name || file.file_name || `File ${index + 1}`,
+        size: Number(file.file_size || file.size || 0),
+        type: file.mime_type || file.type || 'application/octet-stream',
+        uploadedAt: file.created_at || file.uploadedAt || new Date().toISOString(),
+        description: file.description,
+        tags: Array.isArray(file.tags)
+          ? file.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag?.name)).filter(Boolean)
+          : [],
+        url: file.url,
+        isLink: Boolean(file.is_link),
+        preview: file.preview,
+        downloadUrl: file.download_url,
+        viewUrl: file.view_url,
+        shareUrl: file.share_url
+      }));
+      setFiles(mappedFiles);
     } catch (error) {
       console.error('Failed to load files:', error);
+      setFiles([]);
     } finally {
       setIsLoading(false);
     }

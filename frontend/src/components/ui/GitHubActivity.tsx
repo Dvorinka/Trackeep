@@ -51,140 +51,19 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
     longestStreak: 0
   });
 
-  onMount(() => {
-    // Always show rich mock data for demonstration
-    generateMockData();
-    return;
-    
-    // Original real data loading logic (commented out for demo)
-    /*
-    if (isDemoMode()) {
-      // In demo mode, always show rich mock data
-      generateMockData();
-      return;
-    }
-
-    loadRealData().catch((error) => {
-      console.error('Failed to load GitHub activity analytics, falling back to mock data:', error);
-      generateMockData();
-    });
-    */
-  });
-
-  const generateMockData = () => {
-    const activityData: ActivityData[] = [];
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    
-    let currentStreak = 0;
-    let longestStreak = 0;
-    let tempStreak = 0;
-    let totalContributions = 0;
-
-    // Generate more realistic activity patterns
-    for (let d = new Date(oneYearAgo); d <= today; d.setDate(d.getDate() + 1)) {
-      const dayOfWeek = d.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      const monthsAgo = Math.floor((today.getTime() - d.getTime()) / (30 * 24 * 60 * 60 * 1000));
-      
-      // More realistic patterns:
-      // - Higher activity in recent months
-      // - Lower activity on weekends
-      // - Some bursts of activity followed by quiet periods
-      let baseProbability = 0.3; // 30% chance of some activity
-      
-      // Increase activity for more recent months
-      if (monthsAgo < 3) baseProbability = 0.7; // Last 3 months: 70% chance
-      else if (monthsAgo < 6) baseProbability = 0.5; // 3-6 months ago: 50% chance
-      else baseProbability = 0.3; // 6+ months ago: 30% chance
-      
-      // Reduce activity on weekends
-      if (isWeekend) baseProbability *= 0.6;
-      
-      // Add some randomness and bursts
-      const hasActivity = Math.random() < baseProbability;
-      let count = 0;
-      
-      if (hasActivity) {
-        // Generate contribution count with some bursts
-        if (Math.random() < 0.1) {
-          // 10% chance of high activity burst
-          count = Math.floor(Math.random() * 15) + 10;
-        } else {
-          // Normal activity
-          count = Math.floor(Math.random() * 8) + 1;
-        }
-      }
-      
-      const level = count === 0 ? 0 : Math.min(5, Math.ceil(count / 2));
-      
-      activityData.push({
-        date: new Date(d).toISOString().split('T')[0],
-        count,
-        level
-      });
-
-      if (count > 0) {
-        tempStreak++;
-        if (d.toDateString() === today.toDateString()) {
-          currentStreak = tempStreak;
-        }
-      } else {
-        longestStreak = Math.max(longestStreak, tempStreak);
-        tempStreak = 0;
-      }
-      
-      totalContributions += count;
-    }
-
-    const defaultEvents: ActivityEvent[] = [
-      {
-        type: 'commit',
-        title: 'feat: Add advanced color scheme management',
-        date: '2024-01-28',
-        link: '/app/activity',
-        repo: 'trackeep',
-        action: 'pushed'
-      },
-      {
-        type: 'pull_request',
-        title: 'Enhance admin settings with toggle buttons',
-        date: '2024-01-27',
-        link: '/app/admin',
-        repo: 'trackeep',
-        action: 'opened'
-      },
-      {
-        type: 'merge',
-        title: 'Merge branch: feature/ai-chat-enhancements',
-        date: '2024-01-26',
-        link: '/app/chat',
-        repo: 'trackeep',
-        action: 'merged'
-      },
-      {
-        type: 'bookmark',
-        title: 'Added bookmark: Advanced React Patterns',
-        date: '2024-01-25',
-        link: '/app/bookmarks'
-      },
-      {
-        type: 'project',
-        title: 'Updated project: Trackeep Dashboard',
-        date: '2024-01-24',
-        link: '/app/projects'
-      }
-    ];
-
-    setActivities(activityData);
-    setRecentEvents(props.customEvents || defaultEvents);
+  const setEmptyData = () => {
+    setActivities([]);
+    setRecentEvents(props.customEvents || []);
     setStats({
-      totalContributions,
-      currentStreak,
-      longestStreak: Math.max(longestStreak, tempStreak)
+      totalContributions: 0,
+      currentStreak: 0,
+      longestStreak: 0
     });
   };
+
+  onMount(() => {
+    setEmptyData();
+  });
 
   const getMonthLabels = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -325,75 +204,84 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
             </h3>
           </div>
 
-          {/* Month labels - Show all months with responsive spacing */}
-          <div class="flex justify-between mb-3 px-6 sm:px-8 text-xs sm:text-sm font-medium overflow-x-auto">
-            <div class="flex gap-2 sm:gap-3 min-w-max">
-              {getMonthLabels().map((month) => (
-                <span class="text-foreground/80 hover:text-foreground transition-colors cursor-default whitespace-nowrap">
-                  {month}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Contribution grid - Responsive and prevents overflow */}
-          <div class="overflow-hidden w-full">
-            <div class="flex gap-1 min-w-0">
-              {/* Day labels */}
-              <div class="flex flex-col gap-1 pr-2 flex-shrink-0">
-                {['Mon', 'Wed', 'Fri'].map((day) => (
-                  <div class="h-3 flex items-center justify-end">
-                    <span class="text-xs text-foreground/70 hover:text-foreground transition-colors cursor-default font-medium">
-                      {day}
-                    </span>
-                  </div>
+          <Show
+            when={activities().length > 0}
+            fallback={
+              <div class="h-44 border border-dashed border-border rounded-lg flex items-center justify-center">
+                <p class="text-sm text-muted-foreground">No GitHub contribution data yet.</p>
+              </div>
+            }
+          >
+            {/* Month labels - Show all months with responsive spacing */}
+            <div class="flex justify-between mb-3 px-6 sm:px-8 text-xs sm:text-sm font-medium overflow-x-auto">
+              <div class="flex gap-2 sm:gap-3 min-w-max">
+                {getMonthLabels().map((month) => (
+                  <span class="text-foreground/80 hover:text-foreground transition-colors cursor-default whitespace-nowrap">
+                    {month}
+                  </span>
                 ))}
               </div>
+            </div>
 
-              {/* Weekly columns - Responsive with proper overflow handling */}
-              <div class="flex gap-1 overflow-x-auto overflow-y-hidden min-w-0 pb-2">
-                {Array.from({ length: 53 }, (_, weekIndex) => (
-                  <div class="flex flex-col gap-1 flex-shrink-0">
-                    {Array.from({ length: 7 }, (_, dayIndex) => {
-                      const activityIndex = weekIndex * 7 + dayIndex;
-                      const activity = activities()[activityIndex];
+            {/* Contribution grid - Responsive and prevents overflow */}
+            <div class="overflow-hidden w-full">
+              <div class="flex gap-1 min-w-0">
+                {/* Day labels */}
+                <div class="flex flex-col gap-1 pr-2 flex-shrink-0">
+                  {['Mon', 'Wed', 'Fri'].map((day) => (
+                    <div class="h-3 flex items-center justify-end">
+                      <span class="text-xs text-foreground/70 hover:text-foreground transition-colors cursor-default font-medium">
+                        {day}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
-                      if (!activity) {
+                {/* Weekly columns - Responsive with proper overflow handling */}
+                <div class="flex gap-1 overflow-x-auto overflow-y-hidden min-w-0 pb-2">
+                  {Array.from({ length: 53 }, (_, weekIndex) => (
+                    <div class="flex flex-col gap-1 flex-shrink-0">
+                      {Array.from({ length: 7 }, (_, dayIndex) => {
+                        const activityIndex = weekIndex * 7 + dayIndex;
+                        const activity = activities()[activityIndex];
+
+                        if (!activity) {
+                          return (
+                            <div
+                              class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0 transition-all"
+                              style={`background-color: ${getActivityColor(0)}`}
+                            ></div>
+                          );
+                        }
+
                         return (
                           <div
-                            class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0 transition-all"
-                            style={`background-color: ${getActivityColor(0)}`}
+                            class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm hover:ring-1 hover:ring-primary cursor-pointer transition-all flex-shrink-0 hover:scale-110"
+                            style={`background-color: ${getActivityColor(activity.level)}`}
+                            title={`${activity.date}: ${activity.count} contributions`}
                           ></div>
                         );
-                      }
-
-                      return (
-                        <div
-                          class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm hover:ring-1 hover:ring-primary cursor-pointer transition-all flex-shrink-0 hover:scale-110"
-                          style={`background-color: ${getActivityColor(activity.level)}`}
-                          title={`${activity.date}: ${activity.count} contributions`}
-                        ></div>
-                      );
-                    })}
-                  </div>
-                ))}
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Legend */}
-          <div class="flex items-center justify-between mt-4">
-            <span class="text-xs text-muted-foreground">Less</span>
-            <div class="flex gap-1">
-              {[0, 1, 2, 3, 4].map((level) => (
-                <div
-                  class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm"
-                  style={`background-color: ${getActivityColor(level)}`}
-                ></div>
-              ))}
+            {/* Legend */}
+            <div class="flex items-center justify-between mt-4">
+              <span class="text-xs text-muted-foreground">Less</span>
+              <div class="flex gap-1">
+                {[0, 1, 2, 3, 4].map((level) => (
+                  <div
+                    class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm"
+                    style={`background-color: ${getActivityColor(level)}`}
+                  ></div>
+                ))}
+              </div>
+              <span class="text-xs text-muted-foreground">More</span>
             </div>
-            <span class="text-xs text-muted-foreground">More</span>
-          </div>
+          </Show>
         </Card>
       </Show>
 
@@ -407,52 +295,56 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
               <span>Active</span>
             </div>
           </div>
-          <div class="space-y-3 max-h-64 overflow-y-auto">
-            <For each={recentEvents()}>
-              {(event) => (
-                <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <div class="bg-primary/10 p-2 rounded-lg">
-                      {getEventIcon(event.type)}
-                    </div>
-                    <div class="flex-1">
-                      <p class="text-sm text-foreground font-medium">{event.title}</p>
-                      <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <span>{event.date}</span>
-                        {event.repo && (
-                          <>
-                            <span>•</span>
-                            <span class="text-primary">{event.repo}</span>
-                          </>
-                        )}
-                        {event.action && (
-                          <>
-                            <span>•</span>
-                            <span>{event.action}</span>
-                          </>
-                        )}
+          <Show
+            when={recentEvents().length > 0}
+            fallback={<p class="text-sm text-muted-foreground">No GitHub events yet.</p>}
+          >
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+              <For each={recentEvents()}>
+                {(event) => (
+                  <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div class="flex items-center gap-3">
+                      <div class="bg-primary/10 p-2 rounded-lg">
+                        {getEventIcon(event.type)}
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-sm text-foreground font-medium">{event.title}</p>
+                        <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <span>{event.date}</span>
+                          {event.repo && (
+                            <>
+                              <span>•</span>
+                              <span class="text-primary">{event.repo}</span>
+                            </>
+                          )}
+                          {event.action && (
+                            <>
+                              <span>•</span>
+                              <span>{event.action}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    {event.link && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          if (event.link) {
+                            window.location.href = event.link;
+                          }
+                        }}
+                        class="hover:bg-primary/10 transition-colors"
+                      >
+                        <IconExternalLink class="size-4" />
+                      </Button>
+                    )}
                   </div>
-                  {event.link && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => {
-                        // Navigate to the link in the same tab
-                        if (event.link) {
-                          window.location.href = event.link;
-                        }
-                      }}
-                      class="hover:bg-primary/10 transition-colors"
-                    >
-                      <IconExternalLink class="size-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </For>
-          </div>
+                )}
+              </For>
+            </div>
+          </Show>
         </Card>
       </Show>
     </div>

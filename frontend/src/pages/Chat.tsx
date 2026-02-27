@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show, onMount } from 'solid-js'
+import { createEffect, createResource, createSignal, For, Show, onMount } from 'solid-js'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -33,6 +33,18 @@ interface ChatSession {
   include_tasks: boolean
   include_files: boolean
   include_notes: boolean
+}
+
+const getToken = () => localStorage.getItem('trackeep_token') || localStorage.getItem('token') || ''
+
+const getProviderFromModel = (modelId: string): string => {
+  const value = modelId.toLowerCase()
+  if (value.includes('mistral')) return 'mistral'
+  if (value.includes('grok')) return 'grok'
+  if (value.includes('deepseek')) return 'deepseek'
+  if (value.includes('ollama')) return 'ollama'
+  if (value.includes('openrouter')) return 'openrouter'
+  return 'longcat'
 }
 
 const Chat = () => {
@@ -118,7 +130,7 @@ const Chat = () => {
       })
     }
     
-    // Add all available providers (even if disabled) for demo purposes
+    // Keep disabled providers visible so users can enable them in settings
     if (providers.length > 0) {
       providers.forEach((provider: any) => {
         if (!models.find(m => m.id === provider.id)) {
@@ -160,50 +172,26 @@ const Chat = () => {
     return descriptions[provider] || 'AI provider'
   }
   
-  const [sessions] = createResource(async () => {
+  const fetchSessions = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions`)
+      const token = getToken()
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
       if (!response.ok) throw new Error('Failed to fetch sessions')
       return response.json() as Promise<ChatSession[]>
     } catch (error) {
       console.error('Failed to fetch sessions:', error)
-      // Return mock sessions for demo mode
-      return Promise.resolve([
-        {
-          id: 1,
-          title: 'Getting Started',
-          message_count: 2,
-          last_message_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          include_bookmarks: true,
-          include_tasks: true,
-          include_files: true,
-          include_notes: true
-        },
-        {
-          id: 2,
-          title: 'Project Planning',
-          message_count: 5,
-          last_message_at: new Date(Date.now() - 86400000).toISOString(),
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          include_bookmarks: true,
-          include_tasks: true,
-          include_files: false,
-          include_notes: true
-        }
-      ] as ChatSession[])
+      return [] as ChatSession[]
     }
-  })
+  }
 
-  const [currentSessionId, setCurrentSessionId] = createSignal<string | null>('1')
-  const [messages, setMessages] = createSignal<ChatMessage[]>([
-    {
-      id: 1,
-      content: 'Hello! I\'m your AI assistant. How can I help you today?',
-      role: 'assistant',
-      created_at: new Date().toISOString()
-    }
-  ])
+  const [sessions, { refetch: refetchSessions }] = createResource(fetchSessions)
+
+  const [currentSessionId, setCurrentSessionId] = createSignal<string | null>(null)
+  const [messages, setMessages] = createSignal<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
   const [showSettings, setShowSettings] = createSignal(false)
@@ -226,6 +214,47 @@ const Chat = () => {
     { id: 'content', label: 'Content Generation', icon: Sparkles, description: 'Generate content using AI assistance' }
   ]
 
+  const loadSessionMessages = async (sessionId: string) => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${sessionId}/messages`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages')
+      }
+
+      const data = await response.json()
+      const parsedMessages: ChatMessage[] = (Array.isArray(data) ? data : []).map((message: any) => ({
+        id: Number(message.id || Date.now()),
+        content: message.content || '',
+        role: message.role === 'user' ? 'user' : 'assistant',
+        created_at: message.created_at || new Date().toISOString(),
+        token_count: message.token_count,
+        context_items: Array.isArray(message.context_items) ? message.context_items : [],
+      }))
+
+      setMessages(parsedMessages)
+    } catch (error) {
+      console.error('Failed to load session messages:', error)
+      setMessages([])
+    }
+  }
+
+  createEffect(() => {
+    const loadedSessions = sessions()
+    if (!loadedSessions || loadedSessions.length === 0 || currentSessionId()) {
+      return
+    }
+
+    const firstSessionId = String(loadedSessions[0].id)
+    setCurrentSessionId(firstSessionId)
+    void loadSessionMessages(firstSessionId)
+  })
+
   const handleSendMessage = async () => {
     const message = inputMessage().trim()
     if (!message || isLoading()) return
@@ -238,21 +267,69 @@ const Chat = () => {
       created_at: new Date().toISOString()
     }
     
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setInputMessage('')
     setIsLoading(true)
 
-    // Simulate AI response (in production, this would call the AI API)
-    setTimeout(() => {
+    try {
+      const token = getToken()
+      const payload: Record<string, any> = {
+        message,
+        context: {
+          bookmarks: contextSettings().bookmarks,
+          tasks: contextSettings().tasks,
+          files: contextSettings().files,
+          notes: contextSettings().notes,
+        },
+        provider: getProviderFromModel(selectedModel()),
+      }
+
+      if (currentSessionId()) {
+        payload.session_id = currentSessionId()
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
+
+      const data = await response.json()
+      const sessionId = String(data.session_id || currentSessionId() || '')
+      if (sessionId) {
+        setCurrentSessionId(sessionId)
+      }
+
       const aiResponse: ChatMessage = {
         id: Date.now() + 1,
-        content: `I received your message: "${message}". This is a demo response. In production, I would provide a helpful response based on the selected AI model (${selectedModel()}) and your context settings.`,
+        content: data.message || 'No response received.',
         role: 'assistant',
-        created_at: new Date().toISOString()
+        created_at: data.timestamp || new Date().toISOString(),
       }
-      setMessages(prev => [...prev, aiResponse])
+
+      setMessages((prev) => [...prev, aiResponse])
+      await refetchSessions()
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          content: 'Message failed. Please check your AI settings and try again.',
+          role: 'assistant',
+          created_at: new Date().toISOString(),
+        },
+      ])
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -541,24 +618,8 @@ const Chat = () => {
             <div class="p-6">
               <Button 
                 onClick={() => {
-                  // Create new session
-                  const newSession = {
-                    id: Date.now().toString(),
-                    title: 'New Chat',
-                    message_count: 0,
-                    created_at: new Date().toISOString(),
-                    include_bookmarks: true,
-                    include_tasks: true,
-                    include_files: true,
-                    include_notes: true
-                  }
-                  setCurrentSessionId(newSession.id)
-                  setMessages([{
-                    id: 1,
-                    content: 'Hello! I\'m your AI assistant. How can I help you today?',
-                    role: 'assistant',
-                    created_at: new Date().toISOString()
-                  }])
+                  setCurrentSessionId(null)
+                  setMessages([])
                 }} 
                 class="w-full mb-6 h-11"
               >
@@ -575,16 +636,9 @@ const Chat = () => {
                         : 'hover:bg-muted border-transparent hover:shadow-sm'
                     }`}
                     onClick={() => {
-                      setCurrentSessionId(session.id.toString())
-                      // Load messages for this session (mock for now)
-                      setMessages([
-                        {
-                          id: 1,
-                          content: `This is the ${session.title} session. How can I help you?`,
-                          role: 'assistant',
-                          created_at: new Date().toISOString()
-                        }
-                      ])
+                      const sessionId = session.id.toString()
+                      setCurrentSessionId(sessionId)
+                      void loadSessionMessages(sessionId)
                     }}
                   >
                     <div class="flex items-center justify-between">
@@ -597,10 +651,29 @@ const Chat = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e: MouseEvent) => {
+                    onClick={async (e: MouseEvent) => {
                       e.stopPropagation()
-                      // Delete session logic here
-                      console.log('Delete session:', session.id)
+                      try {
+                        const token = getToken()
+                        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${session.id}`, {
+                          method: 'DELETE',
+                          headers: {
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                          },
+                        })
+
+                        if (!response.ok) {
+                          throw new Error('Failed to delete session')
+                        }
+
+                        if (currentSessionId() === String(session.id)) {
+                          setCurrentSessionId(null)
+                          setMessages([])
+                        }
+                        await refetchSessions()
+                      } catch (error) {
+                        console.error('Delete session failed:', error)
+                      }
                     }}
                     class="opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -863,16 +936,11 @@ const Chat = () => {
                         />
                       </div>
                       <div class="flex gap-2">
-                        <Button onClick={() => {
-                          // Simulate summarization in demo mode
-                          const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                                         document.title.includes('Demo Mode') ||
-                                         window.location.search.includes('demo=true');
-                          if (isDemoMode) {
-                            alert('Summary generated! (Demo Mode)\n\nThis would use the selected AI model to summarize your content.');
-                          }
-                        }}>
-                          Summarize
+                        <Button
+                          onClick={() => setActiveView('chat')}
+                          disabled={!inputMessage().trim()}
+                        >
+                          Summarize In Chat
                         </Button>
                         <Button variant="outline" onClick={() => setInputMessage('')}>
                           Clear
@@ -886,51 +954,18 @@ const Chat = () => {
                   <Card class="p-6">
                     <h4 class="text-lg font-semibold mb-4">Task Suggestions</h4>
                     <p class="text-muted-foreground mb-4">
-                      Get AI-powered task suggestions based on your current projects and deadlines.
+                      AI task suggestions are generated from your real workspace context.
                     </p>
                     <div class="space-y-4">
                       <div class="p-4 bg-muted/30 rounded-lg">
-                        <h5 class="font-medium mb-2">Suggested Tasks:</h5>
-                        <ul class="space-y-2 text-sm">
-                          <li class="flex items-center gap-2">
-                            <CheckSquare class="h-4 w-4 text-primary" />
-                            <span>Review and update project documentation</span>
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <CheckSquare class="h-4 w-4 text-primary" />
-                            <span>Follow up with team members on pending items</span>
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <CheckSquare class="h-4 w-4 text-primary" />
-                            <span>Prepare for upcoming meeting</span>
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <CheckSquare class="h-4 w-4 text-primary" />
-                            <span>Review code quality and performance</span>
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <CheckSquare class="h-4 w-4 text-primary" />
-                            <span>Update dependencies and security patches</span>
-                          </li>
-                        </ul>
+                        <h5 class="font-medium mb-2">No suggestions yet</h5>
+                        <p class="text-sm text-muted-foreground">
+                          Start a chat and ask for task suggestions to generate items from your current data.
+                        </p>
                       </div>
                       <div class="flex gap-2">
-                        <Button onClick={() => {
-                          // Simulate getting more suggestions
-                          const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                                         document.title.includes('Demo Mode') ||
-                                         window.location.search.includes('demo=true');
-                          if (isDemoMode) {
-                            alert('More tasks generated! (Demo Mode)\n\nThis would use the selected AI model to analyze your current work and suggest relevant tasks.');
-                          }
-                        }}>
-                          Get More Suggestions
-                        </Button>
-                        <Button variant="outline" onClick={() => {
-                          // Add selected tasks to actual task list
-                          alert('Tasks would be added to your task list. (Demo Mode)');
-                        }}>
-                          Add Selected Tasks
+                        <Button onClick={() => setActiveView('chat')}>
+                          Open Chat
                         </Button>
                       </div>
                     </div>
@@ -983,16 +1018,11 @@ const Chat = () => {
                         </div>
                       </div>
                       <div class="flex gap-2">
-                        <Button onClick={() => {
-                          // Simulate content generation
-                          const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                                         document.title.includes('Demo Mode') ||
-                                         window.location.search.includes('demo=true');
-                          if (isDemoMode) {
-                            alert('Content generated! (Demo Mode)\n\nThis would use the selected AI model to generate your content.');
-                          }
-                        }}>
-                          Generate Content
+                        <Button
+                          onClick={() => setActiveView('chat')}
+                          disabled={!inputMessage().trim()}
+                        >
+                          Generate In Chat
                         </Button>
                         <Button variant="outline" onClick={() => setInputMessage('')}>
                           Clear

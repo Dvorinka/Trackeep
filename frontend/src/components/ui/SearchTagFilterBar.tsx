@@ -11,12 +11,13 @@ interface SearchTagFilterBarProps {
   selectedTag: string;
   onTagChange: (value: string) => void;
   onReset: () => void;
+  allOptionLabel?: string;
 }
 
 export const SearchTagFilterBar = (props: SearchTagFilterBarProps) => {
   return (
-    <div class="flex flex-col sm:flex-row gap-4 mb-6">
-      <div class="flex flex-1 gap-2">
+    <div class="mb-6 space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-[17fr_3fr] gap-3 items-stretch sm:items-center">
         <Input
           type="text"
           placeholder={props.searchPlaceholder}
@@ -25,14 +26,14 @@ export const SearchTagFilterBar = (props: SearchTagFilterBarProps) => {
             const target = e.currentTarget as HTMLInputElement;
             if (target) props.onSearchChange(target.value);
           }}
-          class="flex-1"
+          class="w-full min-w-0"
         />
         <select
           value={props.selectedTag}
           onChange={(e) => props.onTagChange(e.target.value)}
-          class="flex h-10 w-full sm:w-48 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+          class="flex h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
         >
-          <option value="">All Tags</option>
+          <option value="">{props.allOptionLabel || 'All Tags'}</option>
           <For each={props.tagOptions}>
             {(tag) => <option value={tag}>{tag}</option>}
           </For>

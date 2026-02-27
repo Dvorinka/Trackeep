@@ -95,6 +95,33 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 	return nil, errors.New("invalid token")
 }
 
+func getAuthenticatedUserFromHeader(c *gin.Context, db *gorm.DB) (*models.User, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, errors.New("authorization header required")
+	}
+
+	tokenString := authHeader
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	}
+	if tokenString == "" {
+		return nil, errors.New("invalid authorization header")
+	}
+
+	claims, err := ValidateJWT(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	var user models.User
+	if err := db.First(&user, claims.UserID).Error; err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 // AuthMiddleware validates JWT tokens
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -202,6 +229,24 @@ func Register(c *gin.Context) {
 
 	db := config.GetDB()
 
+	// Registration rules:
+	// - First user can self-register and becomes admin.
+	// - After that, only authenticated admins can create users.
+	var userCount int64
+	if err := db.Model(&models.User{}).Count(&userCount).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to check existing users"})
+		return
+	}
+
+	isFirstUser := userCount == 0
+	if !isFirstUser {
+		requester, err := getAuthenticatedUserFromHeader(c, db)
+		if err != nil || requester.Role != "admin" {
+			c.JSON(403, gin.H{"error": "Registration is disabled. Only an administrator can create users."})
+			return
+		}
+	}
+
 	// Check if user already exists
 	var existingUser models.User
 	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
@@ -222,11 +267,17 @@ func Register(c *gin.Context) {
 	}
 
 	// Create user
+	role := "user"
+	if isFirstUser {
+		role = "admin"
+	}
+
 	user := models.User{
 		Email:    req.Email,
 		Username: req.Username,
 		Password: string(hashedPassword),
 		FullName: req.FullName,
+		Role:     role,
 		Theme:    "dark",
 	}
 

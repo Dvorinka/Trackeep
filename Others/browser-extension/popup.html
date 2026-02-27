@@ -4,136 +4,345 @@
   <meta charset="UTF-8" />
   <title>Trackeep Saver</title>
   <style>
-    /* Complete Inter Font Faces - Exact Papra */
-    @font-face {
-      font-family: Inter;
-      font-style: normal;
-      font-weight: 400;
-      font-stretch: 100%;
-      font-display: swap;
-      src: url(https://fonts.bunny.net/inter/files/inter-latin-400-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-400-normal.woff) format("woff");
-      unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
-    }
-    @font-face {
-      font-family: Inter;
-      font-style: normal;
-      font-weight: 500;
-      font-stretch: 100%;
-      font-display: swap;
-      src: url(https://fonts.bunny.net/inter/files/inter-latin-500-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-500-normal.woff) format("woff");
-      unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
-    }
-    @font-face {
-      font-family: Inter;
-      font-style: normal;
-      font-weight: 600;
-      font-stretch: 100%;
-      font-display: swap;
-      src: url(https://fonts.bunny.net/inter/files/inter-latin-600-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-600-normal.woff) format("woff");
-      unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
-    }
-    @font-face {
-      font-family: Inter;
-      font-style: normal;
-      font-weight: 700;
-      font-stretch: 100%;
-      font-display: swap;
-      src: url(https://fonts.bunny.net/inter/files/inter-latin-700-normal.woff2) format("woff2"),url(https://fonts.bunny.net/inter/files/inter-latin-700-normal.woff) format("woff");
-      unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+    /* Modern Inter Font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Modern CSS Variables - Proton Pass Inspired */
+    :root {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #262626;
+      --bg-hover: #2a2a2a;
+      --bg-active: #333333;
+      --border-primary: #2a2a2a;
+      --border-secondary: #333333;
+      --text-primary: #ffffff;
+      --text-secondary: #a3a3a3;
+      --text-tertiary: #737373;
+      --accent-primary: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      --gradient-secondary: linear-gradient(135deg, #1a1a1a 0%, #262626 100%);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
     }
 
-    /* Exact Papra CSS variables and dark theme (hex fallbacks for clarity) */
-    :root {
-      --background: 26 26 26;
-      --foreground: 250 250 250;
-      --card: 32 32 32;
-      --card-foreground: 250 250 250;
-      --popover: 32 32 32;
-      --popover-foreground: 250 250 250;
-      --primary: 217 70.2% 91.2%;
-      --primary-foreground: 250 250 250;
-      --secondary: 39 39 42;
-      --secondary-foreground: 250 250 250;
-      --muted: 39 39 42;
-      --muted-foreground: 163 163 163;
-      --accent: 39 39 42;
-      --accent-foreground: 250 250 250;
-      --destructive: 0 62.8% 30.6%;
-      --destructive-foreground: 250 250 250;
-      --border: 39 39 42;
-      --input: 39 39 42;
-      --ring: 217 70.2% 91.2%;
-      --radius: 0.5rem;
-      /* Hex fallbacks for readability */
-      --bg-hex: #1a1a1a;
-      --card-hex: #202020;
-      --input-hex: #27272a;
-      --border-hex: #27272a;
-      --muted-hex: #27272a;
-      --text-hex: #fafafa;
-      --muted-text-hex: #a3a3a3;
-      --primary-hex: #60a5fa;
+    * {
+      box-sizing: border-box;
     }
 
     body {
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 16px;
-      min-width: 380px;
-      max-width: 420px;
-      background: var(--bg-hex);
-      color: var(--text-hex);
-      line-height: 1.6;
+      padding: 0;
+      min-width: 400px;
+      max-width: 440px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      font-size: 14px;
       color-scheme: dark;
+      overflow-x: hidden;
     }
 
-    h1 {
+    /* Header */
+    .header {
+      background: var(--gradient-secondary);
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--gradient-primary);
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Enhanced logo animation */
+    .logo {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .logo:hover {
+      transform: scale(1.05) rotate(5deg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .logo::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: rotate(45deg);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+
+    /* Enhanced options button */
+    .options-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .options-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: all 0.3s ease;
+      opacity: 0.1;
+    }
+
+    .options-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .options-btn:hover::before {
+      width: 100%;
+      height: 100%;
+    }
+
+    .title {
       font-size: 18px;
       font-weight: 600;
-      margin: 0 0 12px 0;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      padding: 8px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-primary);
+      min-height: 36px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .logo {
-      width: 24px;
-      height: 24px;
-      border-radius: calc(var(--radius) * 0.5);
-      background: var(--primary-hex);
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.connected {
+      background: var(--success);
+    }
+
+    .status-indicator.error {
+      background: var(--error);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    /* Main Content */
+    .content {
+      padding: 20px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: var(--bg-secondary);
+      padding: 4px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-primary);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--text-hex);
-      font-weight: bold;
+      gap: 6px;
+    }
+
+    .tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-secondary);
+    }
+
+    .tab-icon {
       font-size: 14px;
     }
 
-    .hint {
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Form Sections */
+    .form-section {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      border: 1px solid var(--border-primary);
+      margin-bottom: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .form-section:hover {
+      border-color: var(--border-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .section-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
       font-size: 12px;
-      color: var(--muted-text-hex);
-      margin-bottom: 12px;
-      padding: 6px 10px;
-      background: var(--muted-hex);
-      border-radius: calc(var(--radius) * 0.5);
-      border: 1px solid var(--border-hex);
     }
 
     .section-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      margin: 16px 0 6px;
-      color: var(--muted-text-hex);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
     }
 
     label {
       display: block;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
-      margin-bottom: 4px;
-      color: var(--muted-text-hex);
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: color 0.2s ease;
+    }
+
+    .form-group:focus-within label {
+      color: var(--accent-primary);
     }
 
     input[type="text"],
@@ -141,173 +350,530 @@
     input[type="file"],
     textarea {
       width: 100%;
-      box-sizing: border-box;
-      padding: 8px 12px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border-hex);
-      background: var(--input-hex);
-      color: var(--text-hex);
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-primary);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       font-size: 13px;
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Inter', sans-serif;
       font-weight: 400;
-      transition: border-color 0.15s, background 0.15s;
+      transition: all 0.2s ease;
+      outline: none;
+      position: relative;
     }
 
-    input:focus,
+    input[type="text"]:hover,
+    input[type="url"]:hover,
+    textarea:hover {
+      border-color: var(--border-secondary);
+      background: var(--bg-hover);
+    }
+
+    input[type="text"]:focus,
+    input[type="url"]:focus,
     textarea:focus {
-      outline: none;
-      border-color: var(--primary-hex);
-      background: var(--card-hex);
+      border-color: var(--accent-primary);
+      background: var(--bg-hover);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-1px);
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    input[type="file"]:hover {
+      border-color: var(--accent-primary);
+      background: var(--bg-hover);
     }
 
     textarea {
       resize: vertical;
-      min-height: 56px;
+      min-height: 80px;
+      font-family: inherit;
     }
 
-    button {
-      cursor: pointer;
-      border-radius: var(--radius);
-      border: none;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--primary-hex);
-      color: var(--text-hex);
-      transition: all 0.2s;
+    /* Input field icons */
+    .input-icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      font-size: 14px;
+      pointer-events: none;
+      transition: color 0.2s ease;
     }
 
-    button:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+    .form-group:focus-within .input-icon {
+      color: var(--accent-primary);
     }
 
-    button.secondary {
-      background: var(--muted-hex);
-      color: var(--text-hex);
-    }
-
-    button.secondary:hover {
-      background: var(--border-hex);
-      color: var(--text-hex);
-      opacity: 1;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
-      transform: none;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .row > * {
-      flex: 1;
-    }
-
-    .checkbox-row {
+    /* Checkbox */
+    .checkbox-group {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
-      color: var(--muted-text-hex);
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .checkbox-row input[type="checkbox"] {
-      width: auto;
+    .checkbox-group:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-secondary);
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
       margin: 0;
+      cursor: pointer;
+      accent-color: var(--accent-primary);
     }
 
-    .status {
-      font-size: 12px;
-      margin-top: 12px;
-      min-height: 18px;
-      padding: 6px 10px;
-      border-radius: calc(var(--radius) * 0.5);
-      background: var(--muted-hex);
-      border: 1px solid var(--border-hex);
+    .checkbox-label {
+      font-size: 13px;
+      color: var(--text-primary);
+      margin: 0;
+      font-weight: 400;
+      user-select: none;
     }
 
-    .status.error {
-      color: #ef4444;
-      border-color: #ef4444;
-      background: color-mix(in srgb, #ef4444 10%, transparent);
-    }
-
-    .status.success {
-      color: var(--primary-hex);
-      border-color: var(--primary-hex);
-      background: color-mix(in srgb, var(--primary-hex) 10%, transparent);
-    }
-
-    hr {
+    /* Buttons */
+    .btn {
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
       border: none;
-      border-top: 1px solid var(--border-hex);
-      margin: 16px 0;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      outline: none;
+      position: relative;
+      overflow: hidden;
     }
 
-    .form-section {
-      background: var(--card-hex);
-      border-radius: var(--radius);
-      padding: 14px;
-      border: 1px solid var(--border-hex);
-      margin-bottom: 12px;
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-primary);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-secondary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Enhanced status bar animations */
+    .status-bar {
+      padding: 8px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-primary);
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .status-bar:hover {
+      background: var(--bg-hover);
+    }
+
+    /* Enhanced tab animations */
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .tab::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: var(--accent-primary);
+      transition: all 0.3s ease;
+      transform: translateX(-50%);
+    }
+
+    .tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    .tab:hover::after {
+      width: 30%;
+    }
+
+    .tab.active {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-secondary);
+    }
+
+    .tab.active::after {
+      width: 60%;
+    }
+
+    /* Status Messages */
+    .status-message {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-message.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-message.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .status-message.info {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-primary);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    /* Icon System */
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      vertical-align: middle;
+      transition: all 0.2s ease;
+    }
+
+    .icon-sm {
+      width: 12px;
+      height: 12px;
+    }
+
+    .icon-lg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .icon-xl {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Icon animations */
+    .icon-spin {
+      animation: spin 1s linear infinite;
+    }
+
+    .icon-pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+
+    /* Enhanced button icons */
+    .btn .icon {
+      transition: transform 0.2s ease;
+    }
+
+    .btn:hover .icon {
+      transform: scale(1.1);
+    }
+
+    .btn:active .icon {
+      transform: scale(0.95);
+    }
+
+    /* Tab icon enhancements */
+    .tab .icon {
+      transition: all 0.3s ease;
+    }
+
+    .tab:hover .icon {
+      transform: translateY(-1px) scale(1.1);
+    }
+
+    .tab.active .icon {
+      color: var(--accent-primary);
+      transform: scale(1.1);
+    }
+
+    /* Section icon enhancements */
+    .section-icon {
+      transition: all 0.3s ease;
+    }
+
+    .form-section:hover .section-icon {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Status indicator enhancements */
+    .status-indicator {
+      transition: all 0.3s ease;
+    }
+
+    .status-indicator.connected {
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+
+    .status-indicator.error {
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+
+    /* Responsive */
+    @media (max-width: 420px) {
+      body {
+        min-width: 360px;
+      }
+      
+      .content {
+        padding: 16px;
+      }
+      
+      .form-section {
+        padding: 16px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>
-    <div class="logo">T</div>
-    Trackeep Saver
-  </h1>
-  <div class="hint" id="configHint"></div>
-
-  <button id="openOptions" class="secondary" style="width:100%; margin-bottom:12px;">⚙️ Open Options</button>
-
-  <div class="form-section">
-    <div class="section-title">Save current page / video</div>
-    <label for="bookmarkTitle">Title</label>
-    <input id="bookmarkTitle" type="text" />
-
-    <label for="bookmarkUrl">URL</label>
-    <input id="bookmarkUrl" type="url" required />
-
-    <label for="bookmarkDescription">Description (optional)</label>
-    <textarea id="bookmarkDescription" placeholder="Why is this page or video important?"></textarea>
-
-    <label for="bookmarkTags">Tags (comma-separated, optional)</label>
-    <input id="bookmarkTags" type="text" placeholder="reading, video, dev" />
-
-    <div class="row" style="margin-top:12px; justify-content: space-between;">
-      <div class="checkbox-row">
-        <input id="bookmarkPublic" type="checkbox" />
-        <label for="bookmarkPublic" style="margin:0; font-weight:400;">Public</label>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo-container">
+        <div class="logo">T</div>
+        <h1 class="title">Trackeep</h1>
       </div>
-      <button type="submit" id="saveBookmarkBtn">💾 Save bookmark</button>
+      <button class="options-btn" id="openOptions" title="Settings">
+        <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M1 12h6m6 0h6"/>
+        </svg>
+      </button>
     </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-indicator" id="statusIndicator"></div>
+    <div class="status-text" id="statusText">Checking configuration...</div>
   </div>
 
-  <hr />
-
-  <div class="form-section">
-    <div class="section-title">Upload file to Trackeep</div>
-    <label for="fileInput">File</label>
-    <input id="fileInput" type="file" />
-
-    <label for="fileDescription">Description (optional)</label>
-    <textarea id="fileDescription" placeholder="Short description for this file"></textarea>
-
-    <div style="margin-top:12px; text-align:right;">
-      <button type="submit" id="uploadFileBtn">📤 Upload file</button>
+  <!-- Main Content -->
+  <main class="content">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="bookmark">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>Bookmark</span>
+      </button>
+      <button class="tab" data-tab="file">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+        </svg>
+        <span>File</span>
+      </button>
     </div>
-  </div>
 
-  <div id="status" class="status"></div>
+    <!-- Bookmark Tab -->
+    <div class="tab-content active" id="bookmark-tab">
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
+          <h2 class="section-title">Save Current Page</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="bookmarkTitle">Title</label>
+          <input id="bookmarkTitle" type="text" placeholder="Page title will be auto-filled" />
+        </div>
+
+        <div class="form-group">
+          <label for="bookmarkUrl">URL</label>
+          <input id="bookmarkUrl" type="url" placeholder="https://example.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="bookmarkDescription">Description</label>
+          <textarea id="bookmarkDescription" placeholder="Why is this page important? Add notes..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="bookmarkTags">Tags</label>
+          <input id="bookmarkTags" type="text" placeholder="reading, development, tutorial" />
+        </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input id="bookmarkPublic" type="checkbox" />
+            <label for="bookmarkPublic" class="checkbox-label">Make this bookmark public</label>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <div></div>
+          <button class="btn btn-primary" id="saveBookmarkBtn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17,21 17,13 7,13 7,21"/>
+              <polyline points="7,3 7,8 15,8"/>
+            </svg>
+            <span>Save Bookmark</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Tab -->
+    <div class="tab-content" id="file-tab">
+      <div class="form-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17,8 12,3 7,8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h2 class="section-title">Upload File</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="fileInput">Choose File</label>
+          <input id="fileInput" type="file" />
+        </div>
+
+        <div class="form-group">
+          <label for="fileDescription">Description</label>
+          <textarea id="fileDescription" placeholder="Describe this file..."></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="uploadFileBtn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17,8 12,3 7,8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Upload File</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Message -->
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+  </main>
 
   <script src="popup.js"></script>
 </body>

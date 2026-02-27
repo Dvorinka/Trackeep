@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminMiddleware checks if user is admin
@@ -209,6 +210,71 @@ func AdminGetUsers(c *gin.Context) {
 			"total": total,
 			"pages": (total + int64(limit) - 1) / int64(limit),
 		},
+	})
+}
+
+// AdminCreateUser handles POST /api/v1/admin/users
+func AdminCreateUser(c *gin.Context) {
+	db := config.GetDB()
+
+	var req struct {
+		Email    string `json:"email" binding:"required,email"`
+		Username string `json:"username" binding:"required,min=3,max=50"`
+		Password string `json:"password" binding:"required,min=6"`
+		FullName string `json:"fullName" binding:"required,min=1,max=100"`
+		Role     string `json:"role"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	role := req.Role
+	if role == "" {
+		role = "user"
+	}
+	if role != "user" && role != "admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role. Must be 'user' or 'admin'"})
+		return
+	}
+
+	var existing models.User
+	if err := db.Where("email = ?", req.Email).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User with this email already exists"})
+		return
+	}
+	if err := db.Where("username = ?", req.Username).First(&existing).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username already taken"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	user := models.User{
+		Email:    req.Email,
+		Username: req.Username,
+		Password: string(hashedPassword),
+		FullName: req.FullName,
+		Role:     role,
+		Theme:    "dark",
+	}
+
+	if err := db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	_ = ensureMessagingDefaults(db, user.ID)
+
+	user.Password = ""
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "User created successfully",
+		"user":    user,
 	})
 }
 

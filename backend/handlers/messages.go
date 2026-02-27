@@ -640,41 +640,23 @@ func CreateConversationMessage(c *gin.Context) {
 		return
 	}
 
-	if strings.TrimSpace(req.Body) == "" && len(req.Attachments) == 0 {
+	trimmedBody := strings.TrimSpace(req.Body)
+	if trimmedBody == "" && len(req.Attachments) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Message body or attachments are required"})
-		return
-	}
-
-	metadataJSON := "{}"
-	if req.Metadata != nil {
-		if raw, err := json.Marshal(req.Metadata); err == nil {
-			metadataJSON = string(raw)
-		}
-	}
-
-	message := models.Message{
-		ConversationID: conversationID,
-		SenderID:       userID,
-		Body:           strings.TrimSpace(req.Body),
-		MetadataJSON:   metadataJSON,
-	}
-	if err := models.DB.Create(&message).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message"})
 		return
 	}
 
 	attachmentRows := make([]models.MessageAttachment, 0, len(req.Attachments))
 	for _, a := range req.Attachments {
 		attachmentRows = append(attachmentRows, models.MessageAttachment{
-			MessageID: message.ID,
-			Kind:      normalizeAttachmentKind(a.Kind),
-			FileID:    a.FileID,
-			URL:       a.URL,
-			Title:     a.Title,
+			Kind:   normalizeAttachmentKind(a.Kind),
+			FileID: a.FileID,
+			URL:    a.URL,
+			Title:  a.Title,
 		})
 	}
 
-	suggestions, inferredAttachments, isSensitive := services.DetectMessageContent(message.Body)
+	suggestions, inferredAttachments, isSensitive := services.DetectMessageContent(trimmedBody)
 	for _, inferred := range inferredAttachments {
 		if hasAttachment(attachmentRows, inferred.Kind, inferred.URL) {
 			continue
@@ -684,12 +666,54 @@ func CreateConversationMessage(c *gin.Context) {
 			previewJSON = string(raw)
 		}
 		attachmentRows = append(attachmentRows, models.MessageAttachment{
-			MessageID:   message.ID,
 			Kind:        normalizeAttachmentKind(inferred.Kind),
 			URL:         inferred.URL,
 			Title:       inferred.Title,
 			PreviewJSON: previewJSON,
 		})
+	}
+
+	metadataMap := map[string]interface{}{}
+	for k, v := range req.Metadata {
+		metadataMap[k] = v
+	}
+
+	storedBody := trimmedBody
+	if isSensitive && (conv.Type == models.ConversationTypeDM || conv.Type == models.ConversationTypeSelf) && trimmedBody != "" {
+		ciphertext, err := utils.Encrypt(trimmedBody)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt sensitive message"})
+			return
+		}
+		storedBody = maskSensitiveBody(trimmedBody)
+		metadataMap["sensitive_payload"] = map[string]interface{}{
+			"version":     "v1",
+			"ciphertext":  ciphertext,
+			"masked_body": storedBody,
+			"scope":       string(conv.Type),
+		}
+	}
+
+	metadataJSON := "{}"
+	if len(metadataMap) > 0 {
+		if raw, err := json.Marshal(metadataMap); err == nil {
+			metadataJSON = string(raw)
+		}
+	}
+
+	message := models.Message{
+		ConversationID: conversationID,
+		SenderID:       userID,
+		Body:           storedBody,
+		MetadataJSON:   metadataJSON,
+	}
+	if err := models.DB.Create(&message).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message"})
+		return
+	}
+
+	for i := range attachmentRows {
+		attachmentRows[i].MessageID = message.ID
 	}
 	if len(attachmentRows) > 0 {
 		models.DB.Create(&attachmentRows)
@@ -1185,6 +1209,37 @@ func DismissMessageSuggestion(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"suggestion": suggestion})
+}
+
+// RevealSensitiveMessage decrypts and returns sensitive message plaintext for authorized members.
+func RevealSensitiveMessage(c *gin.Context) {
+	userID := getAuthUserID(c)
+	messageID, err := parseUintParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message id"})
+		return
+	}
+
+	var msg models.Message
+	if err := models.DB.First(&msg, messageID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
+		return
+	}
+	if _, _, err := getConversationWithMembership(models.DB, msg.ConversationID, userID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	plaintext, ok := extractSensitivePlaintext(msg.MetadataJSON)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sensitive payload not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message_id": msg.ID,
+		"plaintext":  plaintext,
+	})
 }
 
 // GetPasswordVaultItems returns owned and explicitly shared vault items.
@@ -1760,11 +1815,15 @@ func applySuggestionAction(db *gorm.DB, userID uint, message *models.Message, su
 		return gin.H{"deep_link": ref.DeepLink}, nil
 
 	case "move_to_password_vault":
+		secretSource := message.Body
+		if sensitivePlaintext, ok := extractSensitivePlaintext(message.MetadataJSON); ok {
+			secretSource = sensitivePlaintext
+		}
 		label := "Imported from chat"
-		if compact := compactMessageTitle(message.Body, 50); compact != "" {
+		if compact := compactMessageTitle(secretSource, 50); compact != "" {
 			label = compact
 		}
-		encryptedSecret, err := utils.Encrypt(message.Body)
+		encryptedSecret, err := utils.Encrypt(secretSource)
 		if err != nil {
 			return nil, err
 		}
@@ -2024,6 +2083,70 @@ func hasAttachment(rows []models.MessageAttachment, kind, url string) bool {
 		}
 	}
 	return false
+}
+
+func maskSensitiveBody(text string) string {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return "[sensitive content hidden]"
+	}
+
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return "[sensitive content hidden]"
+	}
+
+	maskedParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		runes := []rune(part)
+		if len(runes) <= 2 {
+			maskedParts = append(maskedParts, "**")
+			continue
+		}
+		maskedParts = append(maskedParts, strings.Repeat("*", len(runes)))
+	}
+	return strings.Join(maskedParts, " ")
+}
+
+func extractSensitivePlaintext(metadataJSON string) (string, bool) {
+	payload := extractSensitivePayload(metadataJSON)
+	if payload == nil {
+		return "", false
+	}
+
+	ciphertext := asString(payload["ciphertext"])
+	if ciphertext == "" {
+		return "", false
+	}
+
+	plaintext, err := utils.Decrypt(ciphertext)
+	if err != nil {
+		return "", false
+	}
+	return plaintext, true
+}
+
+func extractSensitivePayload(metadataJSON string) map[string]interface{} {
+	trimmed := strings.TrimSpace(metadataJSON)
+	if trimmed == "" || trimmed == "{}" {
+		return nil
+	}
+
+	metadata := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(trimmed), &metadata); err != nil {
+		return nil
+	}
+
+	rawPayload, ok := metadata["sensitive_payload"]
+	if !ok || rawPayload == nil {
+		return nil
+	}
+
+	payload, ok := rawPayload.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return payload
 }
 
 func normalizeAttachmentKind(kind string) string {

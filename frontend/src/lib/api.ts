@@ -1,10 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
+import { isEnvDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 
-// Check if we're in demo mode
+const API_BASE_URL = getApiV1BaseUrl();
+
+// Demo mode is controlled by environment only.
 const isDemoMode = () => {
-  return localStorage.getItem('demoMode') === 'true' || 
-         document.title.includes('Demo Mode') ||
-         window.location.search.includes('demo=true');
+  return isEnvDemoMode();
 };
 
 // Helper function to get auth headers
@@ -47,15 +48,14 @@ class ApiClient {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        // If backend fails, fall back to demo mode
-        console.warn(`API endpoint ${endpoint} failed, falling back to demo mode`);
-        return this.getMockResponse(endpoint, options);
+        const message = await response.text();
+        throw new Error(message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       return await response.json();
     } catch (error) {
-      console.warn(`API request failed for ${endpoint}, falling back to demo mode:`, error);
-      return this.getMockResponse(endpoint, options);
+      console.error(`API request failed for ${endpoint}:`, error);
+      throw error;
     }
   }
 

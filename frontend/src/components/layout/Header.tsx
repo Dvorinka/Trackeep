@@ -56,6 +56,18 @@ export function Header(props: HeaderProps) {
       <div class="flex justify-between px-6 pt-4 pb-4">
         {/* Left side */}
         <div class="flex items-center">
+          <a
+            href="/app"
+            class="hidden sm:inline-flex items-center gap-2 rounded-md px-2 py-1.5 mr-2 hover:bg-accent/40 transition-colors"
+          >
+            <img
+              src="/trackeep.svg"
+              alt="Trackeep Logo"
+              class="w-6 h-6 app-logo-mono"
+            />
+            <span class="text-sm font-semibold tracking-tight text-foreground">Trackeep</span>
+          </a>
+
           {/* Menu button */}
           <button 
             type="button" 

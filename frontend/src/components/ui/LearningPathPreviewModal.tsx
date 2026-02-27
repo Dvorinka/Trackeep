@@ -1,6 +1,7 @@
 import { createSignal } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { IconX, IconClock, IconUsers, IconStar, IconBook, IconVideo, IconFileText, IconCode, IconCheck } from '@tabler/icons-solidjs';
 
 interface LearningPath {
@@ -82,8 +83,9 @@ export const LearningPathPreviewModal = (props: LearningPathPreviewModalProps) =
   if (!props.isOpen || !props.learningPath) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0">
-      <div class="bg-[#1a1a1a] rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4 my-4">
+    <ModalPortal>
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-[#1a1a1a] rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-4 my-4">
         {/* Header */}
         <div class="relative">
           {/* Thumbnail */}
@@ -241,7 +243,8 @@ export const LearningPathPreviewModal = (props: LearningPathPreviewModalProps) =
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 };

@@ -3,8 +3,10 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { VideoPreviewModal } from '@/components/ui/VideoPreviewModal';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { getMockVideos } from '@/lib/mockData';
 import { getAuthHeaders } from '@/lib/auth';
+import { isDemoMode } from '@/lib/demo-mode';
 import { 
   IconAlertCircle
 } from '@tabler/icons-solidjs';
@@ -156,20 +158,6 @@ export const Youtube = () => {
       channel.channel_id.toLowerCase().includes(filter) ||
       (channel.description && channel.description.toLowerCase().includes(filter))
     );
-  };
-
-  // Check if we're in demo mode (for display purposes only)
-  const isDemoMode = () => {
-    const demoMode = localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-    console.log('YouTube page - Demo mode check:', {
-      localStorage: localStorage.getItem('demoMode'),
-      title: document.title,
-      search: window.location.search,
-      result: demoMode
-    });
-    return demoMode;
   };
 
   // Extract video ID from YouTube URL
@@ -343,38 +331,43 @@ export const Youtube = () => {
         console.warn('Backend API failed for featured channels:', backendError);
       }
       
-      // Final fallback to demo mode
-      console.log('All API methods failed, using demo mode for featured channels');
-      const mockVideos = getMockVideos();
-      const videos: YouTubeVideo[] = mockVideos.slice(0, 5).map((video) => ({
-        video_id: video.id,
-        channel_name: video.channel,
-        url: video.url,
-        title: video.title,
-        duration: video.duration,
-        published_at: video.publishedAt,
-        view_count: '1000',
-        category: video.category || 'General'
-      }));
-      
-      setPredefinedVideos(videos);
+      if (isDemoMode()) {
+        console.log('All API methods failed, using demo data for featured channels');
+        const mockVideos = getMockVideos();
+        const videos: YouTubeVideo[] = mockVideos.slice(0, 5).map((video) => ({
+          video_id: video.id,
+          channel_name: video.channel,
+          url: video.url,
+          title: video.title,
+          duration: video.duration,
+          published_at: video.publishedAt,
+          view_count: '1000',
+          category: video.category || 'General'
+        }));
+        setPredefinedVideos(videos);
+      } else {
+        setPredefinedVideos([]);
+        setPredefinedError('No predefined videos available yet.');
+      }
     } catch (err) {
       console.error('Error in loadPredefinedVideos:', err);
-      setPredefinedError(err instanceof Error ? err.message : 'Failed to load predefined channel videos');
-      // Fallback to demo mode
-      const mockVideos = getMockVideos();
-      const videos: YouTubeVideo[] = mockVideos.slice(0, 5).map((video) => ({
-        video_id: video.id,
-        channel_name: video.channel,
-        url: video.url,
-        title: video.title,
-        duration: video.duration,
-        published_at: video.publishedAt,
-        view_count: '1000',
-        category: video.category || 'General'
-      }));
-      
-      setPredefinedVideos(videos);
+      if (isDemoMode()) {
+        const mockVideos = getMockVideos();
+        const videos: YouTubeVideo[] = mockVideos.slice(0, 5).map((video) => ({
+          video_id: video.id,
+          channel_name: video.channel,
+          url: video.url,
+          title: video.title,
+          duration: video.duration,
+          published_at: video.publishedAt,
+          view_count: '1000',
+          category: video.category || 'General'
+        }));
+        setPredefinedVideos(videos);
+      } else {
+        setPredefinedVideos([]);
+        setPredefinedError(err instanceof Error ? err.message : 'Failed to load predefined channel videos');
+      }
     } finally {
       setIsLoadingPredefined(false);
     }
@@ -993,20 +986,21 @@ export const Youtube = () => {
 
         {/* Channel Editor Modal */}
         <Show when={showChannelEditor()}>
-          <div 
-            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mt-0"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowChannelEditor(false);
-                setEditingChannel(null);
-                setNewChannelName('');
-                setNewChannelId('');
-                setNewChannelDescription('');
-              }
-            }}
-          >
-            <div class="bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div class="p-6">
+          <ModalPortal>
+            <div 
+              class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setShowChannelEditor(false);
+                  setEditingChannel(null);
+                  setNewChannelName('');
+                  setNewChannelId('');
+                  setNewChannelDescription('');
+                }
+              }}
+            >
+              <div class="bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                   <h2 class="text-xl font-semibold">Manage Featured Channels</h2>
                   <Button
@@ -1175,9 +1169,10 @@ export const Youtube = () => {
                     )}
                   </div>
                 </div>
+                </div>
               </div>
             </div>
-          </div>
+          </ModalPortal>
         </Show>
       </div>
     </div>

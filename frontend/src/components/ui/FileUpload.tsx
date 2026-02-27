@@ -1,5 +1,6 @@
 import { createSignal, For, Show } from 'solid-js';
 import { cn } from '@/lib/utils';
+import { ModalPortal } from './ModalPortal';
 import './FileUpload.css';
 
 export interface FileUploadProps {
@@ -191,17 +192,26 @@ export const FileUpload = (props: FileUploadProps) => {
     props.onClose?.();
   };
 
+  if (!props.isOpen) {
+    return null;
+  }
+
   return (
-    <div 
-      class={cn(
-        "relative w-full rounded-20 bg-bg-white-0 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-w-[440px] shadow-custom-md",
-        props.class
-      )}
-      role="dialog"
-      aria-labelledby="file-upload-title"
-      aria-describedby="file-upload-description"
-      data-state={props.isOpen ? 'open' : 'closed'}
-    >
+    <ModalPortal>
+      <>
+        <div class="fixed inset-0 z-[80] bg-black/50" onClick={handleClose} />
+        <div class="fixed top-1/2 left-1/2 z-[90] w-[min(440px,90vw)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto">
+          <div
+            class={cn(
+              "relative w-full rounded-20 bg-bg-white-0 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-w-[440px] shadow-custom-md",
+              props.class
+            )}
+            role="dialog"
+            aria-labelledby="file-upload-title"
+            aria-describedby="file-upload-description"
+            data-state="open"
+            onClick={(event) => event.stopPropagation()}
+          >
       {/* Header */}
       <div class="relative flex items-start gap-3.5 py-4 pl-5 pr-14 before:absolute before:inset-x-0 before:bottom-0 before:border-b before:border-stroke-soft-200">
         <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-white-0 ring-1 ring-inset ring-stroke-soft-200">
@@ -366,6 +376,9 @@ export const FileUpload = (props: FileUploadProps) => {
           </div>
         </div>
       </div>
-    </div>
+          </div>
+        </div>
+      </>
+    </ModalPortal>
   );
 };

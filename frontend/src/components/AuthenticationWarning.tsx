@@ -27,11 +27,13 @@ export const AuthenticationWarning = () => {
           <div class="text-center mb-8">
             <div class="mb-6">
               <div class="inline-flex items-center justify-center mb-4">
-                <img 
-                  src="/trackeepfavi_bg.png" 
-                  alt="Trackeep Logo" 
-                  class="w-12 h-12 rounded-xl"
-                />
+                <div class="inline-flex items-center justify-center p-2.5 rounded-xl border border-border bg-muted/40">
+                  <img
+                    src="/trackeep.svg"
+                    alt="Trackeep Logo"
+                    class="w-9 h-9 app-logo-mono"
+                  />
+                </div>
               </div>
               <h1 class="text-2xl font-bold tracking-tight mb-2 text-foreground">Authentication Required</h1>
               <p class="text-muted-foreground">Please sign in to access Trackeep</p>

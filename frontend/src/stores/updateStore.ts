@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import { updateService, type UpdateInfo, type UpdateStatus } from '../services/updateService';
+import { isDemoMode } from '@/lib/demo-mode';
 
 // Global update state store
 const [updateAvailable, setUpdateAvailable] = createSignal(false);
@@ -61,12 +62,7 @@ const installUpdate = async () => {
     await updateService.installUpdate(updateInfo()!.version);
     
     // Start polling for progress or simulation in demo mode
-    const isDemoMode = localStorage.getItem('demoMode') === 'true' || 
-                       document.title.includes('Demo Mode') ||
-                       window.location.search.includes('demo=true') ||
-                       import.meta.env.VITE_DEMO_MODE === 'true';
-    
-    if (isDemoMode) {
+    if (isDemoMode()) {
       pollCleanup = updateService.simulateUpdateProgress((progress: UpdateStatus) => {
         setUpdateStatus(progress);
         

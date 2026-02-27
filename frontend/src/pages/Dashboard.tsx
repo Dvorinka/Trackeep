@@ -36,16 +36,20 @@ import { ActivityFeed } from '@/components/ui/ActivityFeed';
 import { UploadModal } from '@/components/ui/UploadModal';
 import { BookmarkModal } from '@/components/ui/BookmarkModal';
 import { VideoUploadModal } from '@/components/ui/VideoUploadModal';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import { 
   getMockDocuments, 
   getMockStats, 
-  getMockActivities,
-  getPopularTags
+  getMockActivities
 } from '@/lib/mockData';
 import { formatDuration } from '@/lib/timeFormat';
 import { 
   isSearchAvailable
 } from '@/lib/credentials';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface Document {
   id: string;
@@ -112,10 +116,67 @@ interface RecentActivity {
   details?: any;
 }
 
+interface GitHubActivityEvent {
+  id: string;
+  title: string;
+  date: string;
+  repo?: string;
+  action?: string;
+  link?: string;
+  type: 'push' | 'commit' | 'bookmark' | 'note';
+}
+
+const createEmptyStats = (): QuickStats => ({
+  totalDocuments: 0,
+  totalBookmarks: 0,
+  totalTasks: 0,
+  totalNotes: 0,
+  totalSize: '0 MB',
+  recentActivity: 0,
+  completedTasks: 0,
+  activeTasks: 0,
+  monthlyGrowth: {
+    bookmarks: 0,
+    documents: 0,
+    tasks: 0,
+    notes: 0,
+  },
+  weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+  totalVideos: 0,
+  totalLearningPaths: 0,
+  totalTimeTracked: 0,
+  averageProductivity: 0,
+  storageUsed: 0,
+  storageTotal: 50,
+  recentProjects: [],
+  topTags: [],
+  upcomingDeadlines: [],
+  recentAchievements: [],
+});
+
+const formatBytes = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 MB';
+  }
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, exponent);
+  return `${Math.round(value * 100) / 100} ${units[exponent]}`;
+};
+
+const deriveFileType = (fileName: string): string => {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  if (!extension) {
+    return 'other';
+  }
+  return extension;
+};
+
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [documents, setDocuments] = createSignal<Document[]>([]);
   const [, setRecentActivity] = createSignal<RecentActivity[]>([]);
+  const [githubActivityEvents, setGithubActivityEvents] = createSignal<GitHubActivityEvent[]>([]);
   const [showBrowserSearch, setShowBrowserSearch] = createSignal(true);
   const [showFilePreview, setShowFilePreview] = createSignal(false);
   const [selectedFile, setSelectedFile] = createSignal<Document | null>(null);
@@ -133,29 +194,25 @@ export const Dashboard = () => {
   const [showDeadlineModal, setShowDeadlineModal] = createSignal(false);
   const [selectedAchievement, setSelectedAchievement] = createSignal<any>(null);
   const [selectedDeadline, setSelectedDeadline] = createSignal<any>(null);
-  
-  const stats = (): QuickStats => getMockStats();
+  const [dashboardStats, setDashboardStats] = createSignal<QuickStats>(createEmptyStats());
+
+  const stats = (): QuickStats => dashboardStats();
 
   const taskCompletionRate = () => {
+    if (stats().totalTasks === 0) {
+      return 0;
+    }
     return Math.round((stats().completedTasks / stats().totalTasks) * 100);
   };
 
   const storagePercentage = () => {
-    const sizeString = stats().totalSize;
-    let usedMB = 0;
-    
-    // Parse the size string to extract the numeric value in MB
-    if (sizeString.includes('MB')) {
-      usedMB = parseFloat(sizeString);
-    } else if (sizeString.includes('GB')) {
-      usedMB = parseFloat(sizeString) * 1024;
-    } else if (sizeString.includes('KB')) {
-      usedMB = parseFloat(sizeString) / 1024;
+    if (stats().storageTotal <= 0) {
+      return 0;
     }
-    
-    const total = 50 * 1024; // 50 GB in MB
-    return Math.round((usedMB / total) * 100);
+    return Math.round((stats().storageUsed / stats().storageTotal) * 100);
   };
+
+  const weeklyActivityTotal = () => stats().weeklyActivity.reduce((sum, value) => sum + value, 0);
 
   // Modal handlers
   const handleBookmarkSubmit = async (bookmark: any) => {
@@ -180,12 +237,12 @@ export const Dashboard = () => {
 
   const handleVideoSubmit = async (video: any) => {
     try {
-      // Use the YouTube API to add video
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/youtube/video-details`, {
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/youtube/video-details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ video_id: video.video_id })
       });
@@ -202,30 +259,151 @@ export const Dashboard = () => {
     }
   };
 
-  onMount(() => {
+  onMount(async () => {
     // Load browser search setting from localStorage
     setShowBrowserSearch(localStorage.getItem('showBrowserSearch') !== 'false');
-    
-    // Load mock documents data
-    setDocuments(getMockDocuments());
-    
-    // Load mock activities - filter and cast to match the interface
-    const mockActivities = getMockActivities();
-    const filteredActivities = mockActivities
-      .filter(activity => ['document', 'bookmark', 'task', 'note'].includes(activity.type))
-      .map(activity => ({
-        id: activity.id,
-        type: activity.type as 'document' | 'bookmark' | 'task' | 'note',
-        action: activity.action,
-        title: activity.title,
-        timestamp: activity.timestamp,
-        icon: activity.type === 'document' ? IconFileText :
-              activity.type === 'bookmark' ? IconBookmark :
-              activity.type === 'task' ? IconChecklist :
-              IconNotebook,
-        details: activity.details
+
+    if (isDemoMode()) {
+      setDashboardStats(getMockStats());
+      setDocuments(getMockDocuments());
+      setGithubActivityEvents([]);
+
+      const mockActivities = getMockActivities();
+      const filteredActivities = mockActivities
+        .filter(activity => ['document', 'bookmark', 'task', 'note'].includes(activity.type))
+        .map(activity => ({
+          id: activity.id,
+          type: activity.type as 'document' | 'bookmark' | 'task' | 'note',
+          action: activity.action,
+          title: activity.title,
+          timestamp: activity.timestamp,
+          icon: activity.type === 'document' ? IconFileText :
+                activity.type === 'bookmark' ? IconBookmark :
+                activity.type === 'task' ? IconChecklist :
+                IconNotebook,
+          details: activity.details
+        }));
+      setRecentActivity(filteredActivities as RecentActivity[]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      };
+
+      const [statsRes, filesRes, tasksRes, timeEntriesRes, learningPathsRes] = await Promise.allSettled([
+        fetch(`${API_BASE_URL}/dashboard/stats`, { headers }),
+        fetch(`${API_BASE_URL}/files`, { headers }),
+        fetch(`${API_BASE_URL}/tasks`, { headers }),
+        fetch(`${API_BASE_URL}/time-entries`, { headers }),
+        fetch(`${API_BASE_URL}/learning-paths`, { headers }),
+      ]);
+
+      const statsData = statsRes.status === 'fulfilled' && statsRes.value.ok ? await statsRes.value.json() : null;
+      const filesData: Array<any> = filesRes.status === 'fulfilled' && filesRes.value.ok ? await filesRes.value.json() : [];
+      const tasksData: Array<any> = tasksRes.status === 'fulfilled' && tasksRes.value.ok ? await tasksRes.value.json() : [];
+      const timeEntriesPayload: { time_entries?: Array<{ duration?: number }> } =
+        timeEntriesRes.status === 'fulfilled' && timeEntriesRes.value.ok ? await timeEntriesRes.value.json() : {};
+      const learningPathsData: Array<any> =
+        learningPathsRes.status === 'fulfilled' && learningPathsRes.value.ok ? await learningPathsRes.value.json() : [];
+
+      const mappedDocuments: Document[] = filesData.map((file: any) => ({
+        id: String(file.id ?? ''),
+        name: file.original_name || file.file_name || `File ${file.id ?? ''}`,
+        size: formatBytes(Number(file.file_size || 0)),
+        type: deriveFileType(file.original_name || file.file_name || ''),
+        createdAt: file.created_at || new Date().toISOString(),
+        tags: [],
       }));
-    setRecentActivity(filteredActivities as RecentActivity[]);
+      setDocuments(mappedDocuments);
+
+      const recentActivitiesRaw: Array<any> = Array.isArray(statsData?.recentActivity) ? statsData.recentActivity : [];
+      const mappedActivities: RecentActivity[] = recentActivitiesRaw
+        .filter((activity) => ['bookmark', 'task', 'note', 'file'].includes(activity.type))
+        .map((activity) => ({
+          id: String(activity.id ?? ''),
+          type: activity.type === 'file'
+            ? 'document'
+            : activity.type as 'document' | 'bookmark' | 'task' | 'note',
+          action: activity.type || 'activity',
+          title: activity.title || 'Activity',
+          timestamp: activity.timestamp || '',
+          icon: activity.type === 'bookmark' ? IconBookmark :
+                activity.type === 'task' ? IconChecklist :
+                activity.type === 'note' ? IconNotebook :
+                IconFileText,
+          details: undefined,
+        }));
+      setRecentActivity(mappedActivities);
+
+      const mappedGitHubActivities: GitHubActivityEvent[] = recentActivitiesRaw
+        .filter((activity) => typeof activity.type === 'string' && activity.type.startsWith('github'))
+        .slice(0, 6)
+        .map((activity, index) => ({
+          id: String(activity.id ?? `github-${index}`),
+          title: activity.title || 'GitHub activity',
+          date: activity.timestamp || '',
+          repo: activity.repo,
+          action: activity.action,
+          link: activity.link,
+          type: activity.type === 'github_commit'
+            ? 'commit'
+            : activity.type === 'github_push'
+              ? 'push'
+              : 'note',
+        }));
+      setGithubActivityEvents(mappedGitHubActivities);
+
+      const completedTasks = tasksData.filter((task) => task.status === 'completed').length;
+      const activeTasks = tasksData.filter((task) => task.status !== 'completed').length;
+      const totalSizeBytes = filesData.reduce((acc: number, file: any) => acc + Number(file.file_size || 0), 0);
+      const totalTrackedSeconds = (timeEntriesPayload.time_entries || []).reduce((acc: number, entry) => acc + Number(entry.duration || 0), 0);
+      const upcomingDeadlines = tasksData
+        .filter((task) => Boolean(task.due_date) && task.status !== 'completed')
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+        .slice(0, 3)
+        .map((task) => ({
+          title: task.title || 'Task',
+          date: String(task.due_date).split('T')[0],
+          priority: task.priority || 'medium',
+        }));
+
+      const statsPayload = createEmptyStats();
+      statsPayload.totalDocuments = mappedDocuments.length;
+      statsPayload.totalBookmarks = Number(statsData?.totalBookmarks || 0);
+      statsPayload.totalTasks = Number(statsData?.totalTasks || tasksData.length || 0);
+      statsPayload.totalNotes = Number(statsData?.totalNotes || 0);
+      statsPayload.totalSize = formatBytes(totalSizeBytes);
+      statsPayload.recentActivity = mappedActivities.length;
+      statsPayload.completedTasks = completedTasks;
+      statsPayload.activeTasks = activeTasks;
+      statsPayload.totalLearningPaths = learningPathsData.length;
+      statsPayload.totalTimeTracked = totalTrackedSeconds / 3600;
+      statsPayload.averageProductivity = statsPayload.totalTasks > 0
+        ? Math.round((completedTasks / statsPayload.totalTasks) * 100)
+        : 0;
+      statsPayload.storageUsed = totalSizeBytes / (1024 * 1024 * 1024);
+      statsPayload.upcomingDeadlines = upcomingDeadlines;
+      statsPayload.recentAchievements = completedTasks > 0
+        ? [{ title: `Completed ${completedTasks} task${completedTasks === 1 ? '' : 's'}`, date: 'Recently', type: 'milestone' }]
+        : [];
+      statsPayload.recentProjects = learningPathsData.slice(0, 4).map((path) => ({
+        name: path.title || 'Learning Path',
+        progress: Number(path.progress || 0),
+        status: path.progress && path.progress >= 100 ? 'completed' : 'active',
+      }));
+
+      setDashboardStats(statsPayload);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      setDashboardStats(createEmptyStats());
+      setDocuments([]);
+      setRecentActivity([]);
+      setGithubActivityEvents([]);
+    }
   });
 
   const getFileIcon = (type: string) => {
@@ -300,10 +478,11 @@ export const Dashboard = () => {
     return documents().slice(start, end);
   };
 
-  const totalPages = () => Math.ceil(documents().length / rowsPerPage());
+  const totalPages = () => Math.max(1, Math.ceil(documents().length / rowsPerPage()));
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    const clamped = Math.min(Math.max(page, 1), totalPages());
+    setCurrentPage(clamped);
   };
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
@@ -447,27 +626,32 @@ export const Dashboard = () => {
             <IconTrendingUp class="size-4 text-primary" />
             <h3 class="font-semibold">Recent Achievements</h3>
           </div>
-          <div class="space-y-3">
-            {stats().recentAchievements.map((achievement) => (
-              <div 
-                class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                onClick={() => {
-                  setSelectedAchievement(achievement);
-                  setShowAchievementModal(true);
-                }}
-              >
-                <div class={`w-2 h-2 rounded-full ${
-                  achievement.type === 'milestone' ? 'bg-primary' :
-                  achievement.type === 'deployment' ? 'bg-primary' :
-                  'bg-primary'
-                }`}></div>
-                <div class="flex-1">
-                  <p class="text-sm font-medium">{achievement.title}</p>
-                  <p class="text-xs text-muted-foreground">{achievement.date}</p>
+          <Show
+            when={stats().recentAchievements.length > 0}
+            fallback={<p class="text-sm text-muted-foreground">No achievements yet.</p>}
+          >
+            <div class="space-y-3">
+              {stats().recentAchievements.map((achievement) => (
+                <div 
+                  class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedAchievement(achievement);
+                    setShowAchievementModal(true);
+                  }}
+                >
+                  <div class={`w-2 h-2 rounded-full ${
+                    achievement.type === 'milestone' ? 'bg-primary' :
+                    achievement.type === 'deployment' ? 'bg-primary' :
+                    'bg-primary'
+                  }`}></div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium">{achievement.title}</p>
+                    <p class="text-xs text-muted-foreground">{achievement.date}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Show>
         </div>
 
         {/* Upcoming Deadlines */}
@@ -476,27 +660,32 @@ export const Dashboard = () => {
             <IconClock class="size-4 text-primary" />
             <h3 class="font-semibold">Upcoming Deadlines</h3>
           </div>
-          <div class="space-y-3">
-            {stats().upcomingDeadlines.map((deadline) => (
-              <div 
-                class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                onClick={() => {
-                  setSelectedDeadline(deadline);
-                  setShowDeadlineModal(true);
-                }}
-              >
-                <div class={`w-2 h-2 rounded-full ${
-                  deadline.priority === 'high' ? 'bg-primary' :
-                  deadline.priority === 'medium' ? 'bg-primary' :
-                  'bg-primary'
-                }`}></div>
-                <div class="flex-1">
-                  <p class="text-sm font-medium">{deadline.title}</p>
-                  <p class="text-xs text-muted-foreground">{deadline.date}</p>
+          <Show
+            when={stats().upcomingDeadlines.length > 0}
+            fallback={<p class="text-sm text-muted-foreground">No upcoming deadlines.</p>}
+          >
+            <div class="space-y-3">
+              {stats().upcomingDeadlines.map((deadline) => (
+                <div 
+                  class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedDeadline(deadline);
+                    setShowDeadlineModal(true);
+                  }}
+                >
+                  <div class={`w-2 h-2 rounded-full ${
+                    deadline.priority === 'high' ? 'bg-primary' :
+                    deadline.priority === 'medium' ? 'bg-primary' :
+                    'bg-primary'
+                  }`}></div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium">{deadline.title}</p>
+                    <p class="text-xs text-muted-foreground">{deadline.date}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Show>
         </div>
       </div>
 
@@ -561,62 +750,55 @@ export const Dashboard = () => {
             <h3 class="font-semibold">Weekly Activity</h3>
           </div>
           <div class="space-y-4">
-            {/* Bar chart visualization */}
-            <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
-              <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
-                <div class="border-t border-border/60"></div>
-                <div class="border-t border-border/40"></div>
-                <div class="border-t border-border/30"></div>
-                <div class="border-t border-border/20"></div>
-              </div>
-              <div class="relative flex items-end justify-between h-full gap-1 md:gap-2">
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
-                  const weeklyActivity = stats().weeklyActivity;
-                  const activity = weeklyActivity[index];
-                  const maxActivity = Math.max(...weeklyActivity);
-                  const minActivity = Math.min(...weeklyActivity);
-                  
-                  // Calculate responsive height with proper scaling
-                  let heightPercent;
-                  if (maxActivity === minActivity) {
-                    // All values are the same, use 80% height for consistency
-                    heightPercent = 80;
-                  } else {
-                    // Use the actual range for proportional scaling
-                    const range = maxActivity - minActivity;
-                    const normalizedValue = activity - minActivity;
-                    // Scale to 20-90% range to ensure visibility while maintaining proportions
-                    heightPercent = 20 + (normalizedValue / range) * 70;
-                  }
-                  
-                  // Ensure minimum height for very small values but maintain proportion
-                  const finalHeightPercent = Math.max(heightPercent, 8);
+            <Show
+              when={weeklyActivityTotal() > 0}
+              fallback={
+                <div class="h-32 md:h-36 border border-dashed border-border rounded-lg flex items-center justify-center">
+                  <p class="text-sm text-muted-foreground">No activity data yet.</p>
+                </div>
+              }
+            >
+              <div class="relative h-32 md:h-36 px-6 weekly-activity-chart">
+                <div class="absolute inset-x-0 inset-y-2 pointer-events-none flex flex-col justify-between">
+                  <div class="border-t border-border/60"></div>
+                  <div class="border-t border-border/40"></div>
+                  <div class="border-t border-border/30"></div>
+                  <div class="border-t border-border/20"></div>
+                </div>
+                <div class="relative flex items-end justify-between h-full gap-1 md:gap-2">
+                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                    const weeklyActivity = stats().weeklyActivity;
+                    const activity = weeklyActivity[index];
+                    const maxActivity = Math.max(...weeklyActivity, 1);
+                    const heightPercent = (activity / maxActivity) * 85;
+                    const finalHeightPercent = activity > 0 ? Math.max(heightPercent, 8) : 0;
 
-                  return (
-                    <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-4 h-full">
-                      <div class="relative w-full max-w-2 md:max-w-3 flex flex-col items-center justify-end h-full">
-                        <span 
-                          class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10"
-                        >
-                          {activity}
-                        </span>
-                        <div 
-                          class="w-full max-w-2 md:max-w-3 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
-                          style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%); min-height: 4px;`}
-                          title={`${day}: ${activity} activities`}
-                        ></div>
+                    return (
+                      <div class="flex flex-col items-center flex-1 gap-2 group min-w-0 max-w-4 h-full">
+                        <div class="relative w-full max-w-2 md:max-w-3 flex flex-col items-center justify-end h-full">
+                          <span 
+                            class="text-xs font-medium text-primary mb-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -top-5 z-10"
+                          >
+                            {activity}
+                          </span>
+                          <div 
+                            class="w-full max-w-2 md:max-w-3 bg-primary rounded-t transition-all duration-500 hover:opacity-80 cursor-pointer hover:scale-105 weekly-bar"
+                            style={`height: ${finalHeightPercent}%; background-color: hsl(199, 89%, 67%);`}
+                            title={`${day}: ${activity} activities`}
+                          ></div>
+                        </div>
+                        <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
                       </div>
-                      <span class="text-xs text-muted-foreground font-medium mt-1">{day}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </Show>
             
             {/* Weekly summary */}
             <div class="flex justify-between text-xs text-muted-foreground pt-2 border-t border-border">
-              <span>Total: {stats().weeklyActivity.reduce((a, b) => a + b, 0)} activities</span>
-              <span>Avg: {Math.round(stats().weeklyActivity.reduce((a, b) => a + b, 0) / 7)} per day</span>
+              <span>Total: {weeklyActivityTotal()} activities</span>
+              <span>Avg: {Math.round(weeklyActivityTotal() / 7)} per day</span>
             </div>
           </div>
         </div>
@@ -677,80 +859,58 @@ export const Dashboard = () => {
                 <h3 class="font-semibold">GitHub Activity</h3>
               </div>
             </div>
-            <div class="space-y-3 max-h-64 overflow-y-auto">
-              {[
-                {
-                  type: 'push' as const,
-                  title: 'Updated dashboard with new features',
-                  date: new Date().toISOString().split('T')[0],
-                  repo: 'trackeep',
-                  action: 'pushed'
-                },
-                {
-                  type: 'bookmark' as const,
-                  title: 'Added bookmark: Advanced CSS Techniques',
-                  date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-                  link: '/app/bookmarks'
-                },
-                {
-                  type: 'note' as const,
-                  title: 'Created note: Project Architecture Ideas',
-                  date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-                  link: '/app/notes'
-                },
-                {
-                  type: 'commit' as const,
-                  title: 'Fix responsive design issues',
-                  date: new Date(Date.now() - 259200000).toISOString().split('T')[0],
-                  repo: 'trackeep',
-                  action: 'committed'
-                }
-              ].map((event) => (
-                <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <div class="bg-primary/10 p-2 rounded-lg">
-                      {event.type === 'push' || event.type === 'commit' ? (
-                        <IconChartLine class="size-4 text-primary" />
-                      ) : event.type === 'bookmark' ? (
-                        <IconBookmark class="size-4 text-primary" />
-                      ) : (
-                        <IconNotebook class="size-4 text-primary" />
-                      )}
-                    </div>
-                    <div class="flex-1">
-                      <p class="text-sm text-foreground font-medium">{event.title}</p>
-                      <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <span>{event.date}</span>
-                        {event.repo && (
-                          <>
-                            <span>•</span>
-                            <span class="text-primary">{event.repo}</span>
-                          </>
-                        )}
-                        {event.action && (
-                          <>
-                            <span>•</span>
-                            <span>{event.action}</span>
-                          </>
+            <Show
+              when={githubActivityEvents().length > 0}
+              fallback={<p class="text-sm text-muted-foreground">No GitHub activity yet.</p>}
+            >
+              <div class="space-y-3 max-h-64 overflow-y-auto">
+                {githubActivityEvents().map((event) => (
+                  <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div class="flex items-center gap-3">
+                      <div class="bg-primary/10 p-2 rounded-lg">
+                        {event.type === 'push' || event.type === 'commit' ? (
+                          <IconChartLine class="size-4 text-primary" />
+                        ) : event.type === 'bookmark' ? (
+                          <IconBookmark class="size-4 text-primary" />
+                        ) : (
+                          <IconNotebook class="size-4 text-primary" />
                         )}
                       </div>
+                      <div class="flex-1">
+                        <p class="text-sm text-foreground font-medium">{event.title}</p>
+                        <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <span>{event.date}</span>
+                          {event.repo && (
+                            <>
+                              <span>•</span>
+                              <span class="text-primary">{event.repo}</span>
+                            </>
+                          )}
+                          {event.action && (
+                            <>
+                              <span>•</span>
+                              <span>{event.action}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                    {event.link && (
+                      <button 
+                        class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+                        onClick={() => {
+                          if (event.link) {
+                            window.location.href = event.link;
+                          }
+                        }}
+                      >
+                        <IconSearch class="size-4" />
+                      </button>
+                    )}
                   </div>
-                  {event.link && (
-                    <button 
-                      class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
-                      onClick={() => {
-                        if (event.link) {
-                          window.location.href = event.link;
-                        }
-                      }}
-                    >
-                      <IconSearch class="size-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Show>
           </div>
         </div>
         
@@ -825,25 +985,30 @@ export const Dashboard = () => {
             <IconSearch class="size-4 text-primary" />
             <h3 class="font-semibold">Popular Tags</h3>
           </div>
-          <div class="flex flex-wrap gap-2">
-            {getPopularTags().map((tag) => (
-              <button
-                class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:underline text-xs"
-                onClick={() =>
-                  navigate(
-                    `/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`
-                  )
-                }
-              >
-                <span
-                  class="size-1.5 rounded-full"
-                  style={`background-color: ${tag.color}`}
-                ></span>
-                <span class="font-medium">{tag.name}</span>
-                <span class="text-[10px] text-muted-foreground">({tag.count})</span>
-              </button>
-            ))}
-          </div>
+          <Show
+            when={stats().topTags.length > 0}
+            fallback={<p class="text-sm text-muted-foreground">No tags yet.</p>}
+          >
+            <div class="flex flex-wrap gap-2">
+              {stats().topTags.map((tag) => (
+                <button
+                  class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:underline text-xs"
+                  onClick={() =>
+                    navigate(
+                      `/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`
+                    )
+                  }
+                >
+                  <span
+                    class="size-1.5 rounded-full"
+                    style={`background-color: ${tag.color}`}
+                  ></span>
+                  <span class="font-medium">{tag.name}</span>
+                  <span class="text-[10px] text-muted-foreground">({tag.count})</span>
+                </button>
+              ))}
+            </div>
+          </Show>
         </div>
       </div>
 
@@ -868,132 +1033,145 @@ export const Dashboard = () => {
               </tr>
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
-              {paginatedDocuments().map((doc) => {
-                const fileIconData = getFileIcon(doc.type);
-                const FileIcon = fileIconData.icon;
-                const iconColor = fileIconData.color;
-                return (
-                  <tr class="border-b transition-colors data-[state=selected]:bg-muted" data-state="false">
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                      <div class="overflow-hidden flex gap-4 items-center">
-                        <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-                          <FileIcon class={`size-6 ${iconColor}`} />
-                        </div>
-                        <div class="flex-1 flex flex-col gap-1 truncate">
-                          <button 
-                            onClick={() => handlePreviewDocument(doc)}
-                            class="font-bold truncate block hover:underline text-left"
-                          >
-                            {doc.name}
-                          </button>
-                          <div class="text-xs text-muted-foreground lh-tight">
-                            {doc.size} - {doc.type} - <time>{doc.createdAt}</time>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                      <div class="text-muted-foreground hidden sm:flex flex-wrap gap-1">
-                        {doc.tags.map((tag) => (
-                          <button 
-                            onClick={() => navigate(`/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`)}
-                            class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:bg-accent/50 hover:text-accent-foreground hover:underline text-xs transition-colors cursor-pointer"
-                            title={`Search for "${tag.name}"`}
-                          >
-                            <span class="size-1.5 rounded-full" style={`background-color: ${tag.color}`}></span>
-                            {tag.name}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                      <time class="text-muted-foreground hidden sm:block">{doc.createdAt}</time>
-                    </td>
-                    <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
-                      <div class="flex items-center justify-end">
-                        <DropdownMenu
-                          trigger={
-                            <button type="button" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-9 w-9">
-                              <IconDotsVertical class="size-4" />
-                            </button>
-                          }
-                        >
-                          <DropdownMenuItem onClick={() => handlePreviewDocument(doc)} icon={IconEye}>
-                            Preview
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadDocument(doc)} icon={IconDownload}>
-                            Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditDocument(doc)} icon={IconEdit}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteDocument(doc)} icon={IconTrash} variant="destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenu>
-                      </div>
+              <Show
+                when={paginatedDocuments().length > 0}
+                fallback={
+                  <tr>
+                    <td colSpan={4} class="p-8 text-center text-sm text-muted-foreground">
+                      No documents yet.
                     </td>
                   </tr>
-                );
-              })}
+                }
+              >
+                {paginatedDocuments().map((doc) => {
+                  const fileIconData = getFileIcon(doc.type);
+                  const FileIcon = fileIconData.icon;
+                  const iconColor = fileIconData.color;
+                  return (
+                    <tr class="border-b transition-colors data-[state=selected]:bg-muted" data-state="false">
+                      <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                        <div class="overflow-hidden flex gap-4 items-center">
+                          <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+                            <FileIcon class={`size-6 ${iconColor}`} />
+                          </div>
+                          <div class="flex-1 flex flex-col gap-1 truncate">
+                            <button 
+                              onClick={() => handlePreviewDocument(doc)}
+                              class="font-bold truncate block hover:underline text-left"
+                            >
+                              {doc.name}
+                            </button>
+                            <div class="text-xs text-muted-foreground lh-tight">
+                              {doc.size} - {doc.type} - <time>{doc.createdAt}</time>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                        <div class="text-muted-foreground hidden sm:flex flex-wrap gap-1">
+                          {doc.tags.map((tag) => (
+                            <button 
+                              onClick={() => navigate(`/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`)}
+                              class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:bg-accent/50 hover:text-accent-foreground hover:underline text-xs transition-colors cursor-pointer"
+                              title={`Search for "${tag.name}"`}
+                            >
+                              <span class="size-1.5 rounded-full" style={`background-color: ${tag.color}`}></span>
+                              {tag.name}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                        <time class="text-muted-foreground hidden sm:block">{doc.createdAt}</time>
+                      </td>
+                      <td class="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]">
+                        <div class="flex items-center justify-end">
+                          <DropdownMenu
+                            trigger={
+                              <button type="button" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-9 w-9">
+                                <IconDotsVertical class="size-4" />
+                              </button>
+                            }
+                          >
+                            <DropdownMenuItem onClick={() => handlePreviewDocument(doc)} icon={IconEye}>
+                              Preview
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadDocument(doc)} icon={IconDownload}>
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditDocument(doc)} icon={IconEdit}>
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteDocument(doc)} icon={IconTrash} variant="destructive">
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Show>
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div class="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-end mt-4">
-          <div class="flex items-center space-x-2">
-            <p class="whitespace-nowrap text-sm font-medium">Rows per page</p>
-            <select
-              value={rowsPerPage()}
-              onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
-              class="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-shadow h-8 w-[4.5rem] text-foreground bg-card"
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
+        <Show when={documents().length > 0}>
+          <div class="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-end mt-4">
+            <div class="flex items-center space-x-2">
+              <p class="whitespace-nowrap text-sm font-medium">Rows per page</p>
+              <select
+                value={rowsPerPage()}
+                onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+                class="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-shadow h-8 w-[4.5rem] text-foreground bg-card"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-center whitespace-nowrap text-sm font-medium">
+              Page {currentPage()} of {totalPages()}
+            </div>
+            <div class="flex items-center space-x-2">
+              <button 
+                type="button" 
+                disabled={currentPage() === 1}
+                onClick={() => handlePageChange(1)}
+                class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 p-0 disabled:opacity-50"
+              >
+                <IconChevronsLeft class="size-4" />
+              </button>
+              <button 
+                type="button" 
+                disabled={currentPage() === 1}
+                onClick={() => handlePageChange(currentPage() - 1)}
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
+              >
+                <IconChevronLeft class="size-4" />
+              </button>
+              <button 
+                type="button" 
+                disabled={currentPage() === totalPages()}
+                onClick={() => handlePageChange(currentPage() + 1)}
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
+              >
+                <IconChevronRight class="size-4" />
+              </button>
+              <button 
+                type="button" 
+                disabled={currentPage() === totalPages()}
+                onClick={() => handlePageChange(totalPages())}
+                class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 disabled:opacity-50"
+              >
+                <IconChevronsRight class="size-4" />
+              </button>
+            </div>
           </div>
-          <div class="flex items-center justify-center whitespace-nowrap text-sm font-medium">
-            Page {currentPage()} of {totalPages()}
-          </div>
-          <div class="flex items-center space-x-2">
-            <button 
-              type="button" 
-              disabled={currentPage() === 1}
-              onClick={() => handlePageChange(1)}
-              class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 p-0 disabled:opacity-50"
-            >
-              <IconChevronsLeft class="size-4" />
-            </button>
-            <button 
-              type="button" 
-              disabled={currentPage() === 1}
-              onClick={() => handlePageChange(currentPage() - 1)}
-              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
-            >
-              <IconChevronLeft class="size-4" />
-            </button>
-            <button 
-              type="button" 
-              disabled={currentPage() === totalPages()}
-              onClick={() => handlePageChange(currentPage() + 1)}
-              class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground size-8 disabled:opacity-50"
-            >
-              <IconChevronRight class="size-4" />
-            </button>
-            <button 
-              type="button" 
-              disabled={currentPage() === totalPages()}
-              onClick={() => handlePageChange(totalPages())}
-              class="items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex size-8 disabled:opacity-50"
-            >
-              <IconChevronsRight class="size-4" />
-            </button>
-          </div>
-        </div>
+        </Show>
       </div>
 
 
@@ -1026,72 +1204,76 @@ export const Dashboard = () => {
 
       {/* Achievement Detail Modal */}
       <Show when={showAchievementModal() && selectedAchievement()}>
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 mt-0">
-          <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Achievement Details</h3>
-              <button
-                onClick={() => setShowAchievementModal(false)}
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
-              >
-                <IconX class="size-4" />
-              </button>
-            </div>
-            <div class="space-y-4">
-              <div>
-                <h4 class="font-medium text-foreground">{selectedAchievement().title}</h4>
-                <p class="text-sm text-muted-foreground mt-1">{selectedAchievement().date}</p>
+        <ModalPortal>
+          <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Achievement Details</h3>
+                <button
+                  onClick={() => setShowAchievementModal(false)}
+                  class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+                >
+                  <IconX class="size-4" />
+                </button>
               </div>
-              <div>
-                <p class="text-sm text-muted-foreground">
-                  Congratulations on this achievement! This represents your hard work and dedication to your goals.
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
-                  {selectedAchievement().type || 'Achievement'}
-                </span>
+              <div class="space-y-4">
+                <div>
+                  <h4 class="font-medium text-foreground">{selectedAchievement().title}</h4>
+                  <p class="text-sm text-muted-foreground mt-1">{selectedAchievement().date}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-muted-foreground">
+                    Congratulations on this achievement! This represents your hard work and dedication to your goals.
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
+                    {selectedAchievement().type || 'Achievement'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
 
       {/* Deadline Detail Modal */}
       <Show when={showDeadlineModal() && selectedDeadline()}>
-        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 mt-0">
-          <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Deadline Details</h3>
-              <button
-                onClick={() => setShowDeadlineModal(false)}
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
-              >
-                <IconX class="size-4" />
-              </button>
-            </div>
-            <div class="space-y-4">
-              <div>
-                <h4 class="font-medium text-foreground">{selectedDeadline().title}</h4>
-                <p class="text-sm text-muted-foreground mt-1">{selectedDeadline().date}</p>
+        <ModalPortal>
+          <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Deadline Details</h3>
+                <button
+                  onClick={() => setShowDeadlineModal(false)}
+                  class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
+                >
+                  <IconX class="size-4" />
+                </button>
               </div>
-              <div>
-                <p class="text-sm text-muted-foreground">
-                  This deadline requires your attention. Make sure to allocate sufficient time to complete this task.
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class={`px-2 py-1 rounded text-xs font-medium ${
-                  selectedDeadline().priority === 'high' ? 'bg-destructive/10 text-destructive' :
-                  selectedDeadline().priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
-                  'bg-muted text-muted-foreground'
-                }`}>
-                  {selectedDeadline().priority || 'Normal'} Priority
-                </span>
+              <div class="space-y-4">
+                <div>
+                  <h4 class="font-medium text-foreground">{selectedDeadline().title}</h4>
+                  <p class="text-sm text-muted-foreground mt-1">{selectedDeadline().date}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-muted-foreground">
+                    This deadline requires your attention. Make sure to allocate sufficient time to complete this task.
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class={`px-2 py-1 rounded text-xs font-medium ${
+                    selectedDeadline().priority === 'high' ? 'bg-destructive/10 text-destructive' :
+                    selectedDeadline().priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {selectedDeadline().priority || 'Normal'} Priority
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       </Show>
 
       {/* File Preview Modal */}

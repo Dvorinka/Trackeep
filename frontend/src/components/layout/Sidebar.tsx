@@ -1,4 +1,4 @@
-import { For, createSignal, onMount, Show } from 'solid-js'
+import { For, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { 
   IconBookmark, 
@@ -21,10 +21,15 @@ import {
   IconMessageCircle,
   IconLogout,
   IconBuilding,
-  IconPlus,
-  IconX
+  IconPlus
 } from '@tabler/icons-solidjs'
 import { UpdateChecker } from '../ui/UpdateChecker'
+import { Input } from '../ui/Input'
+import { Button } from '../ui/Button'
+import { Switch } from '../ui/Switch'
+import { ModalPortal } from '../ui/ModalPortal'
+import { useAuth } from '@/lib/auth'
+import { getApiV1BaseUrl } from '@/lib/api-url'
 
 const navigation = [
   { name: 'Home', href: '/app', icon: IconHome },
@@ -43,11 +48,23 @@ const navigation = [
   { name: 'AI Assistant', href: '/app/chat', icon: IconBrain },
 ]
 
-const mockWorkspaces = [
-  { id: '1', name: 'Trackeep Workspace', icon: IconFileText },
-  { id: '2', name: 'Personal Projects', icon: IconBuilding },
-  { id: '3', name: 'Team Collaboration', icon: IconUsers },
-]
+const API_BASE_URL = getApiV1BaseUrl()
+const DEFAULT_WORKSPACE_NAME = 'Trackeep Workspace'
+
+interface WorkspaceOption {
+  id: string
+  name: string
+  icon: typeof IconFileText
+}
+
+const getWorkspaceIcon = (name: string) => {
+  const lower = name.toLowerCase()
+  if (lower.includes('team')) return IconUsers
+  if (lower.includes('personal')) return IconBuilding
+  return IconFileText
+}
+
+const getAuthToken = () => localStorage.getItem('trackeep_token') || localStorage.getItem('token') || ''
 
 export interface SidebarProps {
   class?: string
@@ -57,8 +74,35 @@ export interface SidebarProps {
 
 export function Sidebar(props: SidebarProps) {
   const location = useLocation()
+  const { logout } = useAuth()
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = createSignal(false)
-  const [selectedWorkspace, setSelectedWorkspace] = createSignal(mockWorkspaces[0])
+  const [workspaces, setWorkspaces] = createSignal<WorkspaceOption[]>([])
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = createSignal<string>('')
+  const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] = createSignal(false)
+  const [workspaceName, setWorkspaceName] = createSignal('')
+  const [workspaceDescription, setWorkspaceDescription] = createSignal('')
+  const [workspaceIsPublic, setWorkspaceIsPublic] = createSignal(false)
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = createSignal(false)
+  const [createWorkspaceError, setCreateWorkspaceError] = createSignal('')
+
+  const selectedWorkspace = () => {
+    const list = workspaces()
+    const found = list.find((workspace) => workspace.id === selectedWorkspaceId())
+    return found || list[0] || { id: 'default', name: DEFAULT_WORKSPACE_NAME, icon: IconFileText }
+  }
+
+  const persistSelectedWorkspace = (workspace: WorkspaceOption) => {
+    localStorage.setItem('trackeep_workspace_id', workspace.id)
+    localStorage.setItem('trackeep_workspace_name', workspace.name)
+    window.dispatchEvent(
+      new CustomEvent('trackeep:workspace-changed', {
+        detail: {
+          id: workspace.id,
+          name: workspace.name,
+        },
+      }),
+    )
+  }
 
   const isActive = (href: string) => {
     const currentPath = location.pathname
@@ -66,17 +110,206 @@ export function Sidebar(props: SidebarProps) {
     return currentPath === href
   }
 
-  const handleWorkspaceSelect = (workspace: typeof mockWorkspaces[0]) => {
-    setSelectedWorkspace(workspace)
+  const handleWorkspaceSelect = (workspace: WorkspaceOption) => {
+    setSelectedWorkspaceId(workspace.id)
+    persistSelectedWorkspace(workspace)
     setIsWorkspaceDropdownOpen(false)
+  }
+
+  const resetCreateWorkspaceForm = () => {
+    setWorkspaceName('')
+    setWorkspaceDescription('')
+    setWorkspaceIsPublic(false)
+    setCreateWorkspaceError('')
+  }
+
+  const openCreateWorkspaceModal = () => {
+    setIsWorkspaceDropdownOpen(false)
+    resetCreateWorkspaceForm()
+    setIsCreateWorkspaceModalOpen(true)
+  }
+
+  const closeCreateWorkspaceModal = () => {
+    if (isCreatingWorkspace()) return
+    setIsCreateWorkspaceModalOpen(false)
+    resetCreateWorkspaceForm()
   }
 
   const toggleWorkspaceDropdown = () => {
     setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen())
   }
 
+  const normalizeWorkspace = (team: { id?: number | string; name?: string }): WorkspaceOption => {
+    const name = team.name?.trim() || DEFAULT_WORKSPACE_NAME
+    return {
+      id: String(team.id ?? `workspace-${Date.now()}`),
+      name,
+      icon: getWorkspaceIcon(name),
+    }
+  }
+
+  const createDefaultWorkspace = async (token: string): Promise<WorkspaceOption | null> => {
+    const response = await fetch(`${API_BASE_URL}/teams`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: DEFAULT_WORKSPACE_NAME,
+        description: 'Default workspace',
+        is_public: false,
+      }),
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = await response.json()
+    if (!data?.team) {
+      return null
+    }
+
+    return normalizeWorkspace(data.team)
+  }
+
+  const loadWorkspaces = async () => {
+    const token = getAuthToken()
+    if (!token) {
+      const fallbackWorkspace = {
+        id: 'local-default',
+        name: DEFAULT_WORKSPACE_NAME,
+        icon: IconFileText,
+      }
+      setWorkspaces([fallbackWorkspace])
+      setSelectedWorkspaceId(fallbackWorkspace.id)
+      persistSelectedWorkspace(fallbackWorkspace)
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/teams`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      let mappedWorkspaces: WorkspaceOption[] = []
+      if (response.ok) {
+        const data = await response.json()
+        const teams = Array.isArray(data?.teams) ? data.teams : []
+        mappedWorkspaces = teams.map(normalizeWorkspace)
+      }
+
+      if (mappedWorkspaces.length === 0) {
+        const created = await createDefaultWorkspace(token)
+        if (created) {
+          mappedWorkspaces = [created]
+        }
+      }
+
+      if (mappedWorkspaces.length === 0) {
+        mappedWorkspaces = [
+          {
+            id: 'local-default',
+            name: DEFAULT_WORKSPACE_NAME,
+            icon: IconFileText,
+          },
+        ]
+      }
+
+      setWorkspaces(mappedWorkspaces)
+
+      const persistedWorkspaceId = localStorage.getItem('trackeep_workspace_id') || ''
+      const initialSelection =
+        mappedWorkspaces.find((workspace) => workspace.id === persistedWorkspaceId) || mappedWorkspaces[0]
+
+      setSelectedWorkspaceId(initialSelection.id)
+      persistSelectedWorkspace(initialSelection)
+    } catch (error) {
+      console.error('Failed to load workspaces:', error)
+      const fallbackWorkspace = {
+        id: 'local-default',
+        name: DEFAULT_WORKSPACE_NAME,
+        icon: IconFileText,
+      }
+      setWorkspaces([fallbackWorkspace])
+      setSelectedWorkspaceId(fallbackWorkspace.id)
+      persistSelectedWorkspace(fallbackWorkspace)
+    }
+  }
+
+  const handleCreateWorkspace = async () => {
+    const trimmed = workspaceName().trim()
+    const description = workspaceDescription().trim()
+    const isPublic = workspaceIsPublic()
+
+    if (!trimmed) {
+      setCreateWorkspaceError('Workspace name is required.')
+      return
+    }
+
+    setCreateWorkspaceError('')
+    setIsCreatingWorkspace(true)
+    const token = getAuthToken()
+    if (!token) {
+      const localWorkspace = {
+        id: `local-${Date.now()}`,
+        name: trimmed,
+        icon: getWorkspaceIcon(trimmed),
+      }
+      setWorkspaces((prev) => [localWorkspace, ...prev])
+      handleWorkspaceSelect(localWorkspace)
+      setIsCreateWorkspaceModalOpen(false)
+      resetCreateWorkspaceForm()
+      setIsCreatingWorkspace(false)
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/teams`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: trimmed,
+          description,
+          is_public: isPublic,
+        }),
+      })
+
+      if (!response.ok) {
+        let message = `Failed to create workspace: ${response.status}`
+        try {
+          const data = await response.json()
+          message = data?.error || data?.message || message
+        } catch {
+          // Keep fallback message
+        }
+        throw new Error(message)
+      }
+
+      const data = await response.json()
+      const createdWorkspace = normalizeWorkspace(data.team)
+      setWorkspaces((prev) => [createdWorkspace, ...prev])
+      handleWorkspaceSelect(createdWorkspace)
+      setIsCreateWorkspaceModalOpen(false)
+      resetCreateWorkspaceForm()
+    } catch (error) {
+      console.error('Failed to create workspace:', error)
+      setCreateWorkspaceError(error instanceof Error ? error.message : 'Failed to create workspace.')
+    } finally {
+      setIsCreatingWorkspace(false)
+    }
+  }
+
   // Close dropdown when clicking outside
   onMount(() => {
+    void loadWorkspaces()
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target
       if (!(target instanceof HTMLElement)) return
@@ -85,28 +318,34 @@ export function Sidebar(props: SidebarProps) {
       }
     }
     document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
+    onCleanup(() => document.removeEventListener('click', handleClickOutside))
   })
 
   return (
     <>
-      {/* Mobile Close Button - Above sidebar */}
-      <Show when={props.isOpen}>
-        <button
-          onClick={props.onClose}
-          class="fixed top-4 right-4 z-50 md:hidden inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
-        >
-          <IconX class="size-4" />
-        </button>
-      </Show>
-      
-      <div class={`fixed inset-y-0 left-0 z-50 w-280px border-r border-r-border flex-shrink-0 bg-card transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-        props.isOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <div class="flex h-full">
+      <div
+        class={`fixed inset-y-0 left-0 z-50 border-r border-r-border bg-card transition-all duration-300 ease-in-out overflow-hidden md:relative md:inset-y-auto md:left-auto md:transform-none ${
+          props.isOpen ? 'w-[280px] translate-x-0' : 'w-[280px] -translate-x-full md:w-0 md:translate-x-0 md:pointer-events-none'
+        }`}
+      >
+        <div class="w-[280px] h-full flex">
           <div class="h-full flex flex-col pb-6 flex-1 min-w-0">
+            <div class="px-4 pt-4">
+              <A
+                href="/app"
+                class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent/40 transition-colors"
+              >
+                <img
+                  src="/trackeep.svg"
+                  alt="Trackeep Logo"
+                  class="w-7 h-7 app-logo-mono"
+                />
+                <span class="font-semibold tracking-tight text-foreground">Trackeep</span>
+              </A>
+            </div>
+
             {/* Organization Selector */}
-          <div class="p-4 pb-0 min-w-0 max-w-full" id="workspace-selector">
+          <div class="p-4 pb-0 pt-3 min-w-0 max-w-full" id="workspace-selector">
             <div role="group" class="w-full relative">
               <button
                 type="button"
@@ -133,7 +372,7 @@ export function Sidebar(props: SidebarProps) {
               <Show when={isWorkspaceDropdownOpen()}>
                 <div class="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg z-50 max-h-60 overflow-auto">
                   <div class="p-1" role="listbox">
-                    <For each={mockWorkspaces}>
+                    <For each={workspaces()}>
                       {(workspace) => (
                         <button
                           type="button"
@@ -156,6 +395,7 @@ export function Sidebar(props: SidebarProps) {
                     <div class="border-t border-border mt-1 pt-1">
                       <button
                         type="button"
+                        onClick={openCreateWorkspaceModal}
                         class="flex w-full items-center gap-2 px-3 py-2 text-sm rounded-sm hover:bg-accent/50 transition-colors focus:bg-accent/50 focus:outline-none text-muted-foreground"
                       >
                         <IconPlus class="size-4" />
@@ -262,9 +502,8 @@ export function Sidebar(props: SidebarProps) {
               }}></div>
             </A>
             <button
-              onClick={() => {
-                // Handle logout logic here
-                localStorage.removeItem('auth_token')
+              onClick={async () => {
+                await logout()
                 window.location.href = '/login'
               }}
               class="group inline-flex rounded-md text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-9 px-4 py-2 justify-start items-center gap-2 truncate w-full relative overflow-hidden hover:bg-destructive/10 hover:text-destructive dark:text-muted-foreground"
@@ -279,6 +518,87 @@ export function Sidebar(props: SidebarProps) {
         </div>
       </div>
     </div>
+
+      <Show when={isCreateWorkspaceModalOpen()}>
+        <ModalPortal>
+          <>
+            <div
+              class="fixed inset-0 z-[90] bg-black/50"
+              onClick={closeCreateWorkspaceModal}
+            />
+            <div class="fixed top-1/2 left-1/2 z-[100] w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+              <div class="rounded-lg border border-border bg-card shadow-xl">
+                <div class="border-b border-border p-5">
+                  <h3 class="text-lg font-semibold text-foreground">Create Workspace</h3>
+                  <p class="mt-1 text-sm text-muted-foreground">Add a new workspace for your team or projects.</p>
+                </div>
+
+                <div
+                  class="space-y-4 p-5"
+                >
+                  <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-foreground">
+                      Name
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Workspace name"
+                      value={workspaceName()}
+                      onInput={(event) => setWorkspaceName((event.currentTarget as HTMLInputElement).value)}
+                      required
+                      disabled={isCreatingWorkspace()}
+                    />
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-foreground" for="workspace-description">
+                      Description
+                    </label>
+                    <textarea
+                      id="workspace-description"
+                      rows={3}
+                      class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Optional description"
+                      value={workspaceDescription()}
+                      onInput={(event) => setWorkspaceDescription((event.currentTarget as HTMLTextAreaElement).value)}
+                      disabled={isCreatingWorkspace()}
+                    />
+                  </div>
+
+                  <div class="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                    <div>
+                      <p class="text-sm font-medium text-foreground">Public workspace</p>
+                      <p class="text-xs text-muted-foreground">Allow all members to discover this workspace.</p>
+                    </div>
+                    <Switch
+                      checked={workspaceIsPublic()}
+                      onCheckedChange={setWorkspaceIsPublic}
+                      disabled={isCreatingWorkspace()}
+                    />
+                  </div>
+
+                  <Show when={createWorkspaceError()}>
+                    <p class="text-sm text-destructive">{createWorkspaceError()}</p>
+                  </Show>
+
+                  <div class="flex justify-end gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={closeCreateWorkspaceModal}
+                      disabled={isCreatingWorkspace()}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={() => void handleCreateWorkspace()} disabled={isCreatingWorkspace()}>
+                      {isCreatingWorkspace() ? 'Creating...' : 'Create Workspace'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        </ModalPortal>
+      </Show>
     </>
   )
 }

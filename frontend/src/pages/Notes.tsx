@@ -5,7 +5,9 @@ import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { NoteModal } from '@/components/ui/NoteModal';
 import { ViewNoteModal } from '@/components/ui/ViewNoteModal';
 import { IconPin, IconTrash, IconEdit, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
-import { getMockNotes } from '@/lib/mockData';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface Note {
   id: number;
@@ -25,43 +27,6 @@ interface Note {
   isMarkdown?: boolean;
   isHtml?: boolean;
 }
-
-const normalizeMockDate = (dateStr: string): string => {
-  const directDate = new Date(dateStr);
-  if (!isNaN(directDate.getTime())) {
-    return directDate.toISOString();
-  }
-
-  const match = dateStr.match(/(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago/i);
-  if (!match) {
-    return new Date().toISOString();
-  }
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  const date = new Date();
-
-  switch (unit) {
-    case 'day':
-    case 'days':
-      date.setDate(date.getDate() - value);
-      break;
-    case 'week':
-    case 'weeks':
-      date.setDate(date.getDate() - value * 7);
-      break;
-    case 'month':
-    case 'months':
-      date.setMonth(date.getMonth() - value);
-      break;
-    case 'year':
-    case 'years':
-      date.setFullYear(date.getFullYear() - value);
-      break;
-  }
-
-  return date.toISOString();
-};
 
 const renderMarkdownPreviewHtml = (content: string, maxBlocks = 4): string => {
   const html = content
@@ -112,64 +77,57 @@ export const Notes = () => {
   const [copiedContent, setCopiedContent] = createSignal(false);
   const [expandedNotes, setExpandedNotes] = createSignal<Set<number>>(new Set());
 
-  // Check if we're in demo mode
-  const isDemoMode = () => {
-    return localStorage.getItem('demoMode') === 'true' || 
-           document.title.includes('Demo Mode') ||
-           window.location.search.includes('demo=true');
-  };
-
   onMount(async () => {
     try {
-      if (isDemoMode()) {
-        // Use mock data in demo mode
-        const mockNotes = getMockNotes();
-        const adaptedNotes = mockNotes.map((note, index) => ({
-          id: index + 1,
-          title: note.title,
-          content: note.content,
-          createdAt: normalizeMockDate(note.createdAt),
-          updatedAt: normalizeMockDate(note.updatedAt),
-          tags: note.tags.map(tag => tag.name),
-          pinned: note.tags.some(tag => tag.name === 'important' || tag.name === 'pinned'),
-          attachments: note.attachments?.map((att, index) => ({
-          id: `att_${index}`,
-          name: att.name,
-          type: att.type,
-          size: att.size,
-          url: `/attachments/${att.name}`
-        })) || [],
-          isMarkdown: note.content.includes('#') || note.content.includes('*'),
-          isHtml: note.content.includes('<') && note.content.includes('>')
-        }));
-        setNotes(adaptedNotes);
-        setIsLoading(false);
-        return;
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/notes`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load notes');
       }
 
-      // Load mock notes data
-      const mockNotes = getMockNotes();
-      const adaptedNotes = mockNotes.map((note, index) => ({
-        id: index + 1,
-        title: note.title,
-        content: note.content,
-        createdAt: normalizeMockDate(note.createdAt),
-        updatedAt: normalizeMockDate(note.updatedAt),
-        tags: note.tags.map(tag => tag.name),
-        pinned: note.tags.some(tag => tag.name === 'important' || tag.name === 'pinned'),
-        attachments: note.attachments?.map((att, index) => ({
-          id: `att_${index}`,
-          name: att.name,
-          type: att.type,
-          size: att.size,
-          url: `/attachments/${att.name}`
-        })) || [],
-        isMarkdown: note.content.includes('#') || note.content.includes('*'),
-        isHtml: note.content.includes('<') && note.content.includes('>')
-      }));
+      const notesData = await response.json();
+      const adaptedNotes: Note[] = (Array.isArray(notesData) ? notesData : []).map((note: any, index) => {
+        const tags = Array.isArray(note.tags)
+          ? note.tags
+              .map((tag: any) => (typeof tag === 'string' ? tag : tag?.name))
+              .filter(Boolean)
+          : [];
+
+        const content = note.content || '';
+        const createdAt = note.created_at || note.createdAt || new Date().toISOString();
+        const updatedAt = note.updated_at || note.updatedAt || createdAt;
+
+        return {
+          id: Number(note.id || index + 1),
+          title: note.title || 'Untitled note',
+          content,
+          createdAt,
+          updatedAt,
+          tags,
+          pinned: Boolean(note.pinned ?? note.is_pinned),
+          attachments: Array.isArray(note.attachments)
+            ? note.attachments.map((att: any, attachmentIndex: number) => ({
+                id: String(att.id || `att_${attachmentIndex}`),
+                name: att.name || 'attachment',
+                type: att.type || 'file',
+                size: att.size || '',
+                url: att.url,
+              }))
+            : [],
+          isMarkdown: content.includes('#') || content.includes('*'),
+          isHtml: content.includes('<') && content.includes('>'),
+        };
+      });
+
       setNotes(adaptedNotes);
     } catch (error) {
       console.error('Failed to load notes:', error);
+      setNotes([]);
     } finally {
       setIsLoading(false);
     }

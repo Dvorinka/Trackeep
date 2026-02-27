@@ -11,6 +11,9 @@ import {
   IconClock,
   IconExternalLink
 } from '@tabler/icons-solidjs';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+const API_BASE_URL = getApiV1BaseUrl();
 
 interface ActivityItem {
   id: string;
@@ -27,6 +30,7 @@ interface ActivityItem {
     language?: string;
     tags?: string[];
   };
+  displayTimestamp?: string;
 }
 
 interface ActivityFeedProps {
@@ -39,6 +43,21 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
   const [activities, setActivities] = createSignal<ActivityItem[]>([]);
   const [filter, setFilter] = createSignal<'all' | 'trackeep' | 'github'>('all');
   const [loading, setLoading] = createSignal(true);
+
+  const normalizeActivityType = (type: string): ActivityItem['type'] => {
+    if (type === 'bookmark' || type === 'task' || type === 'note' || type === 'file') {
+      return type;
+    }
+    return 'task';
+  };
+
+  const formatTimestamp = (value: string): string => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toISOString().split('T')[0];
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -57,79 +76,37 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      
-      // Import mock data for demo mode
-      const { getMockActivities } = await import('@/lib/mockData');
-      
-      // Combine and format activities
+
       const combinedActivities: ActivityItem[] = [];
-      
-      // Add Trackeep activities from mock data
-      const mockActivities = getMockActivities();
-      const now = new Date();
-      
-      mockActivities.forEach((activity, index) => {
-        // Create realistic timestamps
-        const timestamp = new Date(now.getTime() - (index * 3600000)); // Each activity 1 hour apart
-        
+
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const recentActivities: Array<{ id?: number; type?: string; title?: string; timestamp?: string }> = Array.isArray(data.recentActivity)
+        ? data.recentActivity
+        : [];
+
+      recentActivities.forEach((activity, index) => {
         combinedActivities.push({
-          id: activity.id,
-          type: activity.type as any,
-          title: activity.title,
-          description: `${activity.action} ${activity.type}`,
-          timestamp: timestamp.toISOString(),
-          source: 'trackeep' as const,
-          metadata: {
-            tags: activity.details?.tags ? Object.keys(activity.details.tags) : undefined
-          }
+          id: String(activity.id ?? `activity-${index}`),
+          type: normalizeActivityType(activity.type || ''),
+          title: activity.title || 'Activity',
+          description: activity.type || 'trackeep',
+          timestamp: new Date().toISOString(),
+          displayTimestamp: activity.timestamp || '',
+          source: 'trackeep',
         });
       });
-      
-      // Add some GitHub-style activities
-      const githubActivities = [
-        {
-          id: 'github_1',
-          type: 'github_commit' as const,
-          title: 'Fixed responsive design issues',
-          description: 'Resolved mobile layout problems on dashboard',
-          timestamp: new Date(now.getTime() - 2 * 3600000).toISOString(),
-          source: 'github' as const,
-          metadata: {
-            repo: 'tdvorak/trackeep',
-            url: 'https://github.com/tdvorak/trackeep/commit/abc123',
-            branch: 'main',
-            language: 'Go'
-          }
-        },
-        {
-          id: 'github_2',
-          type: 'github_pr' as const,
-          title: 'Add AI chat integration',
-          description: 'Implement LongCat AI provider with model switching',
-          timestamp: new Date(now.getTime() - 5 * 3600000).toISOString(),
-          source: 'github' as const,
-          metadata: {
-            repo: 'tdvorak/trackeep',
-            url: 'https://github.com/tdvorak/trackeep/pull/42',
-            branch: 'feature/ai-chat',
-            language: 'TypeScript'
-          }
-        },
-        {
-          id: 'github_3',
-          type: 'github_star' as const,
-          title: 'trackeep gained new stars',
-          description: 'Repository reached 245 stars',
-          timestamp: new Date(now.getTime() - 8 * 3600000).toISOString(),
-          source: 'github' as const,
-          metadata: {
-            repo: 'tdvorak/trackeep',
-            url: 'https://github.com/tdvorak/trackeep'
-          }
-        }
-      ];
-      
-      combinedActivities.push(...githubActivities);
 
       // Sort by timestamp (most recent first)
       combinedActivities.sort((a, b) => 
@@ -149,6 +126,7 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
       setActivities(limitedActivities);
     } catch (error) {
       console.error('Failed to fetch activities:', error);
+      setActivities([]);
     } finally {
       setLoading(false);
     }
@@ -179,7 +157,10 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
         {props.showFilter && (
           <div class="flex gap-2">
             <button
-              onClick={() => setFilter('all')}
+              onClick={() => {
+                setFilter('all');
+                fetchActivities();
+              }}
               class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                 filter() === 'all' 
                   ? 'bg-[#262626] text-[#fafafa]' 
@@ -189,7 +170,10 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
               All
             </button>
             <button
-              onClick={() => setFilter('trackeep')}
+              onClick={() => {
+                setFilter('trackeep');
+                fetchActivities();
+              }}
               class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                 filter() === 'trackeep' 
                   ? 'bg-[#262626] text-[#fafafa]' 
@@ -199,7 +183,10 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
               Trackeep
             </button>
             <button
-              onClick={() => setFilter('github')}
+              onClick={() => {
+                setFilter('github');
+                fetchActivities();
+              }}
               class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                 filter() === 'github' 
                   ? 'bg-[#262626] text-[#fafafa]' 
@@ -220,68 +207,70 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
       )}
 
       {/* Activity List */}
-      <div class="space-y-3 flex-1 min-h-0 overflow-y-auto max-h-96 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-        <For each={activities()}>
-          {(activity) => {
-            const Icon = getActivityIcon(activity.type);
-            
-            return (
-              <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
-                <div class="flex items-center gap-3">
-                  <div class="bg-primary/10 p-2 rounded-lg">
-                    <Icon class="size-4 text-primary" />
-                  </div>
-                  <div class="flex-1">
-                    <p class="text-sm text-foreground font-medium">
-                      {activity.title}
-                    </p>
-                    <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                      <span>{new Date(activity.timestamp).toISOString().split('T')[0]}</span>
-                      <span>•</span>
-                      <span class="text-primary">
-                        {activity.source === 'github'
-                          ? (activity.metadata?.repo?.split('/').pop() || 'GitHub')
-                          : 'trackeep'}
-                      </span>
-                      <span>•</span>
-                      <span>
-                        {activity.source === 'github'
-                          ? activity.type === 'github_commit'
-                            ? 'pushed'
-                            : activity.type === 'github_pr'
-                              ? 'opened PR'
-                              : activity.type === 'github_star'
-                                ? 'starred'
-                                : activity.type === 'github_fork'
-                                  ? 'forked'
-                                  : 'activity'
-                          : activity.description || activity.type}
-                      </span>
+      {activities().length > 0 && (
+        <div class="space-y-3 flex-1 min-h-0 overflow-y-auto max-h-96 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          <For each={activities()}>
+            {(activity) => {
+              const Icon = getActivityIcon(activity.type);
+              
+              return (
+                <div class="flex items-center justify-between p-3 bg-card rounded-lg border hover:bg-muted/50 transition-colors">
+                  <div class="flex items-center gap-3">
+                    <div class="bg-primary/10 p-2 rounded-lg">
+                      <Icon class="size-4 text-primary" />
+                    </div>
+                    <div class="flex-1">
+                      <p class="text-sm text-foreground font-medium">
+                        {activity.title}
+                      </p>
+                      <div class="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <span>{activity.displayTimestamp || formatTimestamp(activity.timestamp)}</span>
+                        <span>•</span>
+                        <span class="text-primary">
+                          {activity.source === 'github'
+                            ? (activity.metadata?.repo?.split('/').pop() || 'GitHub')
+                            : 'trackeep'}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {activity.source === 'github'
+                            ? activity.type === 'github_commit'
+                              ? 'pushed'
+                              : activity.type === 'github_pr'
+                                ? 'opened PR'
+                                : activity.type === 'github_star'
+                                  ? 'starred'
+                                  : activity.type === 'github_fork'
+                                    ? 'forked'
+                                    : 'activity'
+                            : activity.description || activity.type}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {activity.metadata?.url && (
+                    <a
+                      href={activity.metadata.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8 ml-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconExternalLink class="size-4 text-primary" />
+                    </a>
+                  )}
                 </div>
-                {activity.metadata?.url && (
-                  <a
-                    href={activity.metadata.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8 ml-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <IconExternalLink class="size-4 text-primary" />
-                  </a>
-                )}
-              </div>
-            );
-          }}
-        </For>
-      </div>
+              );
+            }}
+          </For>
+        </div>
+      )}
 
       {/* Empty State */}
       {!loading() && activities().length === 0 && (
         <div class="text-center py-8">
           <IconClock class="size-12 text-[#a3a3a3] mx-auto mb-4" />
-          <p class="text-[#a3a3a3]">No recent activity found</p>
+          <p class="text-[#a3a3a3]">No activity yet</p>
           <p class="text-sm text-[#a3a3a3] mt-1">
             {filter() === 'github' ? 'Connect your GitHub account to see activity' : 'Start using Trackeep to see your activity here'}
           </p>
