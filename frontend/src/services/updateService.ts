@@ -148,7 +148,7 @@ export const updateService = {
   },
 
   // Get current app version from package.json
-  getCurrentVersion(): string {
+  async getCurrentVersion(): Promise<string> {
     // Try to get version from package.json first, then fallback
     try {
       const response = await fetch('/package.json');

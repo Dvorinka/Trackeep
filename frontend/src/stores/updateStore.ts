@@ -116,9 +116,9 @@ const cancelUpdate = () => {
 };
 
 // Initialize update checking
-const initializeUpdateChecking = () => {
+const initializeUpdateChecking = async () => {
   // Set current version
-  setCurrentVersion(updateService.getCurrentVersion());
+  setCurrentVersion(await updateService.getCurrentVersion());
   
   // Check if last check was more than 24 hours ago
   const lastCheckTimeStr = localStorage.getItem('lastUpdateCheck');
@@ -150,9 +150,9 @@ const cleanup = () => {
 
 // Auto-initialize when store is imported
 let initialized = false;
-const ensureInitialized = () => {
+const ensureInitialized = async () => {
   if (!initialized) {
-    initializeUpdateChecking();
+    await initializeUpdateChecking();
     initialized = true;
   }
 };

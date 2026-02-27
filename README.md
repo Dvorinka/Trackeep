@@ -27,103 +27,6 @@
   <img src="./scorecard.png" alt="Code Quality Score" width="100%">
 </p>
 
-## 🚀 Releases & Updates
-
-Trackeep uses automated semantic versioning and Docker-based updates. No manual setup required!
-
-### 📋 How Updates Work
-
-Users get updates automatically through the built-in update system:
-- ✅ **Auto-checks** every 24 hours for new versions
-- ✅ **UI notifications** appear in left navigation when updates available  
-- ✅ **One-click install** pulls latest Docker images and restarts services
-- ✅ **Zero setup** - just run `docker compose up` and it works
-
-### 🏷️ Version Management
-
-Versions are managed automatically through semantic versioning (MAJOR.MINOR.PATCH):
-
-- **Frontend**: Version from `frontend/package.json`
-- **Backend**: Version from `backend/go.mod`
-- **Detection**: Automatic from source code (no env vars needed)
-
-### 🚀 Creating Releases
-
-#### Method 1: Automated (Recommended)
-
-For new features or bug fixes:
-
-```bash
-# 1. Commit your changes
-git commit -m "feat: add new amazing feature"
-
-# 2. Create version tag and push (triggers automated release)
-git tag v1.2.7
-git push origin main v1.2.7
-```
-
-**What happens automatically:**
-1. GitHub Actions detects the version tag
-2. Updates all version files (`package.json`, `go.mod`, docker-compose files)
-3. Builds Docker images with proper semantic tags
-4. Pushes to GitHub Container Registry (`latest` + versioned tags)
-5. Creates GitHub release with changelog
-6. Updates `latest` tags to point to new version
-
-#### Method 2: Manual
-
-For precise control:
-
-```bash
-# Use version update script
-./scripts/update-version.sh 1.2.7
-
-# Commit and push
-git add . && git commit -m "chore: bump version to 1.2.7"
-git push origin main
-```
-
-### 🐳 Docker Images
-
-Images are automatically built and pushed to GitHub Container Registry:
-
-- **Registry**: `ghcr.io/dvorinka/trackeep`
-- **Latest tags**: `backend:latest`, `frontend:latest` (for updates)
-- **Versioned tags**: `backend:1.2.6`, `frontend:1.2.6` (for rollback)
-- **Automatic builds**: Triggered by Git tags
-
-### 📖 Semantic Versioning
-
-Follow industry standard (MAJOR.MINOR.PATCH):
-
-```
-1.2.6 → 1.3.0  (MINOR: new features)
-1.2.6 → 1.2.7  (PATCH: bug fixes)  
-1.2.6 → 2.0.0  (MAJOR: breaking changes)
-```
-
-### 🔧 Development Setup
-
-```bash
-# Clone and run
-git clone https://github.com/Dvorinka/Trackeep.git
-cd Trackeep
-
-# Start with automatic updates
-docker compose up
-
-# System automatically:
-# - Detects version from source code
-# - Checks for updates every 24h
-# - Shows update notifications in UI
-# - Installs updates with one click
-```
-
-### 📚 Documentation
-
-- **Version workflow**: See [docs/SIMPLIFIED_VERSION_SYSTEM.md](docs/SIMPLIFIED_VERSION_SYSTEM.md)
-- **API documentation**: See [docs/API.md](docs/API.md)
-- **Update system**: See [docs/AUTO_UPDATE_GUIDE.md](docs/AUTO_UPDATE_GUIDE.md)
 
 ## Introduction
 
@@ -552,6 +455,104 @@ This project is built with amazing open-source technologies:
 - **Mobile**: React Native, React Navigation
 - **DevOps**: Docker, GitHub Actions
 
+
+## 🚀 Releases & Updates
+
+Trackeep uses automated semantic versioning and Docker-based updates. No manual setup required!
+
+### 📋 How Updates Work
+
+Users get updates automatically through the built-in update system:
+- ✅ **Auto-checks** every 24 hours for new versions
+- ✅ **UI notifications** appear in left navigation when updates available  
+- ✅ **One-click install** pulls latest Docker images and restarts services
+- ✅ **Zero setup** - just run `docker compose up` and it works
+
+### 🏷️ Version Management
+
+Versions are managed automatically through semantic versioning (MAJOR.MINOR.PATCH):
+
+- **Frontend**: Version from `frontend/package.json`
+- **Backend**: Version from `backend/go.mod`
+- **Detection**: Automatic from source code (no env vars needed)
+
+### 🚀 Creating Releases
+
+#### Method 1: Automated (Recommended)
+
+For new features or bug fixes:
+
+```bash
+# 1. Commit your changes
+git commit -m "feat: add new amazing feature"
+
+# 2. Create version tag and push (triggers automated release)
+git tag v1.2.7
+git push origin main v1.2.7
+```
+
+**What happens automatically:**
+1. GitHub Actions detects the version tag
+2. Updates all version files (`package.json`, `go.mod`, docker-compose files)
+3. Builds Docker images with proper semantic tags
+4. Pushes to GitHub Container Registry (`latest` + versioned tags)
+5. Creates GitHub release with changelog
+6. Updates `latest` tags to point to new version
+
+#### Method 2: Manual
+
+For precise control:
+
+```bash
+# Use version update script
+./scripts/update-version.sh 1.2.7
+
+# Commit and push
+git add . && git commit -m "chore: bump version to 1.2.7"
+git push origin main
+```
+
+### 🐳 Docker Images
+
+Images are automatically built and pushed to GitHub Container Registry:
+
+- **Registry**: `ghcr.io/dvorinka/trackeep`
+- **Latest tags**: `backend:latest`, `frontend:latest` (for updates)
+- **Versioned tags**: `backend:1.2.6`, `frontend:1.2.6` (for rollback)
+- **Automatic builds**: Triggered by Git tags
+
+### 📖 Semantic Versioning
+
+Follow industry standard (MAJOR.MINOR.PATCH):
+
+```
+1.2.6 → 1.3.0  (MINOR: new features)
+1.2.6 → 1.2.7  (PATCH: bug fixes)  
+1.2.6 → 2.0.0  (MAJOR: breaking changes)
+```
+
+### 🔧 Development Setup
+
+```bash
+# Clone and run
+git clone https://github.com/Dvorinka/Trackeep.git
+cd Trackeep
+
+# Start with automatic updates
+docker compose up
+
+# System automatically:
+# - Detects version from source code
+# - Checks for updates every 24h
+# - Shows update notifications in UI
+# - Installs updates with one click
+```
+
+### 📚 Documentation
+
+- **Version workflow**: See [docs/SIMPLIFIED_VERSION_SYSTEM.md](docs/SIMPLIFIED_VERSION_SYSTEM.md)
+- **API documentation**: See [docs/API.md](docs/API.md)
+- **Update system**: See [docs/AUTO_UPDATE_GUIDE.md](docs/AUTO_UPDATE_GUIDE.md)
 
 ## A Personal Note
 

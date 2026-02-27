@@ -17,7 +17,7 @@ export function UpdateChecker(props: UpdateCheckerProps) {
   const [showUpdateModal, setShowUpdateModal] = createSignal(false);
 
   // Initialize update store
-  updateStore.ensureInitialized();
+  updateStore.ensureInitialized().catch(console.error);
 
   const installUpdate = () => {
     updateStore.installUpdate();
