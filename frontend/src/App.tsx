@@ -24,12 +24,14 @@ import { GitHub } from '@/pages/GitHub'
 import { TimeTracking } from '@/pages/TimeTracking'
 import { Calendar } from '@/pages/Calendar'
 import { AuthCallback } from '@/pages/AuthCallback'
-import { AuthProvider } from '@/lib/auth'
+import { AuthProvider, useAuth } from '@/lib/auth'
 import { Search } from '@/pages/Search'
 import { Analytics } from '@/pages/Analytics'
 import { Messages } from '@/pages/Messages'
+import BrowserExtensionSettings from '@/pages/BrowserExtensionSettings'
 import { initializeDemoMode, clearDemoMode, isEnvDemoMode } from '@/lib/demo-mode'
-import { onMount } from 'solid-js'
+import { onMount, createEffect } from 'solid-js'
+import { useNavigate } from '@solidjs/router'
 
 // Initialize dark mode immediately before anything else
 const initializeDarkMode = () => {
@@ -76,6 +78,42 @@ const queryClient = new QueryClient({
   },
 })
 
+// Component to handle root route logic
+const RootRoute = () => {
+  const { authState } = useAuth();
+  const navigate = useNavigate();
+
+  createEffect(() => {
+    // If demo mode is enabled and user is authenticated, navigate to app
+    if (isEnvDemoMode() && authState.isAuthenticated && !authState.isLoading) {
+      navigate('/app', { replace: true });
+      return;
+    }
+    
+    // If not demo mode and user is authenticated, navigate to app
+    if (!isEnvDemoMode() && authState.isAuthenticated && !authState.isLoading) {
+      navigate('/app', { replace: true });
+      return;
+    }
+    
+    // If not authenticated and not loading, show login
+    if (!authState.isAuthenticated && !authState.isLoading) {
+      navigate('/login', { replace: true });
+      return;
+    }
+  });
+
+  // Show loading spinner while checking auth
+  return (
+    <div class="min-h-screen bg-[#18181b] flex items-center justify-center px-4">
+      <div class="text-center">
+        <div class="inline-block w-8 h-8 border-2 border-[#39b9ff] border-r-transparent rounded-full animate-spin mb-3"></div>
+        <p class="text-sm text-[#a3a3a3]">Loading...</p>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   // Initialize demo mode API interceptor and cleanup old demo data
   onMount(() => {
@@ -93,10 +131,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <Route path="/" component={() => {
-            // Always show login page, demo mode will be handled there
-            return <Login />;
-          }} />
+          <Route path="/" component={RootRoute} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/app" component={() => (
@@ -138,6 +173,13 @@ function App() {
             <ProtectedRoute>
               <Layout title="Enhanced Search">
                 <Search />
+              </Layout>
+            </ProtectedRoute>
+          )} />
+          <Route path="/app/browser-extension" component={() => (
+            <ProtectedRoute>
+              <Layout title="Browser Extension Settings">
+                <BrowserExtensionSettings />
               </Layout>
             </ProtectedRoute>
           )} />

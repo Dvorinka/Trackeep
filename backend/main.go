@@ -22,19 +22,29 @@ func IsDemoMode() bool {
 }
 
 func initializeSecuritySecrets() error {
-	jwtSecret, err := utils.GetOrCreateJWTSecret()
-	if err != nil {
-		return err
+	// Only set JWT_SECRET if not already provided in environment
+	if os.Getenv("JWT_SECRET") == "" {
+		jwtSecret, err := utils.GetOrCreateJWTSecret()
+		if err != nil {
+			return err
+		}
+		os.Setenv("JWT_SECRET", jwtSecret)
+		log.Println("JWT secret initialized from file")
+	} else {
+		log.Println("JWT secret found in environment variable")
 	}
-	os.Setenv("JWT_SECRET", jwtSecret)
-	log.Println("JWT secret initialized successfully")
 
-	encryptionKey, err := utils.GetOrCreateEncryptionKey()
-	if err != nil {
-		return err
+	// Only set ENCRYPTION_KEY if not already provided in environment
+	if os.Getenv("ENCRYPTION_KEY") == "" {
+		encryptionKey, err := utils.GetOrCreateEncryptionKey()
+		if err != nil {
+			return err
+		}
+		os.Setenv("ENCRYPTION_KEY", encryptionKey)
+		log.Println("Encryption key initialized from file")
+	} else {
+		log.Println("Encryption key found in environment variable")
 	}
-	os.Setenv("ENCRYPTION_KEY", encryptionKey)
-	log.Println("Encryption key initialized successfully")
 
 	return nil
 }
@@ -125,9 +135,16 @@ func main() {
 	// Serve static files (frontend)
 	r.Static("/assets", "../frontend/dist/assets")
 	r.StaticFile("/", "../frontend/dist/index.html")
+
+	// Serve browser extension download
+	r.GET("/browser-extension", handlers.DownloadBrowserExtension)
+
 	r.NoRoute(func(c *gin.Context) {
 		c.File("../frontend/dist/index.html")
 	})
+
+	// Version endpoint
+	r.GET("/api/version", handlers.GetVersionHandler)
 
 	// Initialize handlers
 	memberHandler := handlers.NewMemberHandler(config.GetDB())
@@ -203,10 +220,22 @@ func main() {
 			authProtected.GET("/ai/settings", handlers.GetAISettings)
 			authProtected.PUT("/ai/settings", handlers.UpdateAISettings)
 			authProtected.POST("/ai/test-connection", handlers.TestAIConnection)
+
+			// Search Settings routes
+			authProtected.GET("/search/settings", handlers.GetSearchSettings)
+			authProtected.PUT("/search/settings", handlers.UpdateSearchSettings)
+
+			// Update Settings routes
+			authProtected.GET("/update/settings", handlers.GetUpdateSettings)
+			authProtected.PUT("/update/settings", handlers.UpdateUpdateSettings)
 		}
 
 		// Test AI settings without auth
 		v1.GET("/test-ai-settings", handlers.GetAISettings)
+
+		// Test search and update settings without auth (for demo mode)
+		v1.GET("/test-search-settings", handlers.GetTestSearchSettings)
+		v1.GET("/test-update-settings", handlers.GetTestUpdateSettings)
 
 		// Dashboard routes (protected)
 		dashboard := v1.Group("/dashboard")
@@ -720,6 +749,24 @@ func main() {
 			performance.GET("/monitor", performanceHandler.MonitorPerformance)
 			performance.POST("/optimize", performanceHandler.OptimizeDatabase)
 			performance.POST("/cleanup-audit-logs", performanceHandler.CleanupOldAuditLogs)
+		}
+
+		// Browser Extension API routes
+		browserExt := v1.Group("/browser-extension")
+		browserExt.Use(handlers.AuthMiddleware())
+		{
+			// API Key management
+			browserExt.POST("/api-keys/generate", handlers.GenerateAPIKey)
+			browserExt.GET("/api-keys", handlers.GetAPIKeys)
+			browserExt.DELETE("/api-keys/:id", handlers.RevokeAPIKey)
+
+			// Extension registration and validation
+			browserExt.POST("/register", handlers.RegisterBrowserExtension)
+			browserExt.GET("/extensions", handlers.GetBrowserExtensions)
+			browserExt.DELETE("/extensions/:id", handlers.RevokeBrowserExtension)
+
+			// Public endpoints (for extension validation)
+			browserExt.GET("/validate", handlers.ValidateAPIKey)
 		}
 	}
 

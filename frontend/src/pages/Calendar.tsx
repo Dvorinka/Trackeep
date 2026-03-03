@@ -368,18 +368,6 @@ export function Calendar() {
 
   return (
     <div class="space-y-6">
-      {/* Demo Mode Indicator */}
-      <Show when={isDemoModeEnabled()}>
-        <div class="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-lg p-3 mb-4">
-          <p class="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
-            Demo Mode Active - Showing sample calendar data
-          </p>
-          <p class="text-yellow-700 dark:text-yellow-300 text-xs mt-1">
-            Today: {todayEvents().length} events | Upcoming: {upcomingEvents().length} events | Deadlines: {deadlines().length}
-          </p>
-        </div>
-      </Show>
-
       {/* Header with Current Time */}
       <div class="flex items-center justify-between">
         <div>

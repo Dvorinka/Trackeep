@@ -59,6 +59,24 @@ export interface MessageReference {
   deep_link: string;
 }
 
+export interface MessageReferenceInput {
+  entity_type: string;
+  entity_id: number;
+  deep_link: string;
+}
+
+export interface MessageSendPayload {
+  body?: string;
+  attachments?: Array<{
+    kind: string;
+    file_id?: number;
+    url?: string;
+    title?: string;
+  }>;
+  metadata?: Record<string, unknown>;
+  references?: MessageReferenceInput[];
+}
+
 export interface MessageSuggestion {
   id: number;
   message_id: number;
@@ -159,7 +177,7 @@ export const messagesApi = {
     apiRequest<{ messages: Message[]; next_cursor?: number }>(
       `/conversations/${conversationId}/messages?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`
     ),
-  sendMessage: (conversationId: number, payload: any) => apiRequest<{ message: Message; warning?: string }>(
+  sendMessage: (conversationId: number, payload: MessageSendPayload) => apiRequest<{ message: Message; warning?: string }>(
     `/conversations/${conversationId}/messages`,
     {
       method: 'POST',
@@ -284,6 +302,16 @@ export class MessagesRealtimeClient {
     this.cleanupReconnect();
     const token = getToken();
     if (!token) return;
+
+    const isDemo =
+      import.meta.env.VITE_DEMO_MODE === 'true' ||
+      (window as any).ENV?.VITE_DEMO_MODE === 'true' ||
+      (window as any).importMetaEnv?.VITE_DEMO_MODE === 'true';
+    if (isDemo) {
+      // Demo mode uses mocked fetch handlers and does not provide a realtime WS backend.
+      this.onStatus?.('connected');
+      return;
+    }
 
     const wsBase = API_BASE_URL.replace(/^http/, 'ws');
     this.ws = new WebSocket(`${wsBase}/api/v1/messages/ws?token=${encodeURIComponent(token)}`);

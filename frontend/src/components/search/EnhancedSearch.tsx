@@ -134,13 +134,14 @@ export const EnhancedSearch = () => {
 
         if (response.ok) {
           const data = await response.json();
+          const results = Array.isArray(data?.results) ? data.results : [];
           if (resetOffset) {
-            setSearchResults(data.results);
+            setSearchResults(results);
           } else {
-            setSearchResults(prev => [...prev, ...data.results]);
+            setSearchResults(prev => [...prev, ...results]);
           }
-          setTotal(data.results.length); // Semantic search doesn't return total count
-          setTook(data.took);
+          setTotal(results.length); // Semantic search doesn't return total count
+          setTook(Number(data?.took) || 0);
         }
       } else {
         // Use enhanced full-text search API
@@ -155,14 +156,15 @@ export const EnhancedSearch = () => {
 
         if (response.ok) {
           const data: SearchResponse = await response.json();
+          const results = Array.isArray((data as any)?.results) ? (data as any).results : [];
           if (resetOffset) {
-            setSearchResults(data.results);
+            setSearchResults(results);
           } else {
-            setSearchResults(prev => [...prev, ...data.results]);
+            setSearchResults(prev => [...prev, ...results]);
           }
-          setTotal(data.total);
-          setAggregations(data.aggregations);
-          setTook(data.took);
+          setTotal(Number((data as any)?.total) || results.length);
+          setAggregations((data as any)?.aggregations && typeof (data as any).aggregations === 'object' ? (data as any).aggregations : {});
+          setTook(Number((data as any)?.took) || 0);
         }
       }
 

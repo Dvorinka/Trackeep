@@ -12,6 +12,7 @@ import {
   IconGitPullRequest,
   IconGitCommit
 } from '@tabler/icons-solidjs';
+import { isDemoMode } from '@/lib/demo-mode';
 
 interface ActivityData {
   date: string;
@@ -61,8 +62,90 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
     });
   };
 
+  const setDemoData = () => {
+    // Generate mock contribution data for the last year
+    const mockActivities: ActivityData[] = [];
+    const today = new Date();
+    
+    for (let i = 364; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      
+      // Random activity level (0-5), with higher probability of 0-2
+      const random = Math.random();
+      let level = 0;
+      if (random > 0.7) level = 1;
+      if (random > 0.85) level = 2;
+      if (random > 0.93) level = 3;
+      if (random > 0.97) level = 4;
+      if (random > 0.99) level = 5;
+      
+      mockActivities.push({
+        date: date.toISOString().split('T')[0],
+        count: level,
+        level: level
+      });
+    }
+    
+    // Calculate stats
+    const totalContributions = mockActivities.reduce((sum, day) => sum + day.count, 0);
+    const currentStreak = Math.floor(Math.random() * 15) + 5; // 5-20 days
+    const longestStreak = Math.floor(Math.random() * 30) + 20; // 20-50 days
+    
+    // Mock recent events
+    const mockEvents: ActivityEvent[] = [
+      {
+        type: 'push',
+        title: 'Pushed 3 commits to trackeep/frontend',
+        date: '2 hours ago',
+        repo: 'trackeep',
+        action: 'pushed'
+      },
+      {
+        type: 'pull_request',
+        title: 'Opened PR: Add dark mode support',
+        date: '1 day ago',
+        repo: 'trackeep',
+        action: 'opened PR'
+      },
+      {
+        type: 'merge',
+        title: 'Merged PR: Fix responsive design issues',
+        date: '2 days ago',
+        repo: 'trackeep',
+        action: 'merged'
+      },
+      {
+        type: 'commit',
+        title: 'Commit: Update API documentation',
+        date: '3 days ago',
+        repo: 'trackeep',
+        action: 'committed'
+      },
+      {
+        type: 'push',
+        title: 'Pushed 5 commits to trackeep/backend',
+        date: '1 week ago',
+        repo: 'trackeep',
+        action: 'pushed'
+      }
+    ];
+    
+    setActivities(mockActivities);
+    setRecentEvents(mockEvents);
+    setStats({
+      totalContributions,
+      currentStreak,
+      longestStreak
+    });
+  };
+
   onMount(() => {
-    setEmptyData();
+    if (isDemoMode()) {
+      setDemoData();
+    } else {
+      setEmptyData();
+    }
   });
 
   const getMonthLabels = () => {

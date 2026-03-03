@@ -6,6 +6,8 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
 import { getFileTypeConfig, formatFileSize, getFileCategoryColor } from '@/utils/fileTypes';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getMockDocuments } from '@/lib/mockData';
 import { 
   IconUpload,
   IconEye,
@@ -52,6 +54,29 @@ export const Files = () => {
 
   onMount(async () => {
     try {
+      // Use demo data if in demo mode
+      if (isDemoMode()) {
+        const mockDocuments = getMockDocuments();
+        const mappedFiles: FileItem[] = mockDocuments.map((doc, index) => ({
+          id: index + 1,
+          name: doc.name,
+          size: parseFloat(doc.size) * 1024, // Convert KB to bytes for display
+          type: doc.type,
+          uploadedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(), // Random time within last 30 days
+          description: doc.description,
+          tags: doc.tags.map(tag => tag.name),
+          url: '#',
+          isLink: false,
+          preview: doc.content,
+          downloadUrl: '#',
+          viewUrl: '#',
+          shareUrl: '#'
+        }));
+        setFiles(mappedFiles);
+        setIsLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/files`, {
         headers: {
@@ -84,7 +109,28 @@ export const Files = () => {
       setFiles(mappedFiles);
     } catch (error) {
       console.error('Failed to load files:', error);
-      setFiles([]);
+      // Fallback to demo data if API fails
+      if (isDemoMode()) {
+        const mockDocuments = getMockDocuments();
+        const mappedFiles: FileItem[] = mockDocuments.map((doc, index) => ({
+          id: index + 1,
+          name: doc.name,
+          size: parseFloat(doc.size) * 1024,
+          type: doc.type,
+          uploadedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          description: doc.description,
+          tags: doc.tags.map(tag => tag.name),
+          url: '#',
+          isLink: false,
+          preview: doc.content,
+          downloadUrl: '#',
+          viewUrl: '#',
+          shareUrl: '#'
+        }));
+        setFiles(mappedFiles);
+      } else {
+        setFiles([]);
+      }
     } finally {
       setIsLoading(false);
     }

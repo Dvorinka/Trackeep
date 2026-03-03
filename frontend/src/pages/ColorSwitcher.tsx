@@ -15,13 +15,21 @@ export const ColorSwitcher = () => {
   const [schemes, setSchemes] = createSignal<ColorScheme[]>([]);
   const [currentScheme, setCurrentScheme] = createSignal('default');
   const [isDarkMode, setIsDarkMode] = createSignal(false);
-  const [customColors, setCustomColors] = createSignal({
-    primary: '#5ab9ff',
-    background: '#000000',
-    foreground: '#ffffff',
-    muted: '#262727',
-    border: '#262626'
-  });
+  
+  // Initialize custom colors with proper defaults
+  const getInitialCustomColors = () => {
+    const currentTheme = document.documentElement.getAttribute('data-kb-theme');
+    const darkMode = currentTheme === 'dark';
+    return {
+      primary: '#5ab9ff',
+      background: darkMode ? '#1a1a1a' : '#ffffff',
+      foreground: darkMode ? '#ffffff' : '#000000',
+      muted: darkMode ? '#262727' : '#f5f5f5',
+      border: '#262626'
+    };
+  };
+  
+  const [customColors, setCustomColors] = createSignal(getInitialCustomColors());
   const [showAdvanced, setShowAdvanced] = createSignal(false);
   const [savedSchemes, setSavedSchemes] = createSignal<ColorScheme[]>([]);
   const [showPreview, setShowPreview] = createSignal(true);
@@ -143,6 +151,14 @@ export const ColorSwitcher = () => {
       document.documentElement.removeAttribute('data-kb-theme');
       localStorage.setItem('theme', 'light');
     }
+    
+    // Update custom colors for new theme
+    setCustomColors(prev => ({
+      ...prev,
+      background: newDarkMode ? '#1a1a1a' : '#ffffff',
+      foreground: newDarkMode ? '#ffffff' : '#000000',
+      muted: newDarkMode ? '#262727' : '#f5f5f5'
+    }));
     
     // Update schemes with new theme
     updateSchemesForTheme(newDarkMode);

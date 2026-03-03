@@ -32,12 +32,17 @@ export const Login = () => {
   onMount(async () => {
     // Auto-fill demo credentials if in demo mode
     if (isEnvDemoMode()) {
+      setIsLogin(true);
       setFormData({
         email: 'demo@trackeep.com',
         password: 'demo123',
         username: 'demo',
         fullName: 'Demo User',
       });
+      // Auto-login in demo mode
+      setTimeout(() => {
+        handleSubmit(new Event('submit') as any);
+      }, 1000);
       return;
     }
 
@@ -79,6 +84,9 @@ export const Login = () => {
       }
     } catch (err) {
       console.warn('Failed to check if users exist:', err);
+      // Default to login mode if backend is unavailable
+      setIsLogin(true);
+      setRegistrationDisabled(true);
     }
   });
 
@@ -160,16 +168,6 @@ export const Login = () => {
         {/* Demo Mode - Show only demo button */}
         {isEnvDemoMode() ? (
           <div class="space-y-6">
-            <div class="text-center">
-              <div class="mb-6 bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span class="font-medium">Demo Mode Active</span>
-                </div>
-                <p class="text-xs">Experience Trackeep with mock data - no login required</p>
-              </div>
-            </div>
-            
             <button
               type="button"
               onClick={() => {

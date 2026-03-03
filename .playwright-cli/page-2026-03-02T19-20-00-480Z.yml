@@ -1,0 +1,239 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e7]:
+      - link "Trackeep Logo Trackeep" [ref=e9] [cursor=pointer]:
+        - /url: /app
+        - img "Trackeep Logo" [ref=e10]
+        - generic [ref=e11]: Trackeep
+      - group [ref=e13]:
+        - button "Trackeep Workspace" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]:
+            - img [ref=e17]
+            - generic [ref=e20]: Trackeep Workspace
+          - img [ref=e22]
+      - navigation [ref=e24]:
+        - link "Home" [ref=e25] [cursor=pointer]:
+          - /url: /app
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e31]: Home
+        - link "Bookmarks" [ref=e33] [cursor=pointer]:
+          - /url: /app/bookmarks
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Bookmarks
+        - link "Tasks" [ref=e39] [cursor=pointer]:
+          - /url: /app/tasks
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e44]: Tasks
+        - link "Time Tracking" [ref=e46] [cursor=pointer]:
+          - /url: /app/time-tracking
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e51]: Time Tracking
+        - link "Calendar" [ref=e53] [cursor=pointer]:
+          - /url: /app/calendar
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e57]: Calendar
+        - link "Files" [ref=e59] [cursor=pointer]:
+          - /url: /app/files
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e63]: Files
+        - link "Notes" [ref=e65] [cursor=pointer]:
+          - /url: /app/notes
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - generic [ref=e69]: Notes
+        - link "Messages" [ref=e71] [cursor=pointer]:
+          - /url: /app/messages
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - generic [ref=e75]: Messages
+        - link "YouTube" [ref=e77] [cursor=pointer]:
+          - /url: /app/youtube
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e82]: YouTube
+        - link "Members" [ref=e84] [cursor=pointer]:
+          - /url: /app/members
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e91]: Members
+        - link "Learning" [ref=e93] [cursor=pointer]:
+          - /url: /app/learning-paths
+          - generic [ref=e94]:
+            - img [ref=e95]
+            - generic [ref=e98]: Learning
+        - link "Stats" [ref=e100] [cursor=pointer]:
+          - /url: /app/stats
+          - generic [ref=e101]:
+            - img [ref=e102]
+            - generic [ref=e104]: Stats
+        - link "GitHub" [ref=e106] [cursor=pointer]:
+          - /url: /app/github
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - generic [ref=e110]: GitHub
+        - link "AI Assistant" [ref=e112] [cursor=pointer]:
+          - /url: /app/chat
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - generic [ref=e121]: AI Assistant
+      - navigation [ref=e123]:
+        - link "Removed stuff" [ref=e124] [cursor=pointer]:
+          - /url: /app/removed-stuff
+          - generic [ref=e125]:
+            - img [ref=e126]
+            - generic [ref=e129]: Removed stuff
+        - link "Settings" [ref=e131] [cursor=pointer]:
+          - /url: /app/settings
+          - generic [ref=e132]:
+            - img [ref=e133]
+            - generic [ref=e136]: Settings
+        - button "Logout" [ref=e138] [cursor=pointer]:
+          - generic [ref=e139]:
+            - img [ref=e140]
+            - generic [ref=e144]: Logout
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - button [ref=e149] [cursor=pointer]:
+            - img [ref=e150]
+          - button "Quick search" [ref=e151] [cursor=pointer]:
+            - img [ref=e152]
+            - text: Quick search
+        - generic [ref=e155]:
+          - button "Import a document" [ref=e156] [cursor=pointer]:
+            - img [ref=e157]
+            - text: Import a document
+          - button [ref=e161] [cursor=pointer]:
+            - img [ref=e162]
+            - img [ref=e167]
+          - button "DU" [ref=e171] [cursor=pointer]:
+            - generic [ref=e172]: DU
+            - img [ref=e173]
+      - main [ref=e175]:
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - heading "Settings" [level=1] [ref=e179]
+            - paragraph [ref=e180]: Manage your account, preferences, and integrations
+          - navigation [ref=e182]:
+            - button "Account" [ref=e183] [cursor=pointer]:
+              - img [ref=e184]
+              - text: Account
+            - button "Security" [ref=e187] [cursor=pointer]:
+              - img [ref=e188]
+              - text: Security
+            - button "AI & Integration" [ref=e190] [cursor=pointer]:
+              - img [ref=e191]
+              - text: AI & Integration
+            - button "Communication" [ref=e198] [cursor=pointer]:
+              - img [ref=e199]
+              - text: Communication
+            - button "Search API" [ref=e202] [cursor=pointer]:
+              - img [ref=e203]
+              - text: Search API
+            - button "Tools" [ref=e210] [cursor=pointer]:
+              - img [ref=e211]
+              - text: Tools
+          - generic [ref=e216]:
+            - generic [ref=e217]:
+              - heading "Profile Settings" [level=2] [ref=e218]:
+                - img [ref=e219]
+                - text: Profile Settings
+              - generic [ref=e222]:
+                - generic [ref=e223]:
+                  - generic [ref=e224]: Email
+                  - textbox [disabled] [ref=e225]: demo@trackeep.com
+                  - paragraph [ref=e226]: Email cannot be changed
+                - generic [ref=e227]:
+                  - generic [ref=e228]: Username
+                  - textbox [disabled] [ref=e229]: demo
+                  - paragraph [ref=e230]: Username cannot be changed
+                - generic [ref=e231]:
+                  - generic [ref=e232]: Full Name
+                  - textbox "Enter your full name" [ref=e233]: Demo User
+                - generic [ref=e234]:
+                  - generic [ref=e235]: Theme
+                  - combobox [ref=e236]:
+                    - option "Dark" [selected]
+                    - option "Light"
+                    - option "System"
+                - generic [ref=e237]:
+                  - generic [ref=e238]: Primary Color
+                  - generic [ref=e239]:
+                    - textbox [ref=e240] [cursor=pointer]: "#5ab9ff"
+                    - textbox "#5ab9ff" [ref=e241]
+                  - generic [ref=e242]:
+                    - button "#5ab9ff" [ref=e243] [cursor=pointer]
+                    - button "#ff6b6b" [ref=e244] [cursor=pointer]
+                    - button "#4ecdc4" [ref=e245] [cursor=pointer]
+                    - button "#45b7d1" [ref=e246] [cursor=pointer]
+                    - button "#f9ca24" [ref=e247] [cursor=pointer]
+                    - button "#f0932b" [ref=e248] [cursor=pointer]
+                    - button "#eb4d4b" [ref=e249] [cursor=pointer]
+                    - button "#6ab04c" [ref=e250] [cursor=pointer]
+                - button "Update Profile" [ref=e251] [cursor=pointer]
+            - generic [ref=e252]:
+              - heading "Change Password" [level=2] [ref=e253]:
+                - img [ref=e254]
+                - text: Change Password
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - generic [ref=e260]: Current Password
+                  - textbox "Enter current password" [ref=e261]
+                - generic [ref=e262]:
+                  - generic [ref=e263]: New Password
+                  - textbox "Enter new password" [ref=e264]
+                - generic [ref=e265]:
+                  - generic [ref=e266]: Confirm New Password
+                  - textbox "Confirm new password" [ref=e267]
+                - button "Change Password" [ref=e268] [cursor=pointer]
+    - button "AI Assistant" [ref=e269] [cursor=pointer]:
+      - img [ref=e270]
+    - generic [ref=e277]:
+      - generic [ref=e278]:
+        - generic [ref=e279]:
+          - img [ref=e281]
+          - generic [ref=e288]:
+            - heading "AI Assistant" [level=3] [ref=e289]
+            - paragraph [ref=e290]: Always here to help
+        - button [ref=e292] [cursor=pointer]:
+          - img [ref=e293]
+      - generic [ref=e297]:
+        - img [ref=e299]
+        - generic [ref=e306]:
+          - paragraph [ref=e307]: Hello! I'm your AI assistant. How can I help you today?
+          - paragraph [ref=e309]: 08:20 PM
+      - generic [ref=e310]:
+        - generic [ref=e311]:
+          - textbox "Type your message..." [ref=e312]
+          - button [disabled]:
+            - img
+        - generic [ref=e314]:
+          - button "longcat icon LongCat" [ref=e316] [cursor=pointer]:
+            - img "longcat icon" [ref=e317]
+            - generic [ref=e318]: LongCat
+            - img [ref=e319]
+          - generic [ref=e321]:
+            - generic [ref=e322]: longcat
+            - link "AI settings" [ref=e323] [cursor=pointer]:
+              - /url: /app/settings#ai
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]

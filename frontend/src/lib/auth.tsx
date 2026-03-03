@@ -73,6 +73,7 @@ export const AuthProvider: ParentComponent = (props) => {
   // Initialize auth state from localStorage
   onMount(() => {
     console.log('[Auth] onMount: Initializing auth state');
+    console.log('[Auth] onMount: Demo mode check:', isDemoMode());
     
     // First check if demo mode should be cleared
     if (!isDemoMode()) {
@@ -128,16 +129,24 @@ export const AuthProvider: ParentComponent = (props) => {
     
     const mockToken = 'demo-token-' + Date.now();
     
+    console.log('[Auth] onMount: Setting mock auth state:', { mockUser, mockToken });
     setAuthState({
       user: mockUser,
       token: mockToken,
       isAuthenticated: true,
       isLoading: false,
     });
+
+    // Keep legacy token lookups working in demo mode across all pages.
+    localStorage.setItem('trackeep_token', mockToken);
+    localStorage.setItem('token', mockToken);
+    localStorage.setItem('trackeep_user', JSON.stringify(mockUser));
+    localStorage.setItem('user', JSON.stringify(mockUser));
     
     // Apply theme
     document.documentElement.setAttribute('data-kb-theme', 'dark');
     document.title = 'Trackeep - Demo Mode';
+    console.log('[Auth] onMount: Demo mode setup complete');
   });
 
 
@@ -159,15 +168,12 @@ export const AuthProvider: ParentComponent = (props) => {
 
   const setAuth = (token: string, user: User) => {
     console.log('[Auth] setAuth called with:', { token, user });
-    
-    // Only store in localStorage if not in demo mode
-    if (!isDemoMode()) {
-      localStorage.setItem('trackeep_token', token);
-      localStorage.setItem('trackeep_user', JSON.stringify(user));
-      // Also set the legacy keys for compatibility
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-    }
+
+    localStorage.setItem('trackeep_token', token);
+    localStorage.setItem('trackeep_user', JSON.stringify(user));
+    // Also set the legacy keys for compatibility
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     
     console.log('[Auth] setAuth: Updating auth state');
     setAuthState({

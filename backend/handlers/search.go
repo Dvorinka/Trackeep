@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,78 +62,176 @@ func SearchWeb(c *gin.Context) {
 		req.Count = 10
 	}
 
-	apiKey := os.Getenv("BRAVE_API_KEY")
-	if apiKey == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Brave API key not configured"})
+	// Get user ID from context (authentication is required)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required for search functionality"})
 		return
 	}
 
-	// Build Brave Search API request
-	baseURL := "https://api.search.brave.com/res/v1/web/search"
-	q := url.Values{}
-	q.Set("q", req.Query)
-	q.Set("count", fmt.Sprint(req.Count))
-	endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
-
-	reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	// Get user's search settings from database
+	searchSettings, err := GetSearchSettingsForAPI(userID.(int))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
-		return
-	}
-	reqHTTP.Header.Set("Accept", "application/json")
-	reqHTTP.Header.Set("X-Subscription-Token", apiKey)
-
-	resp, err := http.DefaultClient.Do(reqHTTP)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave Search API"})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave API error: %d", resp.StatusCode)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get search settings"})
 		return
 	}
 
-	var braveResp BraveSearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&braveResp); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave response"})
-		return
-	}
+	// Check if user has search API key configured
+	if searchSettings.SearchAPIProvider == "brave" {
+		apiKey := searchSettings.BraveAPIKey
+		if apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Brave Search API key not configured. Please configure your search API key in settings."})
+			return
+		}
 
-	// Prefer web.results, fall back to mixed.results
-	resultsRaw := braveResp.Web.Results
-	if len(resultsRaw) == 0 {
-		resultsRaw = braveResp.Mixed.Results
-	}
+		// Build Brave Search API request
+		baseURL := "https://api.search.brave.com/res/v1/web/search"
+		q := url.Values{}
+		q.Set("q", req.Query)
+		q.Set("count", fmt.Sprint(req.Count))
+		endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
 
-	results := make([]BraveSearchResult, 0, len(resultsRaw))
-	for _, r := range resultsRaw {
-		title, _ := r["title"].(string)
-		urlStr, _ := r["url"].(string)
-		desc, _ := r["description"].(string)
-		lang, _ := r["language"].(string)
-		pageAge, _ := r["page_age"].(string)
+		reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
+			return
+		}
+		reqHTTP.Header.Set("Accept", "application/json")
+		reqHTTP.Header.Set("X-Subscription-Token", apiKey)
 
-		results = append(results, BraveSearchResult{
-			Title:         title,
-			URL:           urlStr,
-			Description:   desc,
-			PublishedDate: pageAge,
-			Language:      lang,
+		resp, err := http.DefaultClient.Do(reqHTTP)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave Search API"})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave API error: %d", resp.StatusCode)})
+			return
+		}
+
+		var braveResp BraveSearchResponse
+		if err := json.NewDecoder(resp.Body).Decode(&braveResp); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave response"})
+			return
+		}
+
+		// Prefer web.results, fall back to mixed.results
+		resultsRaw := braveResp.Web.Results
+		if len(resultsRaw) == 0 {
+			resultsRaw = braveResp.Mixed.Results
+		}
+
+		results := make([]BraveSearchResult, 0, len(resultsRaw))
+		for _, r := range resultsRaw {
+			title, _ := r["title"].(string)
+			urlStr, _ := r["url"].(string)
+			desc, _ := r["description"].(string)
+			lang, _ := r["language"].(string)
+			pageAge, _ := r["page_age"].(string)
+
+			results = append(results, BraveSearchResult{
+				Title:         title,
+				URL:           urlStr,
+				Description:   desc,
+				PublishedDate: pageAge,
+				Language:      lang,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"results": results,
+			"query": gin.H{
+				"original": braveResp.Query.Original,
+				"display":  braveResp.Query.Display,
+			},
+			"count": len(results),
 		})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"results": results,
-		"query": gin.H{
-			"original": braveResp.Query.Original,
-			"display":  braveResp.Query.Display,
-		},
-		"count": len(results),
-	})
+	// Use the configured provider
+	if searchSettings.SearchAPIProvider == "brave" {
+		apiKey := searchSettings.BraveAPIKey
+		if apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Brave Search API key not configured. Please configure your search API key in settings."})
+			return
+		}
+
+		// Build Brave Search API request
+		baseURL := searchSettings.BraveSearchBaseURL
+		q := url.Values{}
+		q.Set("q", req.Query)
+		q.Set("count", fmt.Sprint(req.Count))
+		endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
+
+		reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
+			return
+		}
+		reqHTTP.Header.Set("Accept", "application/json")
+		reqHTTP.Header.Set("X-Subscription-Token", apiKey)
+
+		resp, err := http.DefaultClient.Do(reqHTTP)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave Search API"})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave API error: %d", resp.StatusCode)})
+			return
+		}
+
+		var braveResp BraveSearchResponse
+		if err := json.NewDecoder(resp.Body).Decode(&braveResp); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave response"})
+			return
+		}
+
+		// Prefer web.results, fall back to mixed.results
+		resultsRaw := braveResp.Web.Results
+		if len(resultsRaw) == 0 {
+			resultsRaw = braveResp.Mixed.Results
+		}
+
+		results := make([]BraveSearchResult, 0, len(resultsRaw))
+		for _, r := range resultsRaw {
+			title, _ := r["title"].(string)
+			urlStr, _ := r["url"].(string)
+			desc, _ := r["description"].(string)
+			lang, _ := r["language"].(string)
+			pageAge, _ := r["page_age"].(string)
+
+			results = append(results, BraveSearchResult{
+				Title:         title,
+				URL:           urlStr,
+				Description:   desc,
+				PublishedDate: pageAge,
+				Language:      lang,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"results": results,
+			"query": gin.H{
+				"original": braveResp.Query.Original,
+				"display":  braveResp.Query.Display,
+			},
+			"count": len(results),
+		})
+	} else if searchSettings.SearchAPIProvider == "serper" {
+		// TODO: Implement Serper API integration
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "Serper API integration not yet implemented"})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid search API provider configured. Please configure a search API provider in settings."})
+	}
 }
 
+// SearchNews handles POST /api/v1/search/news
 func SearchNews(c *gin.Context) {
 	fmt.Printf("DEBUG: SearchNews function called\n")
 	var req struct {
@@ -151,97 +248,215 @@ func SearchNews(c *gin.Context) {
 		req.Count = 10
 	}
 
-	apiKey := os.Getenv("BRAVE_API_KEY")
-	if apiKey == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Brave API key not configured"})
+	// Get user ID from context (authentication is required)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required for search functionality"})
 		return
 	}
 
-	baseURL := "https://api.search.brave.com/res/v1/news/search"
-	q := url.Values{}
-	q.Set("q", req.Query)
-	q.Set("count", fmt.Sprint(req.Count))
-	endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
-
-	reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	// Get user's search settings from database
+	searchSettings, err := GetSearchSettingsForAPI(userID.(int))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
-		return
-	}
-	reqHTTP.Header.Set("Accept", "application/json")
-	reqHTTP.Header.Set("X-Subscription-Token", apiKey)
-
-	resp, err := http.DefaultClient.Do(reqHTTP)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave News API"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get search settings"})
 		return
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave News API error: %d", resp.StatusCode)})
-		return
-	}
-
-	// Read the response body for debugging
-	bodyBytes, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
-		return
-	}
-
-	fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
-
-	var braveResp BraveNewsResponse
-	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
-		fmt.Printf("DEBUG: JSON decode error: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
-		return
-	}
-
-	// Debug logging
-	fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
-	fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
-
-	resultsRaw := braveResp.Results
-	results := make([]BraveSearchResult, 0, len(resultsRaw))
-	for _, r := range resultsRaw {
-		title, _ := r["title"].(string)
-		urlStr, _ := r["url"].(string)
-		desc, _ := r["description"].(string)
-		lang, _ := r["language"].(string)
-		pubDate, _ := r["published_date"].(string)
-		if pubDate == "" {
-			pubDate, _ = r["page_age"].(string)
+	// Check if user has search API key configured
+	if searchSettings.SearchAPIProvider == "brave" {
+		apiKey := searchSettings.BraveAPIKey
+		if apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Brave Search API key not configured. Please configure your search API key in settings."})
+			return
 		}
 
-		results = append(results, BraveSearchResult{
-			Title:         title,
-			URL:           urlStr,
-			Description:   desc,
-			PublishedDate: pubDate,
-			Language:      lang,
+		baseURL := "https://api.search.brave.com/res/v1/news/search"
+		q := url.Values{}
+		q.Set("q", req.Query)
+		q.Set("count", fmt.Sprint(req.Count))
+		endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
+
+		reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
+			return
+		}
+		reqHTTP.Header.Set("Accept", "application/json")
+		reqHTTP.Header.Set("X-Subscription-Token", apiKey)
+
+		resp, err := http.DefaultClient.Do(reqHTTP)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave News API"})
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave News API error: %d", resp.StatusCode)})
+			return
+		}
+
+		// Read the response body for debugging
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+			return
+		}
+
+		fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
+
+		var braveResp BraveNewsResponse
+		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
+			fmt.Printf("DEBUG: JSON decode error: %v\n", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
+			return
+		}
+
+		// Debug logging
+		fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
+		fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
+
+		resultsRaw := braveResp.Results
+		results := make([]BraveSearchResult, 0, len(resultsRaw))
+		for _, r := range resultsRaw {
+			title, _ := r["title"].(string)
+			urlStr, _ := r["url"].(string)
+			desc, _ := r["description"].(string)
+			lang, _ := r["language"].(string)
+			pubDate, _ := r["published_date"].(string)
+			if pubDate == "" {
+				pubDate, _ = r["page_age"].(string)
+			}
+
+			results = append(results, BraveSearchResult{
+				Title:         title,
+				URL:           urlStr,
+				Description:   desc,
+				PublishedDate: pubDate,
+				Language:      lang,
+			})
+		}
+
+		original := braveResp.Query.Original
+		display := braveResp.Query.Display
+		if original == "" {
+			original = req.Query
+		}
+		if display == "" {
+			display = req.Query
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"results": results,
+			"query": gin.H{
+				"original": original,
+				"display":  display,
+			},
+			"count": len(results),
 		})
+		return
 	}
 
-	original := braveResp.Query.Original
-	display := braveResp.Query.Display
-	if original == "" {
-		original = req.Query
-	}
-	if display == "" {
-		display = req.Query
-	}
+	// Use the configured provider
+	if searchSettings.SearchAPIProvider == "brave" {
+		apiKey := searchSettings.BraveAPIKey
+		if apiKey == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Brave API key not configured"})
+			return
+		}
 
-	c.JSON(http.StatusOK, gin.H{
-		"results": results,
-		"query": gin.H{
-			"original": original,
-			"display":  display,
-		},
-		"count": len(results),
-	})
+		baseURL := "https://api.search.brave.com/res/v1/news/search"
+		q := url.Values{}
+		q.Set("q", req.Query)
+		q.Set("count", fmt.Sprint(req.Count))
+		endpoint := fmt.Sprintf("%s?%s", baseURL, q.Encode())
+
+		reqHTTP, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Brave request"})
+			return
+		}
+		reqHTTP.Header.Set("Accept", "application/json")
+		reqHTTP.Header.Set("X-Subscription-Token", apiKey)
+
+		resp, err := http.DefaultClient.Do(reqHTTP)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to contact Brave News API"})
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Brave News API error: %d", resp.StatusCode)})
+			return
+		}
+
+		// Read the response body for debugging
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+			return
+		}
+
+		fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
+
+		var braveResp BraveNewsResponse
+		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
+			fmt.Printf("DEBUG: JSON decode error: %v\n", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
+			return
+		}
+
+		// Debug logging
+		fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
+		fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
+
+		resultsRaw := braveResp.Results
+		results := make([]BraveSearchResult, 0, len(resultsRaw))
+		for _, r := range resultsRaw {
+			title, _ := r["title"].(string)
+			urlStr, _ := r["url"].(string)
+			desc, _ := r["description"].(string)
+			lang, _ := r["language"].(string)
+			pubDate, _ := r["published_date"].(string)
+			if pubDate == "" {
+				pubDate, _ = r["page_age"].(string)
+			}
+
+			results = append(results, BraveSearchResult{
+				Title:         title,
+				URL:           urlStr,
+				Description:   desc,
+				PublishedDate: pubDate,
+				Language:      lang,
+			})
+		}
+
+		original := braveResp.Query.Original
+		display := braveResp.Query.Display
+		if original == "" {
+			original = req.Query
+		}
+		if display == "" {
+			display = req.Query
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"results": results,
+			"query": gin.H{
+				"original": original,
+				"display":  display,
+			},
+			"count": len(results),
+		})
+	} else if searchSettings.SearchAPIProvider == "serper" {
+		// TODO: Implement Serper API integration for news
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "Serper API integration not yet implemented"})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid search API provider configured. Please configure a search API provider in settings."})
+	}
 }
 
 // GetSearchSuggestions handles GET /api/v1/search/suggestions

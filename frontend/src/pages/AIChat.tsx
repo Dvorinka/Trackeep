@@ -330,27 +330,32 @@ export const AIChat = () => {
                         }`}
                       >
                         <div
-                          class={`max-w-[80%] rounded-lg p-4 ${
+                          class={`max-w-[80%] rounded-2xl p-4 shadow-sm transition-all duration-200 hover:shadow-md ${
                             message.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
+                              ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground ml-auto'
+                              : 'bg-gradient-to-br from-muted to-muted/90 border border-border/50'
                           }`}
                         >
                           <div class="flex items-start gap-3">
-                            <div class={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                              message.role === 'user' ? 'bg-primary-foreground/20' : 'bg-primary/10'
+                            <div class={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 ${
+                              message.role === 'user' ? 'bg-primary-foreground/20 ring-2 ring-primary-foreground/30' : 'bg-primary/10 ring-2 ring-primary/20'
                             }`}>
                               {message.role === 'user' ? (
                                 <User class="text-xs" />
                               ) : (
-                                <Bot class="text-xs" />
+                                <Bot class="text-xs animate-pulse" />
                               )}
                             </div>
                             <div class="flex-1">
                               <p class="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
-                              <p class="text-xs opacity-70 mt-2">
-                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
+                              <div class="flex items-center gap-2 mt-2">
+                                <p class="text-xs opacity-70">
+                                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                                {message.role === 'user' && (
+                                  <div class="w-2 h-2 bg-primary-foreground/50 rounded-full"></div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -360,15 +365,18 @@ export const AIChat = () => {
                   
                   {isLoading() && (
                     <div class="flex justify-start">
-                      <div class="bg-muted rounded-lg p-4 max-w-[80%]">
+                      <div class="bg-gradient-to-br from-muted to-muted/90 rounded-2xl p-4 max-w-[80%] border border-border/50 shadow-sm">
                         <div class="flex items-center gap-3">
-                          <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Bot class="text-xs" />
+                          <div class="w-8 h-8 rounded-full bg-primary/10 ring-2 ring-primary/20 flex items-center justify-center">
+                            <Bot class="text-xs animate-pulse" />
                           </div>
-                          <div class="flex gap-1">
-                            <div class="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                            <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                            <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                          <div class="flex items-center gap-2">
+                            <div class="flex gap-1">
+                              <div class="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                              <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                              <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            </div>
+                            <span class="text-xs text-muted-foreground ml-2">AI is thinking...</span>
                           </div>
                         </div>
                       </div>
@@ -386,22 +394,23 @@ export const AIChat = () => {
                       <div id="model-picker-container" class="relative">
                         <button
                           onClick={() => setShowModelPicker(!showModelPicker())}
-                          class="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg text-sm transition-colors border border-border/50"
+                          class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-muted to-muted/80 hover:from-muted/90 hover:to-muted/70 rounded-xl text-sm transition-all duration-200 border border-border/50 shadow-sm hover:shadow-md"
                         >
                           <AIProviderIcon 
                             providerId={aiModels().find(m => m.id === selectedModel())?.iconId || 'longcat'} 
                             size="1rem"
+                            class="transition-transform hover:scale-110"
                           />
                           <span class="text-sm font-medium">
                             {aiModels().find(m => m.id === selectedModel())?.name?.split(' ')[0] || 'AI'}
                           </span>
-                          <ChevronDown class={`h-4 w-4 transition-transform ${showModelPicker() ? 'rotate-180' : ''}`} />
+                          <ChevronDown class={`h-4 w-4 transition-transform duration-200 ${showModelPicker() ? 'rotate-180' : ''}`} />
                         </button>
                         
                         {/* Model Picker Dropdown */}
                         <Show when={showModelPicker()}>
-                          <div class="absolute bottom-full left-0 mb-2 w-80 bg-background border rounded-lg shadow-lg z-50 p-2 max-h-96 overflow-y-auto">
-                            <div class="p-2 border-b mb-2">
+                          <div class="absolute bottom-full left-0 mb-2 w-80 bg-gradient-to-b from-background to-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl z-50 p-2 max-h-96 overflow-y-auto">
+                            <div class="p-3 border-b border-border/50 mb-2 bg-muted/30 rounded-lg">
                               <h4 class="text-sm font-semibold text-foreground">Select AI Model</h4>
                               <p class="text-xs text-muted-foreground">Choose the best model for your needs</p>
                             </div>
@@ -412,10 +421,10 @@ export const AIChat = () => {
                                     setSelectedModel(model.id)
                                     setShowModelPicker(false)
                                   }}
-                                  class={`w-full text-left p-3 rounded-lg transition-colors ${
+                                  class={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                                     selectedModel() === model.id 
-                                      ? 'bg-primary/10 border border-primary/20' 
-                                      : 'hover:bg-muted'
+                                      ? 'bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 shadow-sm' 
+                                      : 'hover:bg-muted/50 hover:border-border/30'
                                   }`}
                                 >
                                   <div class="flex items-center justify-between">
@@ -447,7 +456,7 @@ export const AIChat = () => {
                                       </div>
                                     </div>
                                     {selectedModel() === model.id && (
-                                      <div class="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                      <div class="w-2 h-2 bg-primary rounded-full animate-pulse flex-shrink-0"></div>
                                     )}
                                   </div>
                                 </button>
@@ -457,22 +466,33 @@ export const AIChat = () => {
                         </Show>
                       </div>
                       
-                      <Input
-                        value={inputMessage()}
-                        onInput={(e) => setInputMessage((e.currentTarget as HTMLInputElement).value)}
-                        placeholder="Type your message..."
-                        class="flex-1"
-                        onKeyDown={(e: KeyboardEvent) => {
-                          if (e.key === 'Enter' && !e.shiftKey && inputMessage().trim()) {
-                            handleSendMessage()
-                          }
-                        }}
-                      />
+                      <div class="relative flex-1">
+                        <div class="relative">
+                          <Input
+                            value={inputMessage()}
+                            onInput={(e) => setInputMessage((e.currentTarget as HTMLInputElement).value)}
+                            placeholder="Type your message..."
+                            class="flex-1 pr-12 rounded-xl border-border/50 bg-background/95 backdrop-blur-sm shadow-sm transition-all duration-200 focus:shadow-md focus:border-primary/50"
+                            onKeyDown={(e: KeyboardEvent) => {
+                              if (e.key === 'Enter' && !e.shiftKey && inputMessage().trim()) {
+                                handleSendMessage()
+                              }
+                            }}
+                          />
+                          <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse"></div>
+                            <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                            <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                          </div>
+                        </div>
+                      </div>
                       <Button 
                         disabled={isLoading() || !inputMessage().trim()}
                         onClick={handleSendMessage}
+                        class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send class="h-4 w-4" />
+                        <span class="ml-2 text-sm font-medium">Send</span>
                       </Button>
                     </div>
                   </div>

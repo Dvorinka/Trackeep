@@ -13,25 +13,25 @@
   "dependencies": {
     "@kobalte/core": "^0.13.11",
     "@solidjs/router": "^0.15.4",
-    "@tabler/icons": "^3.36.1",
-    "@tabler/icons-solidjs": "^3.36.1",
+    "@tabler/icons": "^3.37.1",
+    "@tabler/icons-solidjs": "^3.37.1",
     "@tanstack/solid-query": "^5.90.23",
-    "@unocss/preset-attributify": "^66.6.0",
-    "@unocss/preset-icons": "^66.6.0",
-    "@unocss/preset-uno": "^66.6.0",
-    "@unocss/reset": "^66.6.0",
+    "@unocss/preset-attributify": "^66.6.2",
+    "@unocss/preset-icons": "^66.6.2",
+    "@unocss/preset-uno": "^66.6.2",
+    "@unocss/reset": "^66.6.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-solid": "^0.460.0",
+    "lucide-solid": "^0.575.0",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.9",
-    "@unocss/preset-wind": "^66.6.0",
+    "@types/node": "^24.10.15",
+    "@unocss/preset-wind": "^66.6.2",
     "terser": "^5.46.0",
     "typescript": "~5.9.3",
-    "unocss": "^66.6.0",
+    "unocss": "^66.6.2",
     "vite": "^7.2.4",
     "vite-plugin-solid": "^2.11.10"
   }

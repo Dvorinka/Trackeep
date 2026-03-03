@@ -9,6 +9,25 @@
     <meta name="theme-color" content="#39b9ff" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trackeep - Your Self-Hosted Productivity & Knowledge Hub</title>
+    <script>
+      // Runtime environment variable injection
+      window.ENV = {
+        VITE_DEMO_MODE: 'VITE_DEMO_MODE_PLACEHOLDER',
+        VITE_API_URL: 'VITE_API_URL_PLACEHOLDER'
+      };
+      
+      // Make them available to import.meta.env by overriding it
+      if (typeof window !== 'undefined') {
+        window.importMetaEnv = {
+          VITE_DEMO_MODE: window.ENV.VITE_DEMO_MODE,
+          VITE_API_URL: window.ENV.VITE_API_URL
+        };
+      }
+      
+      // Log for debugging
+      console.log('[Env Injection] window.ENV:', window.ENV);
+      console.log('[Env Injection] Demo mode should be:', window.ENV.VITE_DEMO_MODE);
+    </script>
   </head>
   <body>
     <div id="root"></div>

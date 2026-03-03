@@ -111,20 +111,25 @@ export const Stats = () => {
       ]);
 
       const statsData = statsRes.status === 'fulfilled' && statsRes.value.ok ? await statsRes.value.json() : null;
-      const filesData: Array<any> = filesRes.status === 'fulfilled' && filesRes.value.ok ? await filesRes.value.json() : [];
-      const tasksData: Array<any> = tasksRes.status === 'fulfilled' && tasksRes.value.ok ? await tasksRes.value.json() : [];
+      const filesRaw = filesRes.status === 'fulfilled' && filesRes.value.ok ? await filesRes.value.json() : [];
+      const tasksRaw = tasksRes.status === 'fulfilled' && tasksRes.value.ok ? await tasksRes.value.json() : [];
+      const filesData: Array<any> = Array.isArray(filesRaw) ? filesRaw : [];
+      const tasksData: Array<any> = Array.isArray(tasksRaw) ? tasksRaw : [];
 
       const completedTasks = tasksData.filter((task) => task.status === 'completed').length;
       const activeTasks = tasksData.filter((task) => task.status !== 'completed').length;
       const totalSizeBytes = filesData.reduce((acc: number, file: any) => acc + Number(file.file_size || 0), 0);
       const storageUsedMb = totalSizeBytes / (1024 * 1024);
       const storageTotalMb = 50 * 1024;
+      const totalBookmarks = Number(statsData?.totalBookmarks ?? statsData?.total_bookmarks ?? 0);
+      const totalTasks = Number(statsData?.totalTasks ?? statsData?.total_tasks ?? tasksData.length ?? 0);
+      const totalNotes = Number(statsData?.totalNotes ?? statsData?.total_notes ?? 0);
 
       setStats({
-        totalBookmarks: Number(statsData?.totalBookmarks || 0),
+        totalBookmarks,
         totalDocuments: filesData.length,
-        totalTasks: Number(statsData?.totalTasks || tasksData.length || 0),
-        totalNotes: Number(statsData?.totalNotes || 0),
+        totalTasks,
+        totalNotes,
         completedTasks,
         activeTasks,
         storageUsed: `${storageUsedMb.toFixed(2)} MB`,
@@ -138,10 +143,10 @@ export const Stats = () => {
         },
         topCategories: [],
         recentActivity: [
-          { type: 'Bookmarks', count: Number(statsData?.totalBookmarks || 0), change: 0 },
+          { type: 'Bookmarks', count: totalBookmarks, change: 0 },
           { type: 'Documents', count: filesData.length, change: 0 },
-          { type: 'Tasks', count: Number(statsData?.totalTasks || tasksData.length || 0), change: 0 },
-          { type: 'Notes', count: Number(statsData?.totalNotes || 0), change: 0 }
+          { type: 'Tasks', count: totalTasks, change: 0 },
+          { type: 'Notes', count: totalNotes, change: 0 }
         ],
         contributionGraph: []
       });

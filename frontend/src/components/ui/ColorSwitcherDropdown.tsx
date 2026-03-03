@@ -13,7 +13,7 @@ export const ColorSwitcherDropdown = () => {
 
   onMount(() => {
     // Load saved color scheme from localStorage
-    const savedScheme = localStorage.getItem('trackeep-color-scheme');
+    const savedScheme = localStorage.getItem('colorScheme');
     if (savedScheme) {
       setCurrentScheme(savedScheme);
     }
@@ -40,10 +40,14 @@ export const ColorSwitcherDropdown = () => {
     setCurrentScheme(scheme.name);
     
     // Save to localStorage for persistence
-    localStorage.setItem('trackeep-color-scheme', scheme.name);
+    localStorage.setItem('colorScheme', scheme.name);
     
-    // Apply only primary color to CSS variables
+    // Apply only primary color to CSS variables, preserve other colors
     const root = document.documentElement;
+    
+    // Get current theme to preserve background
+    const currentTheme = document.documentElement.getAttribute('data-kb-theme');
+    const isDark = currentTheme === 'dark';
     
     // Convert hex to HSL for CSS variables
     const hexToHsl = (hex: string) => {
@@ -72,9 +76,19 @@ export const ColorSwitcherDropdown = () => {
       return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
     };
     
-    // Apply only the primary color
-    root.style.setProperty('--primary', hexToHsl(scheme.primary));
-    root.style.setProperty('--colors-primary', hexToHsl(scheme.primary));
+    // Apply only primary color, preserve theme-based background
+    const hslColor = hexToHsl(scheme.primary);
+    root.style.setProperty('--primary', hslColor);
+    root.style.setProperty('--colors-primary', hslColor);
+    
+    // Ensure background stays theme-appropriate
+    if (isDark) {
+      root.style.setProperty('--background', '0 0% 10%');
+      root.style.setProperty('--colors-background', '0 0% 10%');
+    } else {
+      root.style.setProperty('--background', '0 0% 100%');
+      root.style.setProperty('--colors-background', '0 0% 100%');
+    }
     
     if (closeDropdown) {
       setIsOpen(false);

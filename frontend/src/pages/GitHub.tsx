@@ -137,7 +137,7 @@ export const GitHub = () => {
       }
 
       const data = await response.json();
-      const repos = data.repos || [];
+      const repos = Array.isArray(data) ? data : (Array.isArray(data?.repos) ? data.repos : []);
 
       // Process real GitHub data
       const languages = processLanguages(repos);
@@ -195,7 +195,7 @@ export const GitHub = () => {
 
   const connectGitHub = () => {
     // Redirect to centralized OAuth service
-    window.location.href = 'https://oauth.tdvorak.dev/auth/github?redirect_uri=' + encodeURIComponent(window.location.origin + '/api/v1/auth/oauth/callback');
+    window.location.href = 'https://oauth.trackeep.org/auth/github?redirect_uri=' + encodeURIComponent(window.location.origin + '/api/v1/auth/oauth/callback');
   };
 
   const disconnectGitHub = async () => {

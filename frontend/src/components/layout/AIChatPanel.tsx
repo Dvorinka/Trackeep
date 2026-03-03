@@ -112,22 +112,27 @@ export function AIChatPanel(props: AIChatPanelProps) {
             {(message) => (
               <div class={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {message.role === 'assistant' && (
-                  <div class="flex items-center justify-center p-2 rounded-lg bg-muted flex-shrink-0">
-                    <IconBrain class="size-4 text-primary" />
+                  <div class="flex items-center justify-center p-2 rounded-lg bg-gradient-to-br from-muted to-muted/90 border border-border/50 flex-shrink-0 shadow-sm">
+                    <IconBrain class="size-4 text-primary animate-pulse" />
                   </div>
                 )}
-                <div class={`max-w-[280px] rounded-2xl p-3 ${
+                <div class={`max-w-[280px] rounded-2xl p-3 shadow-sm transition-all duration-200 hover:shadow-md ${
                   message.role === 'user' 
-                    ? 'bg-primary text-primary-foreground rounded-br-sm' 
-                    : 'bg-muted rounded-bl-sm'
+                    ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm ml-auto' 
+                    : 'bg-gradient-to-br from-muted to-muted/90 border border-border/50 rounded-bl-sm'
                 }`}>
                   <p class="text-sm leading-relaxed">{message.content}</p>
-                  <p class="text-xs opacity-70 mt-2">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <div class="flex items-center justify-between mt-2">
+                    <p class="text-xs opacity-70">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    {message.role === 'user' && (
+                      <div class="w-1.5 h-1.5 bg-primary-foreground/50 rounded-full"></div>
+                    )}
+                  </div>
                 </div>
                 {message.role === 'user' && (
-                  <div class="flex items-center justify-center p-2 rounded-lg bg-primary flex-shrink-0">
+                  <div class="flex items-center justify-center p-2 rounded-lg bg-gradient-to-br from-primary to-primary/90 flex-shrink-0 shadow-sm">
                     <IconUser class="size-4 text-primary-foreground" />
                   </div>
                 )}
@@ -145,12 +150,12 @@ export function AIChatPanel(props: AIChatPanelProps) {
               onInput={(e) => setInputValue(e.currentTarget.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message..."
-              class="flex-1 h-10 w-full rounded-full border border-input bg-transparent px-4 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex-1 h-10 w-full rounded-full border border-border/50 bg-background/95 backdrop-blur-sm px-4 py-2 text-sm shadow-sm transition-all duration-200 focus:shadow-md focus:border-primary/50 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               onClick={handleSendMessage}
               disabled={!inputValue().trim()}
-              class="inline-flex items-center justify-center rounded-full text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 w-10"
+              class="inline-flex items-center justify-center rounded-full text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-sm hover:shadow-md hover:from-primary/90 hover:to-primary h-10 w-10 disabled:cursor-not-allowed"
             >
               <IconSend class="size-4 text-primary-foreground" />
             </button>
@@ -176,7 +181,7 @@ export function AIChatPanel(props: AIChatPanelProps) {
                 </button>
                 
                 <Show when={showModelPicker()}>
-                  <div class="absolute bottom-full left-0 mb-2 w-64 bg-background border rounded-lg shadow-lg z-50 p-1 max-h-48 overflow-y-auto">
+                  <div class="absolute bottom-full left-0 mb-2 w-64 bg-gradient-to-b from-background to-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-lg z-50 p-1 max-h-48 overflow-y-auto">
                     <For each={aiModels}>
                       {model => (
                         <button
@@ -184,10 +189,10 @@ export function AIChatPanel(props: AIChatPanelProps) {
                             setSelectedModel(model.id)
                             setShowModelPicker(false)
                           }}
-                          class={`w-full text-left p-2 rounded text-xs transition-colors ${
+                          class={`w-full text-left p-2 rounded-lg text-xs transition-all duration-200 ${
                             selectedModel() === model.id 
-                              ? 'bg-primary/10 border border-primary/20' 
-                              : 'hover:bg-muted'
+                              ? 'bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20' 
+                              : 'hover:bg-muted/50'
                           }`}
                         >
                           <div class="flex items-center gap-2">

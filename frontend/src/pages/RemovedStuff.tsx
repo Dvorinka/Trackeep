@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onMount, Show } from 'solid-js';
 import { IconTrash, IconRestore, IconFileText, IconFileTypePpt, IconFileTypeDocx, IconClock, IconSettings, IconAlertTriangle } from '@tabler/icons-solidjs';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 
 interface RemovedItem {
   id: string;
@@ -18,6 +19,8 @@ interface AutoRemoveSettings {
   autoEmpty: boolean;
 }
 
+const API_BASE_URL = getApiV1BaseUrl();
+
 export const RemovedStuff = () => {
   const [removedItems, setRemovedItems] = createSignal<RemovedItem[]>([]);
   const [autoRemoveSettings, setAutoRemoveSettings] = createSignal<AutoRemoveSettings>({
@@ -27,8 +30,10 @@ export const RemovedStuff = () => {
   });
   const [showSettings, setShowSettings] = createSignal(false);
   const [selectedItems, setSelectedItems] = createSignal<string[]>([]);
+  const [loadedRemovedItems, setLoadedRemovedItems] = createSignal(false);
 
   createEffect(() => {
+    if (!loadedRemovedItems()) return;
     localStorage.setItem('removedItems', JSON.stringify(removedItems()));
   });
 
@@ -39,15 +44,78 @@ export const RemovedStuff = () => {
       setAutoRemoveSettings(JSON.parse(savedSettings));
     }
 
-    const savedItems = localStorage.getItem('removedItems');
-    if (savedItems) {
+    // Try to load from API first, then fallback to localStorage
+    const loadRemovedItems = async () => {
       try {
-        const parsedItems = JSON.parse(savedItems);
-        setRemovedItems(Array.isArray(parsedItems) ? parsedItems : []);
-      } catch {
-        setRemovedItems([]);
+        const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+
+        const response = await fetch(`${API_BASE_URL}/trash`, {
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setRemovedItems(data);
+            localStorage.setItem('removedItems', JSON.stringify(data));
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load removed items from API:', error);
+      } finally {
+        setLoadedRemovedItems(true);
       }
-    }
+
+      // Fallback to localStorage
+      const savedItems = localStorage.getItem('removedItems');
+      if (savedItems) {
+        try {
+          const parsedItems = JSON.parse(savedItems);
+          setRemovedItems(Array.isArray(parsedItems) ? parsedItems : []);
+        } catch {
+          setRemovedItems([]);
+        }
+      } else {
+        // Set demo data if no saved data
+        setRemovedItems([
+          {
+            id: '1',
+            name: 'Old Project Documentation.pdf',
+            type: 'pdf',
+            removedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            removedBy: 'Demo User',
+            size: '2.4 MB',
+            path: '/documents/projects/',
+            daysInTrash: 5
+          },
+          {
+            id: '2',
+            name: 'Backup Database.sql',
+            type: 'sql',
+            removedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            removedBy: 'Demo User',
+            size: '15.7 MB',
+            path: '/backups/',
+            daysInTrash: 12
+          },
+          {
+            id: '3',
+            name: 'Draft Presentation.pptx',
+            type: 'pptx',
+            removedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            removedBy: 'Demo User',
+            size: '8.2 MB',
+            path: '/presentations/',
+            daysInTrash: 3
+          }
+        ]);
+      }
+    };
+
+    loadRemovedItems();
 
     // Check for auto-remove on mount
     checkAutoRemove();

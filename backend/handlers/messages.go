@@ -49,10 +49,17 @@ type AttachmentInput struct {
 	Title  string `json:"title"`
 }
 
+type ReferenceInput struct {
+	EntityType string `json:"entity_type"`
+	EntityID   uint   `json:"entity_id"`
+	DeepLink   string `json:"deep_link"`
+}
+
 type CreateMessageRequest struct {
 	Body        string                 `json:"body"`
 	Attachments []AttachmentInput      `json:"attachments"`
 	Metadata    map[string]interface{} `json:"metadata"`
+	References  []ReferenceInput       `json:"references"`
 }
 
 type UpdateMessageRequest struct {
@@ -641,8 +648,8 @@ func CreateConversationMessage(c *gin.Context) {
 	}
 
 	trimmedBody := strings.TrimSpace(req.Body)
-	if trimmedBody == "" && len(req.Attachments) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Message body or attachments are required"})
+	if trimmedBody == "" && len(req.Attachments) == 0 && len(req.References) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Message body, attachments, or references are required"})
 		return
 	}
 
@@ -653,6 +660,37 @@ func CreateConversationMessage(c *gin.Context) {
 			FileID: a.FileID,
 			URL:    a.URL,
 			Title:  a.Title,
+		})
+	}
+
+	referenceRows := make([]models.MessageReference, 0, len(req.References))
+	for _, ref := range req.References {
+		entityType := normalizeReferenceType(ref.EntityType)
+		if entityType == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reference entity_type"})
+			return
+		}
+		if ref.EntityID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reference entity_id"})
+			return
+		}
+		deepLink := strings.TrimSpace(ref.DeepLink)
+		if deepLink == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reference deep_link"})
+			return
+		}
+		if !isReferenceDeepLinkAllowed(deepLink) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported reference deep_link"})
+			return
+		}
+		if !canReferenceEntity(models.DB, userID, entityType, ref.EntityID) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Reference target is not accessible"})
+			return
+		}
+		referenceRows = append(referenceRows, models.MessageReference{
+			EntityType: entityType,
+			EntityID:   ref.EntityID,
+			DeepLink:   deepLink,
 		})
 	}
 
@@ -717,6 +755,13 @@ func CreateConversationMessage(c *gin.Context) {
 	}
 	if len(attachmentRows) > 0 {
 		models.DB.Create(&attachmentRows)
+	}
+
+	for i := range referenceRows {
+		referenceRows[i].MessageID = message.ID
+	}
+	if len(referenceRows) > 0 {
+		models.DB.Create(&referenceRows)
 	}
 
 	if len(suggestions) > 0 {
@@ -2156,6 +2201,33 @@ func normalizeAttachmentKind(kind string) string {
 		return k
 	default:
 		return "website"
+	}
+}
+
+func normalizeReferenceType(entityType string) string {
+	t := strings.ToLower(strings.TrimSpace(entityType))
+	switch t {
+	case "task", "bookmark", "calendar_event", "youtube_video", "learning_path", "saved_search", "github", "password_vault_item", "ai_chat_session", "ai_chat_message":
+		return t
+	default:
+		return ""
+	}
+}
+
+func isReferenceDeepLinkAllowed(deepLink string) bool {
+	return strings.HasPrefix(deepLink, "/") || strings.HasPrefix(deepLink, "http://") || strings.HasPrefix(deepLink, "https://")
+}
+
+func canReferenceEntity(db *gorm.DB, userID uint, entityType string, entityID uint) bool {
+	switch entityType {
+	case "ai_chat_session":
+		var session models.ChatSession
+		return db.Where("id = ? AND user_id = ?", entityID, userID).First(&session).Error == nil
+	case "ai_chat_message":
+		var message models.ChatMessage
+		return db.Where("id = ? AND user_id = ?", entityID, userID).First(&message).Error == nil
+	default:
+		return true
 	}
 }
 

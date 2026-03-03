@@ -48,10 +48,14 @@ type User struct {
 	LockedUntil   *time.Time `json:"locked_until"`
 
 	// Privacy Settings
-	ProfileVisibility string `json:"profile_visibility" gorm:"default:public"` // public, private, friends
-	ShowEmail         bool   `json:"show_email" gorm:"default:false"`
-	ShowActivity      bool   `json:"show_activity" gorm:"default:true"`
-	AllowMessages     bool   `json:"allow_messages" gorm:"default:true"`
+	ProfileVisibility  string `json:"profile_visibility" gorm:"default:private"` // public, private, friends
+	EmailNotifications bool   `json:"email_notifications" gorm:"default:true"`
+	PushNotifications  bool   `json:"push_notifications" gorm:"default:true"`
+
+	// Social Features
+	ShowEmail     bool `json:"show_email" gorm:"default:false"`
+	ShowActivity  bool `json:"show_activity" gorm:"default:true"`
+	AllowMessages bool `json:"allow_messages" gorm:"default:true"`
 
 	// Social Stats
 	FollowersCount  int `json:"followers_count" gorm:"default:0"`

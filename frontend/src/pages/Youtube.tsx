@@ -7,6 +7,7 @@ import { ModalPortal } from '@/components/ui/ModalPortal';
 import { getMockVideos } from '@/lib/mockData';
 import { getAuthHeaders } from '@/lib/auth';
 import { isDemoMode } from '@/lib/demo-mode';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 import { 
   IconAlertCircle
 } from '@tabler/icons-solidjs';
@@ -18,6 +19,7 @@ interface YouTubeVideo {
   channel_name: string;
   url: string;
   title: string;
+  thumbnail?: string;
   duration?: string;
   published_at?: string;
   view_count?: string;
@@ -31,6 +33,8 @@ interface FeaturedChannel {
   description?: string;
 }
 
+const API_BASE_URL = getApiV1BaseUrl();
+
 // VideoCard component
 interface VideoCardProps {
   video: YouTubeVideo;
@@ -43,12 +47,11 @@ const VideoCard = (props: VideoCardProps) => (
     {/* Thumbnail */}
     <div class="relative aspect-video bg-muted overflow-hidden">
       <img
-        src={`https://img.youtube.com/vi/${props.video.video_id}/maxresdefault.jpg`}
+        src={isDemoMode() ? '/trackeep.svg' : (props.video.thumbnail || `https://img.youtube.com/vi/${props.video.video_id}/hqdefault.jpg`)}
         alt={props.video.title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
         onError={(e) => {
-          // Fallback to default thumbnail if maxresdefault fails
-          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${props.video.video_id}/hqdefault.jpg`;
+          (e.target as HTMLImageElement).src = '/trackeep.svg';
         }}
       />
       <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200"></div>
@@ -170,7 +173,6 @@ export const Youtube = () => {
   // Get video info from YouTube API using video ID (always use real data)
   const getVideoInfo = async (videoId: string) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/youtube/video-details`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -197,6 +199,7 @@ export const Youtube = () => {
         channel_name: 'Unknown Channel',
         url: `https://www.youtube.com/watch?v=${videoId}`,
         title: `Video ${videoId}`,
+        thumbnail: '',
         duration: 'Unknown',
         published_at: 'Unknown',
         view_count: '0',
@@ -221,9 +224,6 @@ export const Youtube = () => {
     try {
       const channels = featuredChannels();
       console.log('Using integrated YouTube service for featured channels');
-      
-      // Use the integrated backend API
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       
       try {
         // Fetch videos from all featured channels using the integrated API
@@ -268,6 +268,7 @@ export const Youtube = () => {
           channel_name: video.channel || 'Unknown Channel',
           url: `https://www.youtube.com/watch?v=${video.video_id}`,
           title: video.title || 'Untitled Video',
+          thumbnail: video.thumbnail || '',
           duration: video.length || 'Unknown',
           published_at: video.published_date || video.published_text || 'Unknown',
           view_count: video.views ? video.views.toLocaleString() : '0',
@@ -290,11 +291,8 @@ export const Youtube = () => {
         console.warn('YouTube scraping service failed:', scraperError);
       }
       
-      // Fallback to backend API
-      const YOUTUBE_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-      
       try {
-        const response = await fetch(`${YOUTUBE_API_BASE_URL}/youtube/predefined-channels`, {
+        const response = await fetch(`${API_BASE_URL}/youtube/predefined-channels`, {
           method: 'GET',
           headers: getAuthHeaders(),
         });
@@ -308,6 +306,7 @@ export const Youtube = () => {
             channel_name: video.channel_title || 'Unknown Channel',
             url: `https://www.youtube.com/watch?v=${video.id}`,
             title: video.title,
+            thumbnail: video.thumbnail || '',
             duration: video.duration || 'Unknown',
             published_at: video.published_at || 'Unknown',
             view_count: video.view_count?.toString() || '0',
@@ -339,6 +338,7 @@ export const Youtube = () => {
           channel_name: video.channel,
           url: video.url,
           title: video.title,
+          thumbnail: video.thumbnail || '',
           duration: video.duration,
           published_at: video.publishedAt,
           view_count: '1000',
@@ -378,7 +378,6 @@ export const Youtube = () => {
     setIsLoadingSaved(true);
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/video-bookmarks`, {
         headers: getAuthHeaders(),
       });
@@ -392,6 +391,7 @@ export const Youtube = () => {
           channel_name: bookmark.channel || 'Unknown Channel',
           url: bookmark.url,
           title: bookmark.title || 'Untitled Video',
+          thumbnail: bookmark.thumbnail || '',
           duration: 'Unknown',
           published_at: bookmark.created_at || 'Unknown',
           view_count: '0',
@@ -465,6 +465,7 @@ export const Youtube = () => {
           channel_name: data.channel_name,
           url: data.url,
           title: data.title,
+          thumbnail: data.thumbnail || '',
           duration: data.duration || 'Unknown',
           published_at: data.published_at || 'Unknown',
           view_count: data.view_count || '0',
@@ -475,7 +476,6 @@ export const Youtube = () => {
       } else {
         // It's a regular search query - use backend API
         try {
-          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
           const response = await fetch(`${API_BASE_URL}/youtube/search`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -491,6 +491,7 @@ export const Youtube = () => {
               channel_name: video.channel_title || 'Unknown Channel',
               url: `https://www.youtube.com/watch?v=${video.id}`,
               title: video.title,
+              thumbnail: video.thumbnail || '',
               duration: video.duration || 'Unknown',
               published_at: video.published_at || 'Unknown',
               view_count: video.view_count?.toString() || '0',
@@ -536,7 +537,6 @@ export const Youtube = () => {
   const handleSaveVideo = async (video: YouTubeVideo) => {
     try {
       // Always try to save to backend, no demo mode check
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const bookmarkData = {
         url: video.url,
         description: `Video from ${video.channel_name}`,
@@ -586,14 +586,6 @@ export const Youtube = () => {
             <div>
               <h1 class="text-3xl font-bold tracking-tight mb-2">YouTube Video Storage</h1>
               <p class="text-muted-foreground">Search, discover, and store YouTube videos</p>
-              <Show when={isDemoMode()}>
-                <div class="flex items-center gap-2 mt-2">
-                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-                    Demo Mode
-                  </span>
-                  <span class="text-sm text-muted-foreground">Using sample data</span>
-                </div>
-              </Show>
             </div>
           </div>
         </div>

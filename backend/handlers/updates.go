@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -66,33 +67,48 @@ func init() {
 	}
 }
 
+// getCurrentVersion reads the current version from frontend/package.json
+func getCurrentVersion() string {
+	// Try to read from frontend/package.json first
+	packageJsonPath := "frontend/package.json"
+	if content, err := os.ReadFile(packageJsonPath); err == nil {
+		var packageJson struct {
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(content, &packageJson); err == nil && packageJson.Version != "" {
+			log.Printf("Found version in frontend/package.json: %s", packageJson.Version)
+			return packageJson.Version
+		}
+	}
+
+	// Fallback to backend/go.mod
+	goModPath := "go.mod"
+	if content, err := os.ReadFile(goModPath); err == nil {
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "module ") {
+				// Extract version from module path or use a default
+				// For now, return a default version
+				log.Printf("Using fallback version from go.mod")
+				return "1.2.5"
+			}
+		}
+	}
+
+	// Final fallback
+	log.Printf("Using default version - could not detect from source files")
+	return "1.2.5"
+}
+
 // CheckForUpdates checks if a new version is available using Docker registry
 func CheckForUpdates(c *gin.Context) {
 	updateMutex.Lock()
 	defer updateMutex.Unlock()
 
-	// Get current version from go.mod
-	currentVersion := "1.2.5"
+	// Get current version from frontend/package.json
+	currentVersion := getCurrentVersion()
 
-	// Try to read from go.mod if running in development
-	if _, err := os.Stat("go.mod"); err == nil {
-		if content, err := os.ReadFile("go.mod"); err == nil {
-			lines := strings.Split(string(content), "\n")
-			for _, line := range lines {
-				if strings.Contains(line, "go ") && strings.Contains(line, "1.2.5") {
-					// Extract version from go.mod
-					parts := strings.Fields(line)
-					if len(parts) >= 2 {
-						currentVersion = strings.TrimSpace(parts[1])
-						log.Printf("Found version in go.mod: %s", currentVersion)
-						break
-					}
-				}
-			}
-		}
-	}
-
-	log.Printf("Checking for updates using Docker registry (current version: %s)", currentVersion)
+	log.Printf("Checking for updates using GitHub releases (current version: %s)", currentVersion)
 
 	// Check for updates using Docker registry
 	updateInfo, updateAvailable, err := checkForUpdatesWithDocker(currentVersion)
@@ -109,14 +125,20 @@ func CheckForUpdates(c *gin.Context) {
 		currentUpdate = updateInfo
 		updateProgress.Available = true
 	} else {
-		currentUpdate = nil
+		// Still preserve updateInfo for displaying latest version, but mark as no update available
+		currentUpdate = updateInfo
 		updateProgress.Available = false
+	}
+
+	latestVersion := ""
+	if updateInfo != nil {
+		latestVersion = updateInfo.Version
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"updateAvailable": updateAvailable,
 		"currentVersion":  currentVersion,
-		"latestVersion":   updateInfo.Version,
+		"latestVersion":   latestVersion,
 		"updateInfo":      currentUpdate,
 	})
 }
@@ -167,8 +189,142 @@ func UpdateProgressWebSocket(c *gin.Context) {
 	})
 }
 
-// checkForUpdatesWithDocker checks for updates using Docker registry
+// checkForUpdatesWithDocker checks for updates using GitHub releases
 func checkForUpdatesWithDocker(currentVersion string) (*UpdateInfo, bool, error) {
+	log.Printf("Checking for updates (current version: %s)", currentVersion)
+
+	// Get latest release from GitHub
+	latestRelease, err := getLatestGitHubRelease()
+	if err != nil {
+		log.Printf("Failed to get latest release from GitHub: %v", err)
+		// Fallback to Docker registry check
+		return checkForUpdatesWithDockerRegistry(currentVersion)
+	}
+
+	log.Printf("Latest release from GitHub: %s", latestRelease.Version)
+
+	// Compare versions
+	if isNewerVersion(latestRelease.Version, currentVersion) {
+		log.Printf("Update available: %s -> %s", currentVersion, latestRelease.Version)
+		return latestRelease, true, nil
+	}
+
+	log.Printf("No updates available - current version %s is latest", currentVersion)
+	return latestRelease, false, nil
+}
+
+// getLatestGitHubRelease fetches the latest release from GitHub API
+func getLatestGitHubRelease() (*UpdateInfo, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	url := "https://api.github.com/repos/Dvorinka/Trackeep/releases/latest"
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	// Parse JSON response
+	var release struct {
+		TagName     string `json:"tag_name"`
+		Name        string `json:"name"`
+		Body        string `json:"body"`
+		PublishedAt string `json:"published_at"`
+		Prerelease  bool   `json:"prerelease"`
+		Draft       bool   `json:"draft"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("failed to decode release JSON: %w", err)
+	}
+
+	// Skip drafts and prereleases unless specifically allowed
+	if release.Draft {
+		return nil, fmt.Errorf("latest release is a draft")
+	}
+
+	// Check if prereleases are allowed
+	allowPrerelease := os.Getenv("PRERELEASE_UPDATES") == "true"
+	if release.Prerelease && !allowPrerelease {
+		// Try to get latest non-prerelease
+		return getLatestStableRelease()
+	}
+
+	// Clean version (remove 'v' prefix if present)
+	version := strings.TrimPrefix(release.TagName, "v")
+
+	updateInfo := &UpdateInfo{
+		Version:      version,
+		ReleaseNotes: release.Body,
+		DownloadURL:  "", // Docker images don't need download URL
+		Mandatory:    false,
+		Size:         "Docker images",
+		Checksum:     "",
+		PublishedAt:  release.PublishedAt,
+		Prerelease:   release.Prerelease,
+	}
+
+	return updateInfo, nil
+}
+
+// getLatestStableRelease gets the latest stable (non-prerelease) release
+func getLatestStableRelease() (*UpdateInfo, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	url := "https://api.github.com/repos/Dvorinka/Trackeep/releases"
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch releases: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	// Parse JSON response
+	var releases []struct {
+		TagName     string `json:"tag_name"`
+		Name        string `json:"name"`
+		Body        string `json:"body"`
+		PublishedAt string `json:"published_at"`
+		Prerelease  bool   `json:"prerelease"`
+		Draft       bool   `json:"draft"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("failed to decode releases JSON: %w", err)
+	}
+
+	// Find first stable (non-prerelease, non-draft) release
+	for _, release := range releases {
+		if !release.Draft && !release.Prerelease {
+			version := strings.TrimPrefix(release.TagName, "v")
+
+			updateInfo := &UpdateInfo{
+				Version:      version,
+				ReleaseNotes: release.Body,
+				DownloadURL:  "",
+				Mandatory:    false,
+				Size:         "Docker images",
+				Checksum:     "",
+				PublishedAt:  release.PublishedAt,
+				Prerelease:   false,
+			}
+
+			return updateInfo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no stable releases found")
+}
+
+// checkForUpdatesWithDockerRegistry fallback method using Docker registry
+func checkForUpdatesWithDockerRegistry(currentVersion string) (*UpdateInfo, bool, error) {
 	// Define images to check (using latest)
 	backendImage := "ghcr.io/dvorinka/trackeep/backend:latest"
 	frontendImage := "ghcr.io/dvorinka/trackeep/frontend:latest"
@@ -348,7 +504,7 @@ func updateWithDockerCompose() error {
 	// Check if production docker-compose file exists
 	composeFile := "docker-compose.prod.yml"
 	if _, err := os.Stat(composeFile); err != nil {
-		return fmt.Errorf("production docker-compose.yml not found")
+		return fmt.Errorf("production docker-compose file not found")
 	}
 
 	// Use docker compose command directly (assuming Docker is available on host)

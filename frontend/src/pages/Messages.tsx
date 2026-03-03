@@ -11,6 +11,7 @@ import type {
   ConversationListItem,
   ConversationMember,
   Message,
+  MessageReferenceInput,
   MessageSuggestion,
   UserFile,
 } from '@/lib/messages';
@@ -63,12 +64,56 @@ interface MentionFileOption {
   label: string;
 }
 
-type MentionOption = MentionUserOption | MentionFileOption;
+interface AIShareSessionOption {
+  id: number;
+  title: string;
+  message_count: number;
+  created_at: string;
+  last_message_at?: string;
+}
+
+interface AIShareMessageOption {
+  id: number;
+  session_id: number;
+  content: string;
+  role: 'user' | 'assistant';
+  created_at: string;
+}
+
+interface ComposerAIReference {
+  entity_type: 'ai_chat_session' | 'ai_chat_message';
+  entity_id: number;
+  deep_link: string;
+  title: string;
+  subtitle: string;
+  mention_token: string;
+  attachment_title: string;
+}
+
+interface MentionAISessionOption {
+  type: 'ai_chat_session';
+  session: AIShareSessionOption;
+  label: string;
+}
+
+interface MentionAIMessageOption {
+  type: 'ai_chat_message';
+  session: AIShareSessionOption;
+  message: AIShareMessageOption;
+  label: string;
+}
+
+type MentionOption = MentionUserOption | MentionFileOption | MentionAISessionOption | MentionAIMessageOption;
 
 interface ComposerLibraryFile {
   id: number;
   original_name: string;
   mime_type: string;
+}
+
+interface AIProviderOption {
+  id: string;
+  name: string;
 }
 
 type ReactionKey = 'thumb_up' | 'heart' | 'bolt' | 'check' | 'sparkles';
@@ -105,6 +150,8 @@ const REFERENCE_TYPE_OPTIONS = [
   'learning_path',
   'saved_search',
   'github',
+  'ai_chat_session',
+  'ai_chat_message',
 ];
 
 type TriStateFilter = 'any' | 'yes' | 'no';
@@ -172,6 +219,18 @@ export const Messages = () => {
   const [isDragOverComposer, setIsDragOverComposer] = createSignal(false);
   const [revealedSensitiveMessages, setRevealedSensitiveMessages] = createSignal<Record<number, string>>({});
   const [uploadProgress, setUploadProgress] = createSignal<{ done: number; total: number } | null>(null);
+  const [aiReferenceEnabled, setAiReferenceEnabled] = createSignal(false);
+  const [aiReferenceModel, setAiReferenceModel] = createSignal('longcat');
+  const [aiReferenceContext, setAiReferenceContext] = createSignal('');
+  const [aiProviders, setAiProviders] = createSignal<AIProviderOption[]>([]);
+  const [aiSettings, setAiSettings] = createSignal<Record<string, { enabled?: boolean; model?: string; model_thinking?: string }>>({});
+  const [showAiSharePicker, setShowAiSharePicker] = createSignal(false);
+  const [aiShareSessions, setAiShareSessions] = createSignal<AIShareSessionOption[]>([]);
+  const [aiShareMessagesBySession, setAiShareMessagesBySession] = createSignal<Record<number, AIShareMessageOption[]>>({});
+  const [aiShareSelectedSessionId, setAiShareSelectedSessionId] = createSignal<number | null>(null);
+  const [aiShareLoadingSessions, setAiShareLoadingSessions] = createSignal(false);
+  const [aiShareLoadingMessages, setAiShareLoadingMessages] = createSignal(false);
+  const [composerAiReferences, setComposerAiReferences] = createSignal<ComposerAIReference[]>([]);
 
   const getCurrentUserId = () => {
     const raw = localStorage.getItem('trackeep_user') || localStorage.getItem('user');
@@ -326,6 +385,69 @@ export const Messages = () => {
     setSearchMentionOnly(false);
   };
 
+  const referenceKey = (ref: { entity_type: string; entity_id: number }) => `${ref.entity_type}:${ref.entity_id}`;
+
+  const sanitizeMentionToken = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 40) || 'ai-reference';
+
+  const availableAiReferenceModels = () => {
+    const configured = Object.entries(aiSettings())
+      .filter(([, config]) => config?.enabled)
+      .map(([provider]) => provider);
+    const providerIds = aiProviders().map((provider) => provider.id);
+    const combined = Array.from(new Set([...configured, ...providerIds]));
+    if (combined.length === 0) {
+      return [aiReferenceModel() || 'longcat'];
+    }
+    return combined;
+  };
+
+  const buildAiSessionReference = (session: AIShareSessionOption): ComposerAIReference => {
+    const token = `@ai-session:${sanitizeMentionToken(session.title || `session-${session.id}`)}`;
+    return {
+      entity_type: 'ai_chat_session',
+      entity_id: session.id,
+      deep_link: `/app/chat?session=${session.id}`,
+      title: session.title || `AI Session #${session.id}`,
+      subtitle: `${session.message_count} messages`,
+      mention_token: token,
+      attachment_title: `AI session: ${session.title || `#${session.id}`}`,
+    };
+  };
+
+  const buildAiMessageReference = (session: AIShareSessionOption, message: AIShareMessageOption): ComposerAIReference => {
+    const preview = (message.content || '').trim().slice(0, 64) || `Message #${message.id}`;
+    const token = `@ai-msg:${sanitizeMentionToken(preview)}`;
+    return {
+      entity_type: 'ai_chat_message',
+      entity_id: message.id,
+      deep_link: `/app/chat?session=${session.id}&message=${message.id}`,
+      title: `${session.title || `Session #${session.id}`}`,
+      subtitle: preview,
+      mention_token: token,
+      attachment_title: `AI message: ${preview}`,
+    };
+  };
+
+  const addComposerAiReference = (next: ComposerAIReference) => {
+    setComposerAiReferences((prev) => {
+      if (prev.some((entry) => referenceKey(entry) === referenceKey(next))) {
+        return prev;
+      }
+      return [...prev, next];
+    });
+  };
+
+  const removeComposerAiReference = (entityType: ComposerAIReference['entity_type'], entityId: number) => {
+    setComposerAiReferences((prev) =>
+      prev.filter((entry) => !(entry.entity_type === entityType && entry.entity_id === entityId))
+    );
+  };
+
   const activeTypingUserNames = () => {
     const conversationID = selectedConversationId();
     if (!conversationID) return [] as string[];
@@ -361,6 +483,7 @@ export const Messages = () => {
   };
 
   const refreshMentionOptions = (query: string) => {
+    const normalizedQuery = query.trim().toLowerCase();
     const conversationUserOptions: MentionUserOption[] = conversationMembers()
       .map((member) => {
         const username = (member.user?.username || '').trim();
@@ -375,14 +498,48 @@ export const Messages = () => {
       .filter((option) => option.id !== currentUserId())
       .filter((option, index, arr) => arr.findIndex((entry) => entry.id === option.id) === index)
       .filter((option) =>
-        !query ? true : `${option.label} ${option.username}`.toLowerCase().includes(query)
+        !normalizedQuery ? true : `${option.label} ${option.username}`.toLowerCase().includes(normalizedQuery)
       )
       .slice(0, 6);
+
+    if (!aiShareSessions().length && (normalizedQuery.startsWith('ai') || normalizedQuery.startsWith('chat'))) {
+      void loadAIShareSessions();
+    }
+
+    const aiSessionOptions: MentionAISessionOption[] = aiShareSessions()
+      .filter((session) =>
+        !normalizedQuery
+          ? true
+          : `${session.title} ai session ${session.id}`.toLowerCase().includes(normalizedQuery)
+      )
+      .slice(0, 3)
+      .map((session) => ({
+        type: 'ai_chat_session',
+        session,
+        label: `AI Session: ${session.title}`,
+      }));
+
+    const aiMessageOptions: MentionAIMessageOption[] = aiShareSessions()
+      .slice(0, 4)
+      .flatMap((session) =>
+        (aiShareMessagesBySession()[session.id] || []).slice(0, 8).map((message) => ({
+          type: 'ai_chat_message' as const,
+          session,
+          message,
+          label: `AI Message: ${(message.content || '').slice(0, 48) || `#${message.id}`}`,
+        }))
+      )
+      .filter((option) =>
+        !normalizedQuery
+          ? true
+          : `${option.session.title} ${option.message.content} ai message`.toLowerCase().includes(normalizedQuery)
+      )
+      .slice(0, 3);
 
     setMentionLoading(true);
     const token = ++mentionSearchToken;
     void messagesApi
-      .listUserFiles(query, 8)
+      .listUserFiles(normalizedQuery, 8)
       .then((files) => {
         if (token !== mentionSearchToken) return;
         const fileOptions: MentionFileOption[] = (files || []).map((file) => ({
@@ -390,13 +547,13 @@ export const Messages = () => {
           file,
           label: file.original_name || 'Attachment',
         }));
-        const merged: MentionOption[] = [...conversationUserOptions, ...fileOptions];
+        const merged: MentionOption[] = [...conversationUserOptions, ...fileOptions, ...aiSessionOptions, ...aiMessageOptions];
         setMentionOptions(merged);
         setMentionHighlightedIndex(0);
       })
       .catch(() => {
         if (token !== mentionSearchToken) return;
-        setMentionOptions(conversationUserOptions);
+        setMentionOptions([...conversationUserOptions, ...aiSessionOptions, ...aiMessageOptions]);
       })
       .finally(() => {
         if (token === mentionSearchToken) {
@@ -590,11 +747,19 @@ export const Messages = () => {
     }
   };
 
-  const postMessage = async (body: string, attachments: any[], explicitConversationId?: number) => {
+  const postMessage = async (
+    body: string,
+    attachments: any[],
+    explicitConversationId?: number,
+    options?: {
+      metadata?: Record<string, unknown>;
+      references?: MessageReferenceInput[];
+    }
+  ) => {
     const conversationID = explicitConversationId || selectedConversationId();
     if (!conversationID) return;
     const trimmedBody = body.trim();
-    if (!trimmedBody && attachments.length === 0) return;
+    if (!trimmedBody && attachments.length === 0 && (options?.references || []).length === 0) return;
 
     markTypingStopped();
     setSendingMessage(true);
@@ -602,6 +767,8 @@ export const Messages = () => {
       const response = await messagesApi.sendMessage(conversationID, {
         body: trimmedBody,
         attachments,
+        metadata: options?.metadata,
+        references: options?.references,
       });
 
       const created = response.message;
@@ -657,7 +824,7 @@ export const Messages = () => {
           const extension = recorder.mimeType.includes('ogg') ? 'ogg' : recorder.mimeType.includes('mp4') ? 'm4a' : 'webm';
           const file = new File([blob], `voice-note-${Date.now()}.${extension}`, { type: recorder.mimeType || 'audio/webm' });
           const uploaded = await uploadChatFile(file);
-          const attachments = [{
+          const attachments: Array<{ kind: string; file_id?: number; title?: string; url?: string }> = [{
             kind: 'voice_note',
             file_id: uploaded.id,
             title: uploaded.original_name || 'Voice note',
@@ -667,9 +834,36 @@ export const Messages = () => {
           const transcript = `${voiceFinalTranscript} ${voiceInterimTranscript}`.trim();
           const transcriptBody = transcript ? `Transcript (local): ${transcript}` : '';
           const composedBody = [inputText().trim(), transcriptBody].filter(Boolean).join('\n\n');
+          const references: MessageReferenceInput[] = composerAiReferences().map((reference) => ({
+            entity_type: reference.entity_type,
+            entity_id: reference.entity_id,
+            deep_link: reference.deep_link,
+          }));
+          for (const reference of composerAiReferences()) {
+            attachments.push({
+              kind: 'activity',
+              title: reference.attachment_title,
+              url: reference.deep_link,
+            });
+          }
+          const metadata =
+            aiReferenceEnabled() || references.length > 0 || aiReferenceContext().trim()
+              ? {
+                  ai_reference: {
+                    enabled: aiReferenceEnabled(),
+                    provider: aiReferenceModel(),
+                    context: aiReferenceContext().trim(),
+                    references,
+                  },
+                }
+              : undefined;
 
-          await postMessage(composedBody, attachments, conversationID);
+          await postMessage(composedBody, attachments, conversationID, {
+            metadata,
+            references,
+          });
           setInputText('');
+          setComposerAiReferences([]);
           if (transcriptBody) {
             toast.success('Voice note sent', 'Local transcript attached.');
           } else {
@@ -1050,6 +1244,117 @@ export const Messages = () => {
     }
   };
 
+  const loadAIProviders = async () => {
+    const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/ai/providers`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const providers = (data.providers || []) as Array<{ id?: string; name?: string }>;
+      const mapped = providers
+        .map((provider) => ({
+          id: (provider.id || '').trim(),
+          name: (provider.name || provider.id || 'AI provider').trim(),
+        }))
+        .filter((provider) => provider.id);
+      setAiProviders(mapped);
+    } catch {
+      // ignore provider loading failures
+    }
+  };
+
+  const loadAISettings = async () => {
+    const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/ai/settings`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || typeof data !== 'object') return;
+      const normalized: Record<string, { enabled?: boolean; model?: string; model_thinking?: string }> = {};
+      for (const [provider, raw] of Object.entries(data as Record<string, unknown>)) {
+        if (!raw || typeof raw !== 'object') continue;
+        const cfg = raw as Record<string, unknown>;
+        normalized[provider] = {
+          enabled: Boolean(cfg.enabled),
+          model: typeof cfg.model === 'string' ? cfg.model : undefined,
+          model_thinking: typeof cfg.model_thinking === 'string' ? cfg.model_thinking : undefined,
+        };
+      }
+      setAiSettings(normalized);
+      const firstEnabledProvider = Object.entries(normalized).find(([, cfg]) => cfg.enabled)?.[0];
+      if (firstEnabledProvider) {
+        setAiReferenceModel(firstEnabledProvider);
+      }
+    } catch {
+      // ignore settings loading failures
+    }
+  };
+
+  const loadAIShareSessions = async () => {
+    const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
+    setAiShareLoadingSessions(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load AI sessions');
+      }
+      const data = (await res.json()) as Array<Record<string, unknown>>;
+      const mapped: AIShareSessionOption[] = (Array.isArray(data) ? data : []).map((session) => ({
+        id: Number(session.id || 0),
+        title: typeof session.title === 'string' && session.title.trim() ? session.title : `Session #${session.id}`,
+        message_count: Number(session.message_count || 0),
+        created_at: typeof session.created_at === 'string' ? session.created_at : new Date().toISOString(),
+        last_message_at: typeof session.last_message_at === 'string' ? session.last_message_at : undefined,
+      })).filter((session) => session.id > 0);
+      setAiShareSessions(mapped);
+      if (mapped.length > 0 && !aiShareSelectedSessionId()) {
+        setAiShareSelectedSessionId(mapped[0].id);
+        void loadAIShareMessages(mapped[0].id);
+      }
+    } catch {
+      toast.error('Failed to load AI sessions');
+    } finally {
+      setAiShareLoadingSessions(false);
+    }
+  };
+
+  const loadAIShareMessages = async (sessionId: number) => {
+    const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
+    if (!sessionId) return;
+    if (aiShareMessagesBySession()[sessionId]) return;
+    setAiShareLoadingMessages(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${sessionId}/messages`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load AI messages');
+      }
+      const data = (await res.json()) as Array<Record<string, unknown>>;
+      const mapped: AIShareMessageOption[] = (Array.isArray(data) ? data : []).map((message) => ({
+        id: Number(message.id || 0),
+        session_id: sessionId,
+        content: typeof message.content === 'string' ? message.content : '',
+        role: (message.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+        created_at: typeof message.created_at === 'string' ? message.created_at : new Date().toISOString(),
+      })).filter((message) => message.id > 0);
+      setAiShareMessagesBySession((prev) => ({
+        ...prev,
+        [sessionId]: mapped,
+      }));
+    } catch {
+      toast.error('Failed to load AI messages');
+    } finally {
+      setAiShareLoadingMessages(false);
+    }
+  };
+
   const handleWsEvent = (event: any) => {
     const eventType = event?.type || '';
     const eventConversationId = Number(event?.conversation_id || event?.data?.conversation_id || 0);
@@ -1223,7 +1528,7 @@ export const Messages = () => {
 
     if (option.type === 'user') {
       inserted = `@${option.username} `;
-    } else {
+    } else if (option.type === 'file') {
       const readableFileName = (option.file.original_name || 'file').trim() || 'file';
       inserted = `@${readableFileName.replace(/\s+/g, '_')} `;
       setAttachedLibraryFiles((prev) =>
@@ -1238,6 +1543,14 @@ export const Messages = () => {
               },
             ]
       );
+    } else if (option.type === 'ai_chat_session') {
+      const reference = buildAiSessionReference(option.session);
+      inserted = `${reference.mention_token} `;
+      addComposerAiReference(reference);
+    } else {
+      const reference = buildAiMessageReference(option.session, option.message);
+      inserted = `${reference.mention_token} `;
+      addComposerAiReference(reference);
     }
 
     const updated = `${currentText.slice(0, range.start)}${inserted}${currentText.slice(range.end)}`;
@@ -1298,7 +1611,7 @@ export const Messages = () => {
   const sendMessage = async () => {
     if (!selectedConversationId()) return;
     const body = inputText().trim();
-    if (!body && selectedFiles().length === 0 && attachedLibraryFiles().length === 0) return;
+    if (!body && selectedFiles().length === 0 && attachedLibraryFiles().length === 0 && composerAiReferences().length === 0) return;
 
     try {
       const localFiles = [...selectedFiles()];
@@ -1330,10 +1643,40 @@ export const Messages = () => {
         });
       }
 
-      await postMessage(body, attachments);
+      const references: MessageReferenceInput[] = composerAiReferences().map((reference) => ({
+        entity_type: reference.entity_type,
+        entity_id: reference.entity_id,
+        deep_link: reference.deep_link,
+      }));
+
+      for (const reference of composerAiReferences()) {
+        attachments.push({
+          kind: 'activity',
+          title: reference.attachment_title,
+          url: reference.deep_link,
+        });
+      }
+
+      const metadata =
+        aiReferenceEnabled() || references.length > 0 || aiReferenceContext().trim()
+          ? {
+              ai_reference: {
+                enabled: aiReferenceEnabled(),
+                provider: aiReferenceModel(),
+                context: aiReferenceContext().trim(),
+                references,
+              },
+            }
+          : undefined;
+
+      await postMessage(body, attachments, undefined, {
+        metadata,
+        references,
+      });
       setInputText('');
       setSelectedFiles([]);
       setAttachedLibraryFiles([]);
+      setComposerAiReferences([]);
       setMentionOptions([]);
       setMentionOpen(false);
       setMentionQuery('');
@@ -1494,7 +1837,7 @@ export const Messages = () => {
   };
 
   onMount(async () => {
-    await Promise.all([loadConversations(), loadMembers(), loadTeams()]);
+    await Promise.all([loadConversations(), loadMembers(), loadTeams(), loadAIProviders(), loadAISettings()]);
     startRealtime();
     typingCleanupTimer = window.setInterval(() => {
       const cutoff = Date.now() - 6000;
@@ -1526,6 +1869,9 @@ export const Messages = () => {
       }
       if (showCreateConversation()) {
         setShowCreateConversation(false);
+      }
+      if (showAiSharePicker()) {
+        setShowAiSharePicker(false);
       }
       if (mentionOpen()) {
         setMentionOpen(false);
@@ -1938,7 +2284,7 @@ export const Messages = () => {
             </div>
           </Show>
 
-          <Show when={selectedFiles().length > 0 || attachedLibraryFiles().length > 0}>
+          <Show when={selectedFiles().length > 0 || attachedLibraryFiles().length > 0 || composerAiReferences().length > 0}>
             <div class="composer-chip-wrap">
               <For each={selectedFiles()}>
                 {(file, index) => (
@@ -1957,6 +2303,20 @@ export const Messages = () => {
                     <IconFile class="size-3.5" />
                     <span>{file.original_name}</span>
                     <button class="composer-chip-remove" onClick={() => removeAttachedLibraryFile(file.id)}>
+                      <IconX class="size-3.5" />
+                    </button>
+                  </div>
+                )}
+              </For>
+              <For each={composerAiReferences()}>
+                {(reference) => (
+                  <div class="composer-chip">
+                    <IconSparkles class="size-3.5" />
+                    <span>{reference.title}</span>
+                    <button
+                      class="composer-chip-remove"
+                      onClick={() => removeComposerAiReference(reference.entity_type, reference.entity_id)}
+                    >
                       <IconX class="size-3.5" />
                     </button>
                   </div>
@@ -1992,6 +2352,24 @@ export const Messages = () => {
 
             <Button
               size="sm"
+              variant={showAiSharePicker() ? 'default' : 'outline'}
+              onClick={async () => {
+                if (!aiShareSessions().length) {
+                  await loadAIShareSessions();
+                }
+                const selected = aiShareSelectedSessionId() || aiShareSessions()[0]?.id;
+                if (selected) {
+                  setAiShareSelectedSessionId(selected);
+                  await loadAIShareMessages(selected);
+                }
+                setShowAiSharePicker((prev) => !prev);
+              }}
+            >
+              <IconSparkles class="size-4" />
+            </Button>
+
+            <Button
+              size="sm"
               variant={isRecordingVoice() ? 'default' : 'outline'}
               onClick={() => {
                 if (isRecordingVoice()) {
@@ -2014,7 +2392,7 @@ export const Messages = () => {
                 }}
                 value={inputText()}
                 class="messages-composer-textarea"
-                placeholder='Type a message. Use "@" for people or files.'
+                placeholder='Type a message. Use "@" for people, files, and AI references.'
                 rows={1}
                 onInput={(event) => handleComposerInput(event as any)}
                 onKeyDown={(event) => {
@@ -2079,14 +2457,29 @@ export const Messages = () => {
                           selectMentionOption(option, token);
                         }}
                       >
-                        <Show when={option.type === 'user'} fallback={<IconFile class="size-4" />}>
+                        <Show
+                          when={option.type === 'user'}
+                          fallback={
+                            <Show when={option.type === 'file'} fallback={<IconSparkles class="size-4" />}>
+                              <IconFile class="size-4" />
+                            </Show>
+                          }
+                        >
                           <IconAt class="size-4" />
                         </Show>
                         <div class="mention-option-copy">
                           <div class="mention-option-title">{option.label}</div>
-                          <Show when={option.type === 'user'} fallback={
-                            <div class="mention-option-sub">Attach file to message</div>
-                          }>
+                          <Show
+                            when={option.type === 'user'}
+                            fallback={
+                              <Show
+                                when={option.type === 'file'}
+                                fallback={<div class="mention-option-sub">Insert AI reference</div>}
+                              >
+                                <div class="mention-option-sub">Attach file to message</div>
+                              </Show>
+                            }
+                          >
                             <div class="mention-option-sub">@{(option as MentionUserOption).username}</div>
                           </Show>
                         </div>
@@ -2101,7 +2494,7 @@ export const Messages = () => {
               onClick={() => sendMessage()}
               disabled={
                 sendingMessage() ||
-                (!inputText().trim() && selectedFiles().length === 0 && attachedLibraryFiles().length === 0)
+                (!inputText().trim() && selectedFiles().length === 0 && attachedLibraryFiles().length === 0 && composerAiReferences().length === 0)
               }
             >
               <IconSend class="size-4" />
@@ -2109,6 +2502,27 @@ export const Messages = () => {
           </div>
 
           <div class="messages-composer-footer">
+            <label class="messages-inline-toggle">
+              <input
+                type="checkbox"
+                checked={aiReferenceEnabled()}
+                onChange={(event) => setAiReferenceEnabled(event.currentTarget.checked)}
+              />
+              AI reference metadata
+            </label>
+            <Show when={aiReferenceEnabled()}>
+              <select
+                class="h-8 rounded border bg-background px-2 text-xs"
+                value={aiReferenceModel()}
+                onChange={(event) => setAiReferenceModel(event.currentTarget.value)}
+              >
+                <For each={availableAiReferenceModels()}>
+                  {(providerId) => (
+                    <option value={providerId}>{providerId}</option>
+                  )}
+                </For>
+              </select>
+            </Show>
             <label class="messages-inline-toggle">
               <input
                 type="checkbox"
@@ -2137,6 +2551,13 @@ export const Messages = () => {
               )}
             </Show>
           </div>
+          <Show when={aiReferenceEnabled()}>
+            <Input
+              value={aiReferenceContext()}
+              onInput={(event) => setAiReferenceContext((event.currentTarget as HTMLInputElement).value)}
+              placeholder="AI context to attach as metadata (optional)"
+            />
+          </Show>
         </div>
         </Show>
       </section>
@@ -2243,6 +2664,112 @@ export const Messages = () => {
             <div class="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreateConversation(false)}>Cancel</Button>
               <Button onClick={createConversation}>Create</Button>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      <Show when={showAiSharePicker()}>
+        <div
+          class="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowAiSharePicker(false);
+            }
+          }}
+        >
+          <div class="bg-card border rounded-lg w-full max-w-5xl p-4 space-y-3 max-h-[85vh] overflow-hidden">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold">Share AI Chat Reference</h3>
+              <Button size="sm" variant="ghost" onClick={() => setShowAiSharePicker(false)}>
+                <IconX class="size-4" />
+              </Button>
+            </div>
+
+            <div class="grid md:grid-cols-[280px,1fr] gap-3 min-h-0 h-[65vh]">
+              <div class="border rounded-md p-2 overflow-y-auto space-y-2">
+                <div class="text-xs text-muted-foreground px-1">AI sessions</div>
+                <Show when={!aiShareLoadingSessions()} fallback={<div class="text-sm text-muted-foreground p-2">Loading sessions…</div>}>
+                  <For each={aiShareSessions()}>
+                    {(session) => (
+                      <button
+                        class={`w-full text-left rounded border p-2 ${
+                          aiShareSelectedSessionId() === session.id ? 'bg-primary/10 border-primary/40' : 'hover:bg-muted'
+                        }`}
+                        onClick={async () => {
+                          setAiShareSelectedSessionId(session.id);
+                          await loadAIShareMessages(session.id);
+                        }}
+                      >
+                        <div class="text-sm font-medium truncate">{session.title}</div>
+                        <div class="text-xs text-muted-foreground">{session.message_count} messages</div>
+                        <div class="mt-2 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              addComposerAiReference(buildAiSessionReference(session));
+                            }}
+                          >
+                            Add Session
+                          </Button>
+                        </div>
+                      </button>
+                    )}
+                  </For>
+                </Show>
+              </div>
+
+              <div class="border rounded-md p-2 overflow-y-auto space-y-2">
+                <div class="text-xs text-muted-foreground px-1">Messages</div>
+                <Show
+                  when={aiShareSelectedSessionId()}
+                  fallback={<div class="text-sm text-muted-foreground p-2">Select a session.</div>}
+                >
+                  {(sessionId) => {
+                    const session = () => aiShareSessions().find((entry) => entry.id === sessionId()) || null;
+                    const messagesInSession = () => aiShareMessagesBySession()[sessionId()] || [];
+                    return (
+                      <>
+                        <Show
+                          when={!aiShareLoadingMessages()}
+                          fallback={<div class="text-sm text-muted-foreground p-2">Loading messages…</div>}
+                        >
+                          <For each={messagesInSession()}>
+                            {(message) => (
+                              <div class="rounded border p-2 bg-background">
+                                <div class="flex items-center justify-between gap-2">
+                                  <div class="text-xs text-muted-foreground">
+                                    {message.role} • {new Date(message.created_at).toLocaleString()}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const selectedSession = session();
+                                      if (!selectedSession) return;
+                                      addComposerAiReference(buildAiMessageReference(selectedSession, message));
+                                    }}
+                                  >
+                                    Add Message
+                                  </Button>
+                                </div>
+                                <div class="text-sm mt-1 whitespace-pre-wrap break-words">
+                                  {(message.content || '').slice(0, 420) || '[empty message]'}
+                                </div>
+                              </div>
+                            )}
+                          </For>
+                          <Show when={messagesInSession().length === 0}>
+                            <div class="text-sm text-muted-foreground p-2">No messages in this session.</div>
+                          </Show>
+                        </Show>
+                      </>
+                    );
+                  }}
+                </Show>
+              </div>
             </div>
           </div>
         </div>

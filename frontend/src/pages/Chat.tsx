@@ -57,6 +57,7 @@ const Chat = () => {
   
   // Load AI providers and settings on mount
   onMount(async () => {
+    parseChatDeeplink()
     await loadAIProviders()
     await loadAISettings()
   })
@@ -181,7 +182,8 @@ const Chat = () => {
         },
       })
       if (!response.ok) throw new Error('Failed to fetch sessions')
-      return response.json() as Promise<ChatSession[]>
+      const data = await response.json()
+      return Array.isArray(data) ? data : []
     } catch (error) {
       console.error('Failed to fetch sessions:', error)
       return [] as ChatSession[]
@@ -192,6 +194,10 @@ const Chat = () => {
 
   const [currentSessionId, setCurrentSessionId] = createSignal<string | null>(null)
   const [messages, setMessages] = createSignal<ChatMessage[]>([])
+  const [deeplinkSessionId, setDeeplinkSessionId] = createSignal<string | null>(null)
+  const [deeplinkMessageId, setDeeplinkMessageId] = createSignal<number | null>(null)
+  const [deeplinkResolved, setDeeplinkResolved] = createSignal(false)
+  const [highlightedMessageId, setHighlightedMessageId] = createSignal<number | null>(null)
   const [inputMessage, setInputMessage] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
   const [showSettings, setShowSettings] = createSignal(false)
@@ -213,6 +219,23 @@ const Chat = () => {
     { id: 'tasks', label: 'Task Suggestions', icon: CheckSquare, description: 'Get AI-powered task suggestions and organization' },
     { id: 'content', label: 'Content Generation', icon: Sparkles, description: 'Generate content using AI assistance' }
   ]
+
+  const parseChatDeeplink = () => {
+    const params = new URLSearchParams(window.location.search)
+    const rawSession = (params.get('session') || '').trim()
+    const rawMessage = (params.get('message') || '').trim()
+    setDeeplinkSessionId(rawSession || null)
+    const parsedMessageId = Number(rawMessage)
+    setDeeplinkMessageId(Number.isFinite(parsedMessageId) && parsedMessageId > 0 ? parsedMessageId : null)
+  }
+
+  const scrollToHighlightedMessage = (messageId: number) => {
+    window.requestAnimationFrame(() => {
+      const element = document.getElementById(`chat-message-${messageId}`)
+      if (!element) return
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
 
   const loadSessionMessages = async (sessionId: string) => {
     try {
@@ -238,6 +261,18 @@ const Chat = () => {
       }))
 
       setMessages(parsedMessages)
+      const targetMessageId = deeplinkMessageId()
+      if (targetMessageId && String(deeplinkSessionId() || '') === sessionId) {
+        if (parsedMessages.some((message) => message.id === targetMessageId)) {
+          setHighlightedMessageId(targetMessageId)
+          scrollToHighlightedMessage(targetMessageId)
+          window.setTimeout(() => {
+            setHighlightedMessageId((current) => (current === targetMessageId ? null : current))
+          }, 6000)
+        } else {
+          setHighlightedMessageId(null)
+        }
+      }
     } catch (error) {
       console.error('Failed to load session messages:', error)
       setMessages([])
@@ -246,7 +281,25 @@ const Chat = () => {
 
   createEffect(() => {
     const loadedSessions = sessions()
-    if (!loadedSessions || loadedSessions.length === 0 || currentSessionId()) {
+    if (!loadedSessions || loadedSessions.length === 0) {
+      return
+    }
+
+    if (!deeplinkResolved()) {
+      const requestedSessionId = deeplinkSessionId()
+      if (requestedSessionId) {
+        const matchingSession = loadedSessions.find((session) => String(session.id) === requestedSessionId)
+        if (matchingSession) {
+          setCurrentSessionId(requestedSessionId)
+          setDeeplinkResolved(true)
+          void loadSessionMessages(requestedSessionId)
+          return
+        }
+      }
+      setDeeplinkResolved(true)
+    }
+
+    if (currentSessionId()) {
       return
     }
 
@@ -770,15 +823,16 @@ const Chat = () => {
                       }`}
                     >
                       <div
-                        class={`max-w-[80%] rounded-lg p-4 ${
+                        id={`chat-message-${message.id}`}
+                        class={`max-w-[80%] rounded-2xl p-4 shadow-sm transition-all duration-200 hover:shadow-md ${
                           message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
+                            ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground ml-auto'
+                            : 'bg-gradient-to-br from-muted to-muted/90 border border-border/50'
+                        } ${highlightedMessageId() === message.id ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background' : ''}`}
                       >
                         <div class="flex items-start gap-3">
-                          <div class={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                            message.role === 'user' ? 'bg-primary-foreground/20' : 'bg-primary/10'
+                          <div class={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 ${
+                            message.role === 'user' ? 'bg-primary-foreground/20 ring-2 ring-primary-foreground/30' : 'bg-primary/10 ring-2 ring-primary/20'
                           }`}>
                             {message.role === 'user' ? (
                               <User class="w-4 h-4 text-xs" />
@@ -786,12 +840,20 @@ const Chat = () => {
                               <AIProviderIcon 
                                 providerId={selectedModel()} 
                                 size="1rem"
-                                class="text-primary"
+                                class="text-primary animate-pulse"
                               />
                             )}
                           </div>
                           <div class="flex-1">
                             <p class="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+                            <div class="flex items-center gap-2 mt-2">
+                              <p class="text-xs opacity-70">
+                                {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              {message.role === 'user' && (
+                                <div class="w-2 h-2 bg-primary-foreground/50 rounded-full"></div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -808,21 +870,22 @@ const Chat = () => {
                   <div class="relative">
                     <button
                       onClick={() => setShowModelPicker(!showModelPicker())}
-                      class="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg text-sm transition-colors border border-border/50"
+                      class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-muted to-muted/80 hover:from-muted/90 hover:to-muted/70 rounded-xl text-sm transition-all duration-200 border border-border/50 shadow-sm hover:shadow-md"
                     >
                       <AIProviderIcon 
                         providerId={selectedModel()} 
                         size="1rem"
+                        class="transition-transform hover:scale-110"
                       />
                       <span class="text-sm font-medium">
                         {getAIModels().find(m => m.id === selectedModel())?.name || 'Select Model'}
                       </span>
-                      <ChevronDown class={`h-4 w-4 transition-transform ${showModelPicker() ? 'rotate-180' : ''}`} />
+                      <ChevronDown class={`h-4 w-4 transition-transform duration-200 ${showModelPicker() ? 'rotate-180' : ''}`} />
                     </button>
                     
                     <Show when={showModelPicker()}>
-                      <div class="absolute bottom-full left-0 mb-2 w-80 bg-background border rounded-lg shadow-lg z-50 p-2 max-h-96 overflow-y-auto">
-                        <div class="p-2 border-b mb-2">
+                      <div class="absolute bottom-full left-0 mb-2 w-80 bg-gradient-to-b from-background to-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl z-50 p-2 max-h-96 overflow-y-auto">
+                        <div class="p-3 border-b border-border/50 mb-2 bg-muted/30 rounded-lg">
                           <h4 class="text-sm font-semibold text-foreground">Select AI Model</h4>
                           <p class="text-xs text-muted-foreground">Choose the best model for your needs</p>
                         </div>
@@ -849,13 +912,13 @@ const Chat = () => {
                                     <div class="font-medium text-sm">{model.name}</div>
                                     <div class="text-xs text-muted-foreground mt-1">{model.description}</div>
                                     <div class="flex items-center gap-2 mt-2">
-                                      <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                      <span class="text-xs px-2 py-1 bg-gradient-to-r from-primary/10 to-primary/5 text-primary rounded-full border border-primary/20">
                                         {model.provider}
                                       </span>
-                                      <span class={`text-xs px-2 py-1 rounded-full ${
+                                      <span class={`text-xs px-2 py-1 rounded-full border ${
                                         model.category === 'available' 
-                                          ? 'bg-green-10 text-green-600' 
-                                          : 'bg-muted text-muted-foreground'
+                                          ? 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200' 
+                                          : 'bg-gradient-to-r from-muted/50 to-muted text-muted-foreground border-border/50'
                                       }`}>
                                         {model.category === 'available' ? 'Available' : 'Disabled'}
                                       </span>
@@ -863,7 +926,9 @@ const Chat = () => {
                                   </div>
                                 </div>
                                 {selectedModel() === model.id && (
-                                  <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                  <div class="ml-2">
+                                    <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                                  </div>
                                 )}
                               </div>
                             </button>
@@ -873,22 +938,33 @@ const Chat = () => {
                     </Show>
                   </div>
                   
-                  <Input
-                    value={inputMessage()}
-                    onInput={(e) => setInputMessage((e.currentTarget as HTMLInputElement).value)}
-                    placeholder="Type your message..."
-                    class="flex-1"
-                    onKeyDown={(e: KeyboardEvent) => {
-                      if (e.key === 'Enter' && !e.shiftKey && inputMessage().trim()) {
-                        handleSendMessage()
-                      }
-                    }}
-                  />
+                  <div class="relative flex-1">
+                    <div class="relative">
+                      <Input
+                        value={inputMessage()}
+                        onInput={(e) => setInputMessage((e.currentTarget as HTMLInputElement).value)}
+                        placeholder="Type your message..."
+                        class="flex-1 pr-12 rounded-xl border-border/50 bg-background/95 backdrop-blur-sm shadow-sm transition-all duration-200 focus:shadow-md focus:border-primary/50"
+                        onKeyDown={(e: KeyboardEvent) => {
+                          if (e.key === 'Enter' && !e.shiftKey && inputMessage().trim()) {
+                            handleSendMessage()
+                          }
+                        }}
+                      />
+                      <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse"></div>
+                        <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                        <div class="w-1 h-1 bg-muted-foreground/40 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                      </div>
+                    </div>
+                  </div>
                   <Button 
                     disabled={isLoading() || !inputMessage().trim()}
                     onClick={handleSendMessage}
+                    class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send class="h-4 w-4" />
+                    <span class="ml-2 text-sm font-medium">Send</span>
                   </Button>
                 </div>
               </div>

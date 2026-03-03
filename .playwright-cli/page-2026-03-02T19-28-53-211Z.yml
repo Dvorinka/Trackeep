@@ -1,0 +1,187 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e7]:
+      - link "Trackeep Logo Trackeep" [ref=e9] [cursor=pointer]:
+        - /url: /app
+        - img "Trackeep Logo" [ref=e10]
+        - generic [ref=e11]: Trackeep
+      - group [ref=e13]:
+        - button "Trackeep Workspace" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]:
+            - img [ref=e17]
+            - generic [ref=e20]: Trackeep Workspace
+          - img [ref=e22]
+      - navigation [ref=e24]:
+        - link "Home" [ref=e25] [cursor=pointer]:
+          - /url: /app
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e31]: Home
+        - link "Bookmarks" [ref=e33] [cursor=pointer]:
+          - /url: /app/bookmarks
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Bookmarks
+        - link "Tasks" [ref=e39] [cursor=pointer]:
+          - /url: /app/tasks
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e44]: Tasks
+        - link "Time Tracking" [ref=e46] [cursor=pointer]:
+          - /url: /app/time-tracking
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e51]: Time Tracking
+        - link "Calendar" [ref=e53] [cursor=pointer]:
+          - /url: /app/calendar
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e57]: Calendar
+        - link "Files" [ref=e59] [cursor=pointer]:
+          - /url: /app/files
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e63]: Files
+        - link "Notes" [ref=e65] [cursor=pointer]:
+          - /url: /app/notes
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - generic [ref=e69]: Notes
+        - link "Messages" [ref=e71] [cursor=pointer]:
+          - /url: /app/messages
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - generic [ref=e75]: Messages
+        - link "YouTube" [ref=e77] [cursor=pointer]:
+          - /url: /app/youtube
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e82]: YouTube
+        - link "Members" [ref=e84] [cursor=pointer]:
+          - /url: /app/members
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e91]: Members
+        - link "Learning" [ref=e93] [cursor=pointer]:
+          - /url: /app/learning-paths
+          - generic [ref=e94]:
+            - img [ref=e95]
+            - generic [ref=e98]: Learning
+        - link "Stats" [ref=e100] [cursor=pointer]:
+          - /url: /app/stats
+          - generic [ref=e101]:
+            - img [ref=e102]
+            - generic [ref=e104]: Stats
+        - link "GitHub" [ref=e106] [cursor=pointer]:
+          - /url: /app/github
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - generic [ref=e110]: GitHub
+        - link "AI Assistant" [ref=e112] [cursor=pointer]:
+          - /url: /app/chat
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - generic [ref=e121]: AI Assistant
+      - navigation [ref=e123]:
+        - link "Removed stuff" [ref=e124] [cursor=pointer]:
+          - /url: /app/removed-stuff
+          - generic [ref=e125]:
+            - img [ref=e126]
+            - generic [ref=e129]: Removed stuff
+        - link "Settings" [ref=e131] [cursor=pointer]:
+          - /url: /app/settings
+          - generic [ref=e132]:
+            - img [ref=e133]
+            - generic [ref=e136]: Settings
+        - button "Logout" [ref=e138] [cursor=pointer]:
+          - generic [ref=e139]:
+            - img [ref=e140]
+            - generic [ref=e144]: Logout
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - button [ref=e149] [cursor=pointer]:
+            - img [ref=e150]
+          - button "Quick search" [ref=e151] [cursor=pointer]:
+            - img [ref=e152]
+            - text: Quick search
+        - generic [ref=e155]:
+          - button "Import a document" [ref=e156] [cursor=pointer]:
+            - img [ref=e157]
+            - text: Import a document
+          - button [ref=e161] [cursor=pointer]:
+            - img [ref=e162]
+            - img [ref=e167]
+          - button "DU" [ref=e171] [cursor=pointer]:
+            - generic [ref=e172]: DU
+            - img [ref=e173]
+      - main [ref=e175]:
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - generic [ref=e179]:
+              - heading "Removed Stuff" [level=1] [ref=e180]
+              - paragraph [ref=e181]: 0 items in trash
+            - generic [ref=e182]:
+              - button "Auto-Remove" [ref=e183] [cursor=pointer]:
+                - img [ref=e184]
+                - text: Auto-Remove
+              - button "Empty Trash" [ref=e187] [cursor=pointer]:
+                - img [ref=e188]
+                - text: Empty Trash
+          - table [ref=e192]:
+            - rowgroup [ref=e193]:
+              - row "Item Type Size Removed By Removed At Actions" [ref=e194]:
+                - columnheader [ref=e195]:
+                  - checkbox [ref=e196]
+                - columnheader "Item" [ref=e197]
+                - columnheader "Type" [ref=e198]
+                - columnheader "Size" [ref=e199]
+                - columnheader "Removed By" [ref=e200]
+                - columnheader "Removed At" [ref=e201]
+                - columnheader "Actions" [ref=e202]
+            - rowgroup
+    - button "AI Assistant" [ref=e203] [cursor=pointer]:
+      - img [ref=e204]
+    - generic [ref=e211]:
+      - generic [ref=e212]:
+        - generic [ref=e213]:
+          - img [ref=e215]
+          - generic [ref=e222]:
+            - heading "AI Assistant" [level=3] [ref=e223]
+            - paragraph [ref=e224]: Always here to help
+        - button [ref=e226] [cursor=pointer]:
+          - img [ref=e227]
+      - generic [ref=e231]:
+        - img [ref=e233]
+        - generic [ref=e240]:
+          - paragraph [ref=e241]: Hello! I'm your AI assistant. How can I help you today?
+          - paragraph [ref=e243]: 08:28 PM
+      - generic [ref=e244]:
+        - generic [ref=e245]:
+          - textbox "Type your message..." [ref=e246]
+          - button [disabled]:
+            - img
+        - generic [ref=e248]:
+          - button "longcat icon LongCat" [ref=e250] [cursor=pointer]:
+            - img "longcat icon" [ref=e251]
+            - generic [ref=e252]: LongCat
+            - img [ref=e253]
+          - generic [ref=e255]:
+            - generic [ref=e256]: longcat
+            - link "AI settings" [ref=e257] [cursor=pointer]:
+              - /url: /app/settings#ai
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]

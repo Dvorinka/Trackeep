@@ -1,0 +1,687 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e7]:
+      - link "Trackeep Logo Trackeep" [ref=e9] [cursor=pointer]:
+        - /url: /app
+        - img "Trackeep Logo" [ref=e10]
+        - generic [ref=e11]: Trackeep
+      - group [ref=e13]:
+        - button "Trackeep Workspace" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]:
+            - img [ref=e17]
+            - generic [ref=e20]: Trackeep Workspace
+          - img [ref=e22]
+      - navigation [ref=e24]:
+        - link "Home" [ref=e25] [cursor=pointer]:
+          - /url: /app
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e31]: Home
+        - link "Bookmarks" [ref=e33] [cursor=pointer]:
+          - /url: /app/bookmarks
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Bookmarks
+        - link "Tasks" [ref=e39] [cursor=pointer]:
+          - /url: /app/tasks
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e44]: Tasks
+        - link "Time Tracking" [ref=e46] [cursor=pointer]:
+          - /url: /app/time-tracking
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e51]: Time Tracking
+        - link "Calendar" [ref=e53] [cursor=pointer]:
+          - /url: /app/calendar
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e57]: Calendar
+        - link "Files" [ref=e59] [cursor=pointer]:
+          - /url: /app/files
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e63]: Files
+        - link "Notes" [ref=e65] [cursor=pointer]:
+          - /url: /app/notes
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - generic [ref=e69]: Notes
+        - link "Messages" [ref=e71] [cursor=pointer]:
+          - /url: /app/messages
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - generic [ref=e75]: Messages
+        - link "YouTube" [ref=e77] [cursor=pointer]:
+          - /url: /app/youtube
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e82]: YouTube
+        - link "Members" [ref=e84] [cursor=pointer]:
+          - /url: /app/members
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e91]: Members
+        - link "Learning" [ref=e93] [cursor=pointer]:
+          - /url: /app/learning-paths
+          - generic [ref=e94]:
+            - img [ref=e95]
+            - generic [ref=e98]: Learning
+        - link "Stats" [ref=e100] [cursor=pointer]:
+          - /url: /app/stats
+          - generic [ref=e101]:
+            - img [ref=e102]
+            - generic [ref=e104]: Stats
+        - link "GitHub" [ref=e106] [cursor=pointer]:
+          - /url: /app/github
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - generic [ref=e110]: GitHub
+        - link "AI Assistant" [ref=e112] [cursor=pointer]:
+          - /url: /app/chat
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - generic [ref=e121]: AI Assistant
+      - navigation [ref=e123]:
+        - link "Removed stuff" [ref=e124] [cursor=pointer]:
+          - /url: /app/removed-stuff
+          - generic [ref=e125]:
+            - img [ref=e126]
+            - generic [ref=e129]: Removed stuff
+        - link "Settings" [ref=e131] [cursor=pointer]:
+          - /url: /app/settings
+          - generic [ref=e132]:
+            - img [ref=e133]
+            - generic [ref=e136]: Settings
+        - button "Logout" [ref=e138] [cursor=pointer]:
+          - generic [ref=e139]:
+            - img [ref=e140]
+            - generic [ref=e144]: Logout
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - button [ref=e149] [cursor=pointer]:
+            - img [ref=e150]
+          - button "Quick search" [ref=e151] [cursor=pointer]:
+            - img [ref=e152]
+            - text: Quick search
+        - generic [ref=e155]:
+          - button "Import a document" [ref=e156] [cursor=pointer]:
+            - img [ref=e157]
+            - text: Import a document
+          - button [ref=e161] [cursor=pointer]:
+            - img [ref=e162]
+            - img [ref=e167]
+          - button "DU" [ref=e171] [cursor=pointer]:
+            - generic [ref=e172]: DU
+            - img [ref=e173]
+      - main [ref=e175]:
+        - generic [ref=e177]:
+          - heading "Learning Paths" [level=1] [ref=e179]
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - img [ref=e183]
+              - textbox "Search learning paths..." [ref=e186]
+            - combobox [ref=e187]:
+              - option "All Categories" [selected]
+              - option "Web Development"
+              - option "DevOps"
+              - option "Machine Learning"
+              - option "Design"
+              - option "Mobile Development"
+              - option "Cybersecurity"
+              - option "Marketing"
+              - option "Business"
+              - option "Blockchain"
+              - option "Data Science"
+              - option "Game Development"
+              - option "Cloud Computing"
+            - combobox [ref=e188]:
+              - option "All Levels" [selected]
+              - option "Beginner"
+              - option "Intermediate"
+              - option "Advanced"
+            - button "Apply Filters" [ref=e189] [cursor=pointer]:
+              - img [ref=e190]
+              - text: Apply Filters
+          - generic [ref=e192]:
+            - generic [ref=e193] [cursor=pointer]:
+              - generic [ref=e194]:
+                - generic [ref=e195]: Featured
+                - img [ref=e198]
+                - generic [ref=e202]:
+                  - generic [ref=e203]:
+                    - img [ref=e204]
+                    - generic [ref=e208]: Web Development
+                  - heading "Full Stack Web Development" [level=3] [ref=e209]
+                  - generic [ref=e211]: intermediate
+              - generic [ref=e212]:
+                - paragraph [ref=e213]: Become a full stack developer with modern technologies like React, Node.js, and cloud deployment
+                - generic [ref=e214]:
+                  - generic [ref=e215]:
+                    - generic [ref=e216]:
+                      - img [ref=e217]
+                      - generic [ref=e222]: "1606"
+                    - generic [ref=e223]:
+                      - img [ref=e224]
+                      - generic [ref=e227]: 12 weeks
+                  - generic [ref=e228]:
+                    - img [ref=e229]
+                    - img [ref=e231]
+                    - img [ref=e233]
+                    - img [ref=e235]
+                    - img [ref=e237]
+                    - generic [ref=e239]: (67)
+                - generic [ref=e240]:
+                  - generic [ref=e241]: webdev
+                  - generic [ref=e242]: fullstack
+                - generic [ref=e243]:
+                  - button "Preview" [ref=e244]
+                  - button "Enroll Now" [ref=e245]
+            - generic [ref=e246] [cursor=pointer]:
+              - generic [ref=e247]:
+                - generic [ref=e248]: Featured
+                - img [ref=e251]
+                - generic [ref=e255]:
+                  - generic [ref=e256]:
+                    - img [ref=e257]
+                    - generic [ref=e259]: DevOps
+                  - heading "DevOps and Cloud Computing" [level=3] [ref=e260]
+                  - generic [ref=e262]: advanced
+              - generic [ref=e263]:
+                - paragraph [ref=e264]: Master deployment, scaling, and infrastructure management with Docker, Kubernetes, and cloud platforms
+                - generic [ref=e265]:
+                  - generic [ref=e266]:
+                    - generic [ref=e267]:
+                      - img [ref=e268]
+                      - generic [ref=e273]: "461"
+                    - generic [ref=e274]:
+                      - img [ref=e275]
+                      - generic [ref=e278]: 8 weeks
+                  - generic [ref=e279]:
+                    - img [ref=e280]
+                    - img [ref=e282]
+                    - img [ref=e284]
+                    - img [ref=e286]
+                    - img [ref=e288]
+                    - generic [ref=e290]: (169)
+                - generic [ref=e291]:
+                  - generic [ref=e292]: devops
+                  - generic [ref=e293]: cloud
+                - generic [ref=e294]:
+                  - button "Preview" [ref=e295]
+                  - button "Enroll Now" [ref=e296]
+            - generic [ref=e297] [cursor=pointer]:
+              - generic [ref=e298]:
+                - img [ref=e301]
+                - generic [ref=e305]:
+                  - generic [ref=e306]:
+                    - img [ref=e307]
+                    - generic [ref=e314]: Machine Learning
+                  - heading "Machine Learning Fundamentals" [level=3] [ref=e315]
+                  - generic [ref=e317]: intermediate
+              - generic [ref=e318]:
+                - paragraph [ref=e319]: Learn the basics of machine learning, neural networks, and deep learning with Python
+                - generic [ref=e320]:
+                  - generic [ref=e321]:
+                    - generic [ref=e322]:
+                      - img [ref=e323]
+                      - generic [ref=e328]: "1660"
+                    - generic [ref=e329]:
+                      - img [ref=e330]
+                      - generic [ref=e333]: 16 weeks
+                  - generic [ref=e334]:
+                    - img [ref=e335]
+                    - img [ref=e337]
+                    - img [ref=e339]
+                    - img [ref=e341]
+                    - img [ref=e343]
+                    - generic [ref=e345]: (105)
+                - generic [ref=e346]:
+                  - generic [ref=e347]: ml
+                  - generic [ref=e348]: python
+                  - generic [ref=e349]: ai
+                - generic [ref=e350]:
+                  - button "Preview" [ref=e351]
+                  - button "Enroll Now" [ref=e352]
+            - generic [ref=e353] [cursor=pointer]:
+              - generic [ref=e354]:
+                - img [ref=e357]
+                - generic [ref=e361]:
+                  - generic [ref=e362]:
+                    - img [ref=e363]
+                    - generic [ref=e368]: Design
+                  - heading "UI/UX Design Principles" [level=3] [ref=e369]
+                  - generic [ref=e371]: beginner
+              - generic [ref=e372]:
+                - paragraph [ref=e373]: Master user interface and user experience design with modern tools and methodologies
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e376]:
+                      - img [ref=e377]
+                      - generic [ref=e382]: "693"
+                    - generic [ref=e383]:
+                      - img [ref=e384]
+                      - generic [ref=e387]: 6 weeks
+                  - generic [ref=e388]:
+                    - img [ref=e389]
+                    - img [ref=e391]
+                    - img [ref=e393]
+                    - img [ref=e395]
+                    - img [ref=e397]
+                    - generic [ref=e399]: (201)
+                - generic [ref=e400]:
+                  - generic [ref=e401]: design
+                  - generic [ref=e402]: figma
+                  - generic [ref=e403]: ui
+                - generic [ref=e404]:
+                  - button "Preview" [ref=e405]
+                  - button "Enroll Now" [ref=e406]
+            - generic [ref=e407] [cursor=pointer]:
+              - generic [ref=e408]:
+                - img [ref=e411]
+                - generic [ref=e415]:
+                  - generic [ref=e416]:
+                    - img [ref=e417]
+                    - generic [ref=e419]: Mobile Development
+                  - heading "Mobile App Development" [level=3] [ref=e420]
+                  - generic [ref=e422]: intermediate
+              - generic [ref=e423]:
+                - paragraph [ref=e424]: Build native and cross-platform mobile applications for iOS and Android
+                - generic [ref=e425]:
+                  - generic [ref=e426]:
+                    - generic [ref=e427]:
+                      - img [ref=e428]
+                      - generic [ref=e433]: "1288"
+                    - generic [ref=e434]:
+                      - img [ref=e435]
+                      - generic [ref=e438]: 10 weeks
+                  - generic [ref=e439]:
+                    - img [ref=e440]
+                    - img [ref=e442]
+                    - img [ref=e444]
+                    - img [ref=e446]
+                    - img [ref=e448]
+                    - generic [ref=e450]: (118)
+                - generic [ref=e451]:
+                  - generic [ref=e452]: mobile
+                  - generic [ref=e453]: react-native
+                  - generic [ref=e454]: ios
+                - generic [ref=e455]:
+                  - button "Preview" [ref=e456]
+                  - button "Enroll Now" [ref=e457]
+            - generic [ref=e458] [cursor=pointer]:
+              - generic [ref=e459]:
+                - img [ref=e462]
+                - generic [ref=e466]:
+                  - generic [ref=e467]:
+                    - img [ref=e468]
+                    - generic [ref=e470]: Cybersecurity
+                  - heading "Cybersecurity Essentials" [level=3] [ref=e471]
+                  - generic [ref=e473]: advanced
+              - generic [ref=e474]:
+                - paragraph [ref=e475]: Learn fundamental security concepts, ethical hacking, and how to protect systems from threats
+                - generic [ref=e476]:
+                  - generic [ref=e477]:
+                    - generic [ref=e478]:
+                      - img [ref=e479]
+                      - generic [ref=e484]: "1668"
+                    - generic [ref=e485]:
+                      - img [ref=e486]
+                      - generic [ref=e489]: 14 weeks
+                  - generic [ref=e490]:
+                    - img [ref=e491]
+                    - img [ref=e493]
+                    - img [ref=e495]
+                    - img [ref=e497]
+                    - img [ref=e499]
+                    - generic [ref=e501]: (169)
+                - generic [ref=e502]:
+                  - generic [ref=e503]: security
+                  - generic [ref=e504]: hacking
+                  - generic [ref=e505]: networking
+                - generic [ref=e506]:
+                  - button "Preview" [ref=e507]
+                  - button "Enroll Now" [ref=e508]
+            - generic [ref=e509] [cursor=pointer]:
+              - generic [ref=e510]:
+                - img [ref=e513]
+                - generic [ref=e517]:
+                  - generic [ref=e518]:
+                    - img [ref=e519]
+                    - generic [ref=e523]: Marketing
+                  - heading "Digital Marketing Mastery" [level=3] [ref=e524]
+                  - generic [ref=e526]: beginner
+              - generic [ref=e527]:
+                - paragraph [ref=e528]: Learn modern digital marketing strategies including SEO, social media, and content marketing
+                - generic [ref=e529]:
+                  - generic [ref=e530]:
+                    - generic [ref=e531]:
+                      - img [ref=e532]
+                      - generic [ref=e537]: "249"
+                    - generic [ref=e538]:
+                      - img [ref=e539]
+                      - generic [ref=e542]: 8 weeks
+                  - generic [ref=e543]:
+                    - img [ref=e544]
+                    - img [ref=e546]
+                    - img [ref=e548]
+                    - img [ref=e550]
+                    - img [ref=e552]
+                    - generic [ref=e554]: (215)
+                - generic [ref=e555]:
+                  - generic [ref=e556]: marketing
+                  - generic [ref=e557]: seo
+                  - generic [ref=e558]: social-media
+                - generic [ref=e559]:
+                  - button "Preview" [ref=e560]
+                  - button "Enroll Now" [ref=e561]
+            - generic [ref=e562] [cursor=pointer]:
+              - generic [ref=e563]:
+                - img [ref=e566]
+                - generic [ref=e570]:
+                  - generic [ref=e571]:
+                    - img [ref=e572]
+                    - generic [ref=e576]: Business
+                  - heading "Business Strategy and Leadership" [level=3] [ref=e577]
+                  - generic [ref=e579]: intermediate
+              - generic [ref=e580]:
+                - paragraph [ref=e581]: Develop essential business skills, leadership qualities, and strategic thinking
+                - generic [ref=e582]:
+                  - generic [ref=e583]:
+                    - generic [ref=e584]:
+                      - img [ref=e585]
+                      - generic [ref=e590]: "1125"
+                    - generic [ref=e591]:
+                      - img [ref=e592]
+                      - generic [ref=e595]: 12 weeks
+                  - generic [ref=e596]:
+                    - img [ref=e597]
+                    - img [ref=e599]
+                    - img [ref=e601]
+                    - img [ref=e603]
+                    - img [ref=e605]
+                    - generic [ref=e607]: (48)
+                - generic [ref=e608]:
+                  - generic [ref=e609]: business
+                  - generic [ref=e610]: leadership
+                  - generic [ref=e611]: strategy
+                - generic [ref=e612]:
+                  - button "Preview" [ref=e613]
+                  - button "Enroll Now" [ref=e614]
+            - generic [ref=e615] [cursor=pointer]:
+              - generic [ref=e616]:
+                - img [ref=e619]
+                - generic [ref=e623]:
+                  - generic [ref=e624]:
+                    - img [ref=e625]
+                    - generic [ref=e628]: Blockchain
+                  - heading "Blockchain Development" [level=3] [ref=e629]
+                  - generic [ref=e631]: advanced
+              - generic [ref=e632]:
+                - paragraph [ref=e633]: Learn blockchain fundamentals, smart contracts, and decentralized application development
+                - generic [ref=e634]:
+                  - generic [ref=e635]:
+                    - generic [ref=e636]:
+                      - img [ref=e637]
+                      - generic [ref=e642]: "307"
+                    - generic [ref=e643]:
+                      - img [ref=e644]
+                      - generic [ref=e647]: 14 weeks
+                  - generic [ref=e648]:
+                    - img [ref=e649]
+                    - img [ref=e651]
+                    - img [ref=e653]
+                    - img [ref=e655]
+                    - img [ref=e657]
+                    - generic [ref=e659]: (92)
+                - generic [ref=e660]:
+                  - generic [ref=e661]: blockchain
+                  - generic [ref=e662]: solidity
+                  - generic [ref=e663]: web3
+                - generic [ref=e664]:
+                  - button "Preview" [ref=e665]
+                  - button "Enroll Now" [ref=e666]
+            - generic [ref=e667] [cursor=pointer]:
+              - generic [ref=e668]:
+                - img [ref=e671]
+                - generic [ref=e675]:
+                  - generic [ref=e676]:
+                    - img [ref=e677]
+                    - generic [ref=e684]: Data Science
+                  - heading "Data Science with Python" [level=3] [ref=e685]
+                  - generic [ref=e687]: intermediate
+              - generic [ref=e688]:
+                - paragraph [ref=e689]: Master data analysis, visualization, and machine learning with Python
+                - generic [ref=e690]:
+                  - generic [ref=e691]:
+                    - generic [ref=e692]:
+                      - img [ref=e693]
+                      - generic [ref=e698]: "314"
+                    - generic [ref=e699]:
+                      - img [ref=e700]
+                      - generic [ref=e703]: 12 weeks
+                  - generic [ref=e704]:
+                    - img [ref=e705]
+                    - img [ref=e707]
+                    - img [ref=e709]
+                    - img [ref=e711]
+                    - img [ref=e713]
+                    - generic [ref=e715]: (114)
+                - generic [ref=e716]:
+                  - generic [ref=e717]: python
+                  - generic [ref=e718]: data-science
+                  - generic [ref=e719]: pandas
+                - generic [ref=e720]:
+                  - button "Preview" [ref=e721]
+                  - button "Enroll Now" [ref=e722]
+            - generic [ref=e723] [cursor=pointer]:
+              - generic [ref=e724]:
+                - img [ref=e727]
+                - generic [ref=e731]:
+                  - generic [ref=e732]:
+                    - img [ref=e733]
+                    - generic [ref=e736]: Game Development
+                  - heading "Game Development with Unity" [level=3] [ref=e737]
+                  - generic [ref=e739]: intermediate
+              - generic [ref=e740]:
+                - paragraph [ref=e741]: Create immersive games using Unity engine and C# programming
+                - generic [ref=e742]:
+                  - generic [ref=e743]:
+                    - generic [ref=e744]:
+                      - img [ref=e745]
+                      - generic [ref=e750]: "1839"
+                    - generic [ref=e751]:
+                      - img [ref=e752]
+                      - generic [ref=e755]: 16 weeks
+                  - generic [ref=e756]:
+                    - img [ref=e757]
+                    - img [ref=e759]
+                    - img [ref=e761]
+                    - img [ref=e763]
+                    - img [ref=e765]
+                    - generic [ref=e767]: (117)
+                - generic [ref=e768]:
+                  - generic [ref=e769]: gamedev
+                  - generic [ref=e770]: unity
+                  - generic [ref=e771]: csharp
+                - generic [ref=e772]:
+                  - button "Preview" [ref=e773]
+                  - button "Enroll Now" [ref=e774]
+            - generic [ref=e775] [cursor=pointer]:
+              - generic [ref=e776]:
+                - img [ref=e779]
+                - generic [ref=e783]:
+                  - generic [ref=e784]:
+                    - img [ref=e785]
+                    - generic [ref=e788]: Cloud Computing
+                  - heading "Cloud Architecture with AWS" [level=3] [ref=e789]
+                  - generic [ref=e791]: advanced
+              - generic [ref=e792]:
+                - paragraph [ref=e793]: Design and deploy scalable cloud solutions using Amazon Web Services
+                - generic [ref=e794]:
+                  - generic [ref=e795]:
+                    - generic [ref=e796]:
+                      - img [ref=e797]
+                      - generic [ref=e802]: "1138"
+                    - generic [ref=e803]:
+                      - img [ref=e804]
+                      - generic [ref=e807]: 10 weeks
+                  - generic [ref=e808]:
+                    - img [ref=e809]
+                    - img [ref=e811]
+                    - img [ref=e813]
+                    - img [ref=e815]
+                    - img [ref=e817]
+                    - generic [ref=e819]: (113)
+                - generic [ref=e820]:
+                  - generic [ref=e821]: aws
+                  - generic [ref=e822]: cloud
+                  - generic [ref=e823]: architecture
+                - generic [ref=e824]:
+                  - button "Preview" [ref=e825]
+                  - button "Enroll Now" [ref=e826]
+            - generic [ref=e827] [cursor=pointer]:
+              - generic [ref=e828]:
+                - img [ref=e831]
+                - generic [ref=e835]:
+                  - generic [ref=e836]:
+                    - img [ref=e837]
+                    - generic [ref=e839]: Mobile Development
+                  - heading "React Native Advanced" [level=3] [ref=e840]
+                  - generic [ref=e842]: advanced
+              - generic [ref=e843]:
+                - paragraph [ref=e844]: Master advanced React Native concepts for professional mobile app development
+                - generic [ref=e845]:
+                  - generic [ref=e846]:
+                    - generic [ref=e847]:
+                      - img [ref=e848]
+                      - generic [ref=e853]: "301"
+                    - generic [ref=e854]:
+                      - img [ref=e855]
+                      - generic [ref=e858]: 8 weeks
+                  - generic [ref=e859]:
+                    - img [ref=e860]
+                    - img [ref=e862]
+                    - img [ref=e864]
+                    - img [ref=e866]
+                    - img [ref=e868]
+                    - generic [ref=e870]: (115)
+                - generic [ref=e871]:
+                  - generic [ref=e872]: react-native
+                  - generic [ref=e873]: mobile
+                  - generic [ref=e874]: performance
+                - generic [ref=e875]:
+                  - button "Preview" [ref=e876]
+                  - button "Enroll Now" [ref=e877]
+            - generic [ref=e878] [cursor=pointer]:
+              - generic [ref=e879]:
+                - img [ref=e882]
+                - generic [ref=e886]:
+                  - generic [ref=e887]:
+                    - img [ref=e888]
+                    - generic [ref=e892]: Web Development
+                  - heading "Vue.js 3 Complete Guide" [level=3] [ref=e893]
+                  - generic [ref=e895]: beginner
+              - generic [ref=e896]:
+                - paragraph [ref=e897]: Learn Vue.js 3 from basics to advanced concepts including Composition API
+                - generic [ref=e898]:
+                  - generic [ref=e899]:
+                    - generic [ref=e900]:
+                      - img [ref=e901]
+                      - generic [ref=e906]: "1773"
+                    - generic [ref=e907]:
+                      - img [ref=e908]
+                      - generic [ref=e911]: 6 weeks
+                  - generic [ref=e912]:
+                    - img [ref=e913]
+                    - img [ref=e915]
+                    - img [ref=e917]
+                    - img [ref=e919]
+                    - img [ref=e921]
+                    - generic [ref=e923]: (49)
+                - generic [ref=e924]:
+                  - generic [ref=e925]: vue
+                  - generic [ref=e926]: javascript
+                  - generic [ref=e927]: frontend
+                - generic [ref=e928]:
+                  - button "Preview" [ref=e929]
+                  - button "Enroll Now" [ref=e930]
+            - generic [ref=e931] [cursor=pointer]:
+              - generic [ref=e932]:
+                - img [ref=e935]
+                - generic [ref=e939]:
+                  - generic [ref=e940]:
+                    - img [ref=e941]
+                    - generic [ref=e943]: DevOps
+                  - heading "Kubernetes and Microservices" [level=3] [ref=e944]
+                  - generic [ref=e946]: advanced
+              - generic [ref=e947]:
+                - paragraph [ref=e948]: Build and deploy microservices architecture with Kubernetes orchestration
+                - generic [ref=e949]:
+                  - generic [ref=e950]:
+                    - generic [ref=e951]:
+                      - img [ref=e952]
+                      - generic [ref=e957]: "1080"
+                    - generic [ref=e958]:
+                      - img [ref=e959]
+                      - generic [ref=e962]: 12 weeks
+                  - generic [ref=e963]:
+                    - img [ref=e964]
+                    - img [ref=e966]
+                    - img [ref=e968]
+                    - img [ref=e970]
+                    - img [ref=e972]
+                    - generic [ref=e974]: (177)
+                - generic [ref=e975]:
+                  - generic [ref=e976]: kubernetes
+                  - generic [ref=e977]: microservices
+                  - generic [ref=e978]: devops
+                - generic [ref=e979]:
+                  - button "Preview" [ref=e980]
+                  - button "Enroll Now" [ref=e981]
+    - button "AI Assistant" [ref=e982] [cursor=pointer]:
+      - img [ref=e983]
+    - generic [ref=e990]:
+      - generic [ref=e991]:
+        - generic [ref=e992]:
+          - img [ref=e994]
+          - generic [ref=e1001]:
+            - heading "AI Assistant" [level=3] [ref=e1002]
+            - paragraph [ref=e1003]: Always here to help
+        - button [ref=e1005] [cursor=pointer]:
+          - img [ref=e1006]
+      - generic [ref=e1010]:
+        - img [ref=e1012]
+        - generic [ref=e1019]:
+          - paragraph [ref=e1020]: Hello! I'm your AI assistant. How can I help you today?
+          - paragraph [ref=e1022]: 08:26 PM
+      - generic [ref=e1023]:
+        - generic [ref=e1024]:
+          - textbox "Type your message..." [ref=e1025]
+          - button [disabled]:
+            - img
+        - generic [ref=e1027]:
+          - button "longcat icon LongCat" [ref=e1029] [cursor=pointer]:
+            - img "longcat icon" [ref=e1030]
+            - generic [ref=e1031]: LongCat
+            - img [ref=e1032]
+          - generic [ref=e1034]:
+            - generic [ref=e1035]: longcat
+            - link "AI settings" [ref=e1036] [cursor=pointer]:
+              - /url: /app/settings#ai
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]

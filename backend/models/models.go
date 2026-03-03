@@ -49,6 +49,8 @@ func AutoMigrate() {
 		&AISummary{},
 		&AITaskSuggestion{},
 		&UserAISettings{},
+		&UserSearchSettings{},
+		&UserUpdateSettings{},
 		&AITagSuggestion{},
 		&AIContentGeneration{},
 		&AICodeReview{},

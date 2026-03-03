@@ -12,6 +12,8 @@
 <p align="center">
   <a href="#quick-start">Quick Start</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="#screenshots">Screenshots</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="#features">Features</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="#releases">Releases</a>
@@ -25,6 +27,211 @@
 
 <p align="center">
   <img src="./scorecard.png" alt="Code Quality Score" width="100%">
+</p>
+
+## 🚀 Quick Start
+
+### Production Deployment with Docker Compose
+
+```bash
+git clone https://github.com/dvorinka/trackeep.git
+cd trackeep
+cp .env.example .env
+# Edit .env file with your configuration
+docker-compose up -d
+```
+
+The `docker-compose.prod.yml` file uses environment variables with sensible defaults:
+
+```yaml
+version: '3.8'
+services:
+  trackeep-frontend:
+    image: 'ghcr.io/dvorinka/trackeep/frontend:latest'
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      - NODE_ENV=production
+      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
+    depends_on:
+      - trackeep-backend
+    restart: unless-stopped
+    networks:
+      - trackeep-network
+  trackeep-backend:
+    image: 'ghcr.io/dvorinka/trackeep/backend:latest'
+    ports:
+      - '8080:8080'
+    environment:
+      - PORT=${PORT:-8080}
+      - GIN_MODE=${GIN_MODE:-release}
+      - READ_TIMEOUT=${READ_TIMEOUT:-15s}
+      - WRITE_TIMEOUT=${WRITE_TIMEOUT:-15s}
+      - IDLE_TIMEOUT=${IDLE_TIMEOUT:-60s}
+      - SHUTDOWN_TIMEOUT=${SHUTDOWN_TIMEOUT:-30s}
+      - DB_TYPE=${DB_TYPE:-postgres}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-trackeep}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-trackeep}
+      - DB_SSL_MODE=${DB_SSL_MODE:-disable}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - 'CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}'
+      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
+      - SEARCH_API_PROVIDER=${SEARCH_API_PROVIDER:-demo}
+      - SEARCH_RESULTS_LIMIT=${SEARCH_RESULTS_LIMIT:-10}
+      - SEARCH_CACHE_TTL=${SEARCH_CACHE_TTL:-300}
+      - SEARCH_RATE_LIMIT=${SEARCH_RATE_LIMIT:-100}
+      - 'OAUTH_SERVICE_URL=${OAUTH_SERVICE_URL:-http://localhost:9090}'
+      - AUTO_UPDATE_CHECK=${AUTO_UPDATE_CHECK:-false}
+      - UPDATE_CHECK_INTERVAL=${UPDATE_CHECK_INTERVAL:-24h}
+      - PRERELEASE_UPDATES=${PRERELEASE_UPDATES:-false}
+    volumes:
+      - './data:/data'
+      - './uploads:/app/uploads'
+      - './logs:/app/logs'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: unless-stopped
+    networks:
+      - trackeep-network
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '--no-verbose'
+        - '--tries=1'
+        - '--spider'
+        - 'http://localhost:8080/health'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  postgres:
+    image: 'postgres:15-alpine'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trackeep}
+      POSTGRES_USER: ${POSTGRES_USER:-trackeep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - 'postgres_data:/var/lib/postgresql/data'
+    restart: unless-stopped
+    networks:
+      - trackeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trackeep} -d ${POSTGRES_DB:-trackeep}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data: null
+
+networks:
+  trackeep-network:
+    driver: bridge
+```
+
+### Service Architecture
+
+Trackeep production deployment consists of **3 essential services**:
+
+#### **🎯 Frontend Service**
+- **Image**: `ghcr.io/dvorinka/trackeep/frontend:latest`
+- **Ports**: `80:80`, `443:443`
+- **Purpose**: Web interface and user experience
+- **Health**: Depends on backend service
+
+#### **🔧 Backend Service**
+- **Image**: `ghcr.io/dvorinka/trackeep/backend:latest`
+- **Ports**: `8080:8080`
+- **Purpose**: API server and business logic
+- **Health**: Built-in health check endpoint
+
+#### **🗄️ Database Service**
+- **Image**: `postgres:15-alpine`
+- **Purpose**: Data persistence and storage
+- **Health**: PostgreSQL readiness check
+- **Storage**: Persistent volume for data
+
+### Required Environment Variables
+
+Create a `.env` file from the provided `.env.example` and configure these required variables:
+
+```env
+# Database Configuration
+DB_PASSWORD=your_secure_password
+POSTGRES_PASSWORD=your_secure_password
+
+# Security Configuration
+JWT_SECRET=your_jwt_secret_key
+ENCRYPTION_KEY=your_32_character_encryption_key
+```
+
+### AI Services Configuration
+
+AI services are now configured **only within the Trackeep application**. No environment variables are needed for AI configuration. Simply:
+
+1. Start Trackeep with the basic configuration above
+2. Navigate to Settings → AI Services in the application
+3. Add your API tokens and configure AI providers in the app interface
+4. Enable/disable AI services as needed through the app settings
+
+### Version Management
+
+Trackeep uses GitHub Docker images with the `:latest` tag. The application version is automatically managed through the Docker image tags and update checking is handled through the OAuth service. No manual version configuration is needed in the environment variables.
+
+### Version Detection
+
+The system automatically detects the running version through multiple methods:
+
+- **Docker Detection**: Identifies container image tags
+- **Environment Variables**: Uses `TRACKEEP_VERSION` if set
+- **Version Files**: Reads from `/app/VERSION` or similar
+- **Git Tags**: Detects version when running from source
+
+Access version information via the API:
+```bash
+curl http://localhost:8080/api/version
+```
+
+All other variables have sensible defaults and can be configured as needed.
+
+## Screenshots
+
+### Dashboard
+<!-- TODO: Add dashboard screenshot -->
+<p align="center">
+  <img src="./screenshots/dashboard.png" alt="Dashboard Screenshot" width="800">
+</p>
+
+### Bookmarks & Links
+<!-- TODO: Add bookmarks screenshot -->
+<p align="center">
+  <img src="./screenshots/bookmarks.png" alt="Bookmarks Screenshot" width="800">
+</p>
+
+### Task Management
+<!-- TODO: Add tasks screenshot -->
+<p align="center">
+  <img src="./screenshots/tasks.png" alt="Tasks Screenshot" width="800">
+</p>
+
+### File Storage & Media
+<!-- TODO: Add file storage screenshot -->
+<p align="center">
+  <img src="./screenshots/files.png" alt="Files Screenshot" width="800">
+</p>
+
+### Mobile App
+<!-- TODO: Add mobile screenshot -->
+<p align="center">
+  <img src="./screenshots/mobile.png" alt="Mobile App Screenshot" width="400">
 </p>
 
 
@@ -189,6 +396,7 @@ DISABLE_CHINESE_AI=true
 ### Prerequisites
 - Docker and Docker Compose
 - Git
+- GitHub CLI (optional, for creating releases): `sudo apt install gh` or `sudo snap install gh`
 
 ### Installation with Docker (Recommended)
 
@@ -217,40 +425,6 @@ DISABLE_CHINESE_AI=true
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:8080
    - Health Check: http://localhost:8080/health
-
-### Docker Updates (Easy Way)
-
-Trackeep now supports automatic Docker updates! Instead of rebuilding from source, you can pull pre-built images:
-
-#### **Method 1: Quick Update Script**
-```bash
-./update.sh
-```
-
-#### **Method 2: Using Published Images**
-```bash
-docker compose -f docker-compose.published.yml pull
-docker compose -f docker-compose.published.yml up -d
-```
-
-#### **Method 3: Manual Pull**
-```bash
-docker pull ghcr.io/Dvorinka/trackeep/backend:latest
-docker pull ghcr.io/Dvorinka/trackeep/frontend:latest
-docker compose up -d
-```
-
-### Available Docker Images
-
-Pre-built images are automatically published to GitHub Container Registry:
-- `ghcr.io/Dvorinka/trackeep/backend:latest`
-- `ghcr.io/Dvorinka/trackeep/frontend:latest`
-
-**Benefits:**
-- 🚀 **Faster updates** - No need to build from source
-- 🔄 **Automatic builds** - Images published on every push to main
-- 📦 **Version control** - Images tagged with commit SHAs and branches
-- 🛡️ **Stable releases** - Tested images ready for production
 
 ### Demo Login
 - Email: `demo@trackeep.com`
@@ -306,6 +480,7 @@ Comprehensive documentation is available in the `/docs` directory:
 - **[User Guide](./docs/USER_GUIDE.md)** – Complete user documentation
 - **[API Documentation](./docs/API.md)** – REST API reference
 - **[AI Assistant Features](./docs/AI_ASSISTANT.md)** – AI-powered features guide
+- **[Release Guide](./docs/RELEASE_GUIDE.md)** – Creating releases and version management
 
 Additional documentation files:
 - **[Development Guide](./docs/DEVELOPMENT.md)** – Development setup and guidelines
@@ -395,14 +570,6 @@ GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 ```
 
-**AI Configuration Notes:**
-- All AI services are optional – Trackeep works perfectly without any AI
-- Mix and match services based on your budget and privacy preferences
-- Chinese AI services (DeepSeek, LongCat) offer great pricing but consider your privacy needs
-- European option (Mistral) for GDPR-compliant AI processing
-- Local AI (Ollama) for complete offline privacy
-- Custom endpoints supported for maximum flexibility
-
 ## Contributing
 
 Building Trackeep as a solo developer has been an incredible journey, but it's always better when we build together! Whether you're fixing a typo, adding a feature, or just sharing ideas – your contribution matters.
@@ -453,106 +620,17 @@ This project is built with amazing open-source technologies:
 - **Frontend**: SolidJS, UnoCSS, Kobalte, TanStack Query
 - **Backend**: Go, Gin, GORM, PostgreSQL
 - **Mobile**: React Native, React Navigation
-- **DevOps**: Docker, GitHub Actions
+- **DevOps**: Docker
 
+### Creating Releases
 
-## 🚀 Releases & Updates
+For detailed release creation instructions, see **[Release Guide](./docs/RELEASE_GUIDE.md)**.
 
-Trackeep uses automated semantic versioning and Docker-based updates. No manual setup required!
-
-### 📋 How Updates Work
-
-Users get updates automatically through the built-in update system:
-- ✅ **Auto-checks** every 24 hours for new versions
-- ✅ **UI notifications** appear in left navigation when updates available  
-- ✅ **One-click install** pulls latest Docker images and restarts services
-- ✅ **Zero setup** - just run `docker compose up` and it works
-
-### 🏷️ Version Management
-
-Versions are managed automatically through semantic versioning (MAJOR.MINOR.PATCH):
-
-- **Frontend**: Version from `frontend/package.json`
-- **Backend**: Version from `backend/go.mod`
-- **Detection**: Automatic from source code (no env vars needed)
-
-### 🚀 Creating Releases
-
-#### Method 1: Automated (Recommended)
-
-For new features or bug fixes:
-
-```bash
-# 1. Commit your changes
-git commit -m "feat: add new amazing feature"
-
-# 2. Create version tag and push (triggers automated release)
-git tag v1.2.7
-git push origin main v1.2.7
-```
-
-**What happens automatically:**
-1. GitHub Actions detects the version tag
-2. Updates all version files (`package.json`, `go.mod`, docker-compose files)
-3. Builds Docker images with proper semantic tags
-4. Pushes to GitHub Container Registry (`latest` + versioned tags)
-5. Creates GitHub release with changelog
-6. Updates `latest` tags to point to new version
-
-#### Method 2: Manual
-
-For precise control:
-
-```bash
-# Use version update script
-./scripts/update-version.sh 1.2.7
-
-# Commit and push
-git add . && git commit -m "chore: bump version to 1.2.7"
-git push origin main
-```
-
-### 🐳 Docker Images
-
-Images are automatically built and pushed to GitHub Container Registry:
-
-- **Registry**: `ghcr.io/dvorinka/trackeep`
-- **Latest tags**: `backend:latest`, `frontend:latest` (for updates)
-- **Versioned tags**: `backend:1.2.6`, `frontend:1.2.6` (for rollback)
-- **Automatic builds**: Triggered by Git tags
-
-### 📖 Semantic Versioning
-
-Follow industry standard (MAJOR.MINOR.PATCH):
-
-```
-1.2.6 → 1.3.0  (MINOR: new features)
-1.2.6 → 1.2.7  (PATCH: bug fixes)  
-1.2.6 → 2.0.0  (MAJOR: breaking changes)
-```
-
-### 🔧 Development Setup
-
-```bash
-# Clone and run
-git clone https://github.com/Dvorinka/Trackeep.git
-cd Trackeep
-
-# Start with automatic updates
-docker compose up
-
-# System automatically:
-# - Detects version from source code
-# - Checks for updates every 24h
-# - Shows update notifications in UI
-# - Installs updates with one click
-```
-
-### 📚 Documentation
-
-- **Version workflow**: See [docs/SIMPLIFIED_VERSION_SYSTEM.md](docs/SIMPLIFIED_VERSION_SYSTEM.md)
-- **API documentation**: See [docs/API.md](docs/API.md)
-- **Update system**: See [docs/AUTO_UPDATE_GUIDE.md](docs/AUTO_UPDATE_GUIDE.md)
+The guide covers:
+- GitHub CLI workflow (recommended)
+- Manual release scripts
+- Semantic versioning
+- Release notes templates
 
 ## A Personal Note
 

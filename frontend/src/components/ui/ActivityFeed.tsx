@@ -12,6 +12,8 @@ import {
   IconExternalLink
 } from '@tabler/icons-solidjs';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { isDemoMode } from '@/lib/demo-mode';
+import { getMockActivities } from '@/lib/mockData';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -78,6 +80,42 @@ export const ActivityFeed = (props: ActivityFeedProps) => {
       setLoading(true);
 
       const combinedActivities: ActivityItem[] = [];
+
+      // Use demo data if in demo mode
+      if (isDemoMode()) {
+        const mockActivities = getMockActivities();
+        
+        mockActivities.forEach((activity, index) => {
+          combinedActivities.push({
+            id: String(activity.id ?? `activity-${index}`),
+            type: normalizeActivityType(activity.type || ''),
+            title: activity.title || 'Activity',
+            description: activity.action || 'trackeep',
+            timestamp: activity.timestamp || new Date().toISOString(),
+            displayTimestamp: activity.timestamp || '',
+            source: 'trackeep',
+          });
+        });
+
+        // Sort by timestamp (most recent first)
+        combinedActivities.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+
+        // Apply filter
+        const filteredActivities = filter() === 'all' 
+          ? combinedActivities 
+          : combinedActivities.filter(a => a.source === filter());
+
+        // Apply limit
+        const limitedActivities = props.limit 
+          ? filteredActivities.slice(0, props.limit)
+          : filteredActivities;
+
+        setActivities(limitedActivities);
+        setLoading(false);
+        return;
+      }
 
       const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {

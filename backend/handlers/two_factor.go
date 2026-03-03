@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"image/png"
@@ -60,9 +61,13 @@ type TOTPLoginRequest struct {
 
 // encrypt encrypts text using AES-GCM
 func encrypt(plaintext string) (string, error) {
-	key := []byte(os.Getenv("ENCRYPTION_KEY"))
+	keyHex := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	key, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode JWT secret for encryption: %v", err)
+	}
 	if len(key) != 32 {
-		return "", fmt.Errorf("encryption key must be 32 bytes")
+		return "", fmt.Errorf("JWT secret must be 32 bytes when decoded, got %d", len(key))
 	}
 
 	block, err := aes.NewCipher(key)
@@ -86,9 +91,13 @@ func encrypt(plaintext string) (string, error) {
 
 // decrypt decrypts text using AES-GCM
 func decrypt(ciphertext string) (string, error) {
-	key := []byte(os.Getenv("ENCRYPTION_KEY"))
+	keyHex := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	key, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode JWT secret for encryption: %v", err)
+	}
 	if len(key) != 32 {
-		return "", fmt.Errorf("encryption key must be 32 bytes")
+		return "", fmt.Errorf("JWT secret must be 32 bytes when decoded, got %d", len(key))
 	}
 
 	block, err := aes.NewCipher(key)

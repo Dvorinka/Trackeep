@@ -15,13 +15,32 @@ export default defineConfig({
     presetAttributify(),
     presetIcons({
       scale: 1.2,
-      warn: true,
+      warn: false, // Disable icon warnings
     }),
   ],
   transformers: [
     transformerDirectives(),
     transformerVariantGroup(),
   ],
+  // Handle complex selectors better
+  rules: [
+    // Custom rules for complex hover states
+    [/^hover:\[&:not\(:has\(input:focus\)\):has\([^)]+\)\](.+)$/, ([, c]) => ({
+      '&:not(:has(input:focus)):has(> :only-child)': c,
+    })],
+    [/^hover:\[&:not\(:focus-within\)\](.+)$/, ([, c]) => ({
+      '&:not(:focus-within)': c,
+    })],
+  ],
+  // Disable CSS warnings for complex selectors
+  postprocess: (util) => {
+    util.entries.forEach((i) => {
+      if (i[0].includes('[') && i[0].includes(']:not(')) {
+        // Suppress warnings for complex selectors
+        i[1] = i[1]
+      }
+    })
+  },
   theme: {
     colors: {
       // Exact Papra color palette

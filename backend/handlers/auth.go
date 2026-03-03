@@ -2,10 +2,15 @@ package handlers
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/smtp"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -770,4 +775,244 @@ func formatTimeAgo(t time.Time) string {
 	} else {
 		return t.Format("Jan 2, 2006")
 	}
+}
+
+// GitHubRelease represents a GitHub release
+type GitHubRelease struct {
+	TagName     string `json:"tag_name"`
+	Name        string `json:"name"`
+	Draft       bool   `json:"draft"`
+	Prerelease  bool   `json:"prerelease"`
+	PublishedAt string `json:"published_at"`
+	Body        string `json:"body"`
+}
+
+// GetLatestVersion fetches the latest version from GitHub releases
+func GetLatestVersion() (string, error) {
+	// GitHub API endpoint for releases
+	url := "https://api.github.com/repos/dvorinka/trackeep/releases"
+
+	// Create HTTP request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "Trackeep-Backend")
+
+	// Make request
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch releases: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Parse JSON
+	var releases []GitHubRelease
+	if err := json.Unmarshal(body, &releases); err != nil {
+		return "", fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	// Find latest non-draft release
+	for _, release := range releases {
+		if !release.Draft && !release.Prerelease {
+			return release.TagName, nil
+		}
+	}
+
+	// If no stable release found, return the latest release (including prerelease)
+	if len(releases) > 0 {
+		return releases[0].TagName, nil
+	}
+
+	return "", errors.New("no releases found")
+}
+
+// GetCurrentVersion detects the current running version
+func GetCurrentVersion() (string, error) {
+	// Method 1: Check if running in Docker and get image info
+	if isRunningInDocker() {
+		if version, err := getDockerImageVersion(); err == nil && version != "" {
+			return version, nil
+		}
+	}
+
+	// Method 2: Check for version file or environment variable
+	if version := os.Getenv("TRACKEEP_VERSION"); version != "" {
+		return version, nil
+	}
+
+	// Method 3: Try to read from version file
+	if version, err := readVersionFile(); err == nil && version != "" {
+		return version, nil
+	}
+
+	// Method 4: Check git tag if running from source
+	if version, err := getGitVersion(); err == nil && version != "" {
+		return version, nil
+	}
+
+	// Fallback: Return build time or unknown
+	if buildTime := os.Getenv("BUILD_TIME"); buildTime != "" {
+		return fmt.Sprintf("build-%s", buildTime), nil
+	}
+
+	return "unknown", nil
+}
+
+// isRunningInDocker checks if the application is running in a Docker container
+func isRunningInDocker() bool {
+	// Check for .dockerenv file
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	// Check for Docker in cgroup
+	data, err := os.ReadFile("/proc/1/cgroup")
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(data), "docker")
+}
+
+// getDockerImageVersion gets the Docker image tag
+func getDockerImageVersion() (string, error) {
+	// Try to get container ID from cgroup
+	containerID, err := getContainerID()
+	if err != nil {
+		return "", err
+	}
+
+	// Try to inspect the container to get image info
+	cmd := exec.Command("docker", "inspect", "--format='{{.Config.Image}}'", containerID)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	imageName := strings.TrimSpace(string(output))
+	if strings.Contains(imageName, ":") {
+		parts := strings.Split(imageName, ":")
+		if len(parts) > 1 {
+			tag := parts[len(parts)-1]
+			// Remove quotes if present
+			tag = strings.Trim(tag, "'")
+			return tag, nil
+		}
+	}
+
+	return "latest", nil
+}
+
+// getContainerID attempts to get the current container ID
+func getContainerID() (string, error) {
+	// Method 1: Read from /proc/self/cgroup
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "docker") {
+			parts := strings.Split(line, "/")
+			if len(parts) > 0 {
+				containerID := parts[len(parts)-1]
+				// Remove any non-hex characters
+				containerID = strings.Trim(containerID, " \t\r\n")
+				if len(containerID) >= 12 {
+					return containerID[:12], nil
+				}
+			}
+		}
+	}
+
+	// Method 2: Try to get from hostname
+	hostname, err := os.Hostname()
+	if err == nil && len(hostname) >= 12 {
+		return hostname[:12], nil
+	}
+
+	return "", errors.New("could not determine container ID")
+}
+
+// readVersionFile tries to read version from a file
+func readVersionFile() (string, error) {
+	// Try multiple possible version file locations
+	versionFiles := []string{
+		"/app/VERSION",
+		"/app/version.txt",
+		"./VERSION",
+		"./version.txt",
+	}
+
+	for _, file := range versionFiles {
+		if data, err := os.ReadFile(file); err == nil {
+			return strings.TrimSpace(string(data)), nil
+		}
+	}
+
+	return "", errors.New("no version file found")
+}
+
+// getGitVersion gets version from git tag
+func getGitVersion() (string, error) {
+	if runtime.GOOS == "windows" {
+		return "", errors.New("git version detection not supported on Windows")
+	}
+
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	version := strings.TrimSpace(string(output))
+	return strings.TrimPrefix(version, "v"), nil
+}
+
+// GetVersionHandler returns the current and latest version
+func GetVersionHandler(c *gin.Context) {
+	latestVersion, err := GetLatestVersion()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch latest version",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Get current running version
+	currentVersion, err := GetCurrentVersion()
+	if err != nil {
+		currentVersion = "unknown"
+	}
+
+	// Clean the version tag (remove 'v' prefix if present)
+	cleanLatestVersion := strings.TrimPrefix(latestVersion, "v")
+
+	response := gin.H{
+		"current_version":   currentVersion,
+		"latest_version":    cleanLatestVersion,
+		"latest_tag":        latestVersion, // Keep the original tag for reference
+		"is_latest":         currentVersion == cleanLatestVersion || currentVersion == "latest",
+		"update_available":  currentVersion != cleanLatestVersion && currentVersion != "latest",
+		"running_in_docker": isRunningInDocker(),
+	}
+
+	c.JSON(http.StatusOK, response)
 }

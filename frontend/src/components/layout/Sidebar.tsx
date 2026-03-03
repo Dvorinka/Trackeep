@@ -23,7 +23,6 @@ import {
   IconBuilding,
   IconPlus
 } from '@tabler/icons-solidjs'
-import { UpdateChecker } from '../ui/UpdateChecker'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Switch } from '../ui/Switch'
@@ -446,11 +445,6 @@ export function Sidebar(props: SidebarProps) {
 
           {/* Bottom Navigation */}
           <div class="flex-1"></div>
-          
-          {/* Update Checker */}
-          <div class="px-4 mb-2">
-            <UpdateChecker />
-          </div>
           
           <nav class="flex flex-col gap-0.5 px-4">
             <A

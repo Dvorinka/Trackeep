@@ -122,9 +122,64 @@ export const Analytics = () => {
   const [error, setError] = createSignal<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = createSignal('30');
 
+  const createFallbackAnalyticsData = (): AnalyticsData => ({
+    period: {
+      start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      end_date: new Date().toISOString(),
+      days: 30,
+    },
+    summary: {
+      hours_tracked: 0,
+      tasks_completed: 0,
+      bookmarks_added: 0,
+      notes_created: 0,
+      courses_completed: 0,
+      github_commits: 0,
+    },
+    analytics: [],
+    productivity_metrics: [],
+    learning_analytics: [],
+    github_analytics: [],
+    goals: [],
+    habit_analytics: [],
+  });
+
+  const normalizeAnalyticsData = (raw: any): AnalyticsData => {
+    const fallback = createFallbackAnalyticsData();
+    if (!raw || typeof raw !== 'object') {
+      return fallback;
+    }
+
+    const periodRaw = raw.period && typeof raw.period === 'object' ? raw.period : {};
+    const summaryRaw = raw.summary && typeof raw.summary === 'object' ? raw.summary : {};
+
+    return {
+      period: {
+        start_date: typeof periodRaw.start_date === 'string' ? periodRaw.start_date : fallback.period.start_date,
+        end_date: typeof periodRaw.end_date === 'string' ? periodRaw.end_date : fallback.period.end_date,
+        days: Number(periodRaw.days) || fallback.period.days,
+      },
+      summary: {
+        hours_tracked: Number(summaryRaw.hours_tracked) || 0,
+        tasks_completed: Number(summaryRaw.tasks_completed) || 0,
+        bookmarks_added: Number(summaryRaw.bookmarks_added) || 0,
+        notes_created: Number(summaryRaw.notes_created) || 0,
+        courses_completed: Number(summaryRaw.courses_completed) || 0,
+        github_commits: Number(summaryRaw.github_commits) || 0,
+      },
+      analytics: Array.isArray(raw.analytics) ? raw.analytics : [],
+      productivity_metrics: Array.isArray(raw.productivity_metrics) ? raw.productivity_metrics : [],
+      learning_analytics: Array.isArray(raw.learning_analytics) ? raw.learning_analytics : [],
+      github_analytics: Array.isArray(raw.github_analytics) ? raw.github_analytics : [],
+      goals: Array.isArray(raw.goals) ? raw.goals : [],
+      habit_analytics: Array.isArray(raw.habit_analytics) ? raw.habit_analytics : [],
+    };
+  };
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/analytics/dashboard?days=${selectedPeriod()}`, {
         headers: {
@@ -138,9 +193,10 @@ export const Analytics = () => {
       }
 
       const data = await response.json();
-      setAnalytics(data);
+      setAnalytics(normalizeAnalyticsData(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setAnalytics(createFallbackAnalyticsData());
     } finally {
       setLoading(false);
     }

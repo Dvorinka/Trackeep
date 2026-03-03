@@ -35,6 +35,11 @@ interface Bookmark {
 }
 
 export const Bookmarks = () => {
+  const getBookmarkInitial = (title?: string) => {
+    const safeTitle = typeof title === 'string' ? title.trim() : '';
+    return (safeTitle.charAt(0) || '?').toUpperCase();
+  };
+
   const adaptBookmarkFromApi = (raw: any): Bookmark => {
     const rawTags: BookmarkTag[] | string[] | undefined = raw.tags;
     let tags: string[] = [];
@@ -65,24 +70,9 @@ export const Bookmarks = () => {
   };
 
   const getFaviconUrl = (bookmark: Bookmark) => {
-    if (bookmark.favicon) return bookmark.favicon;
     try {
       const url = new URL(bookmark.url);
-      const baseUrl = `${url.protocol}//${url.hostname}`;
-      
-      // Try multiple favicon sources
-      const faviconSources = [
-        `${baseUrl}/favicon.ico`,
-        `${baseUrl}/favicon.png`,
-        `${baseUrl}/img/favicons/favicon-32x32.png`,
-        `${baseUrl}/img/favicons/favicon-16x16.png`,
-        `${baseUrl}/logo-without-border.svg`,
-        `${baseUrl}/logo.svg`,
-        `${baseUrl}/icon.svg`,
-        `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
-      ];
-      
-      return faviconSources[0]; // Return first source, fallback will be handled by error
+      return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
     } catch {
       return '';
     }
@@ -481,35 +471,13 @@ export const Bookmarks = () => {
                               class="w-6 h-6 object-contain"
                               onError={(e) => {
                                 const img = e.currentTarget;
-                                const url = new URL(bookmark.url);
-                                const baseUrl = `${url.protocol}//${url.hostname}`;
-                                
-                                // Try next favicon source
-                                const faviconSources = [
-                                  `${baseUrl}/favicon.ico`,
-                                  `${baseUrl}/favicon.png`,
-                                  `${baseUrl}/img/favicons/favicon-32x32.png`,
-                                  `${baseUrl}/img/favicons/favicon-16x16.png`,
-                                  `${baseUrl}/logo-without-border.svg`,
-                                  `${baseUrl}/logo.svg`,
-                                  `${baseUrl}/icon.svg`,
-                                  `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`
-                                ];
-                                
-                                const currentSrc = img.src;
-                                const currentIndex = faviconSources.findIndex(src => currentSrc.includes(src));
-                                
-                                if (currentIndex < faviconSources.length - 1) {
-                                  img.src = faviconSources[currentIndex + 1];
-                                } else {
-                                  img.style.display = 'none';
-                                  img.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${bookmark.title.charAt(0).toUpperCase()}</span>`;
-                                }
+                                img.style.display = 'none';
+                                img.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${getBookmarkInitial(bookmark.title)}</span>`;
                               }}
                             />
                           ) : (
                             <span class="text-xs text-muted-foreground font-medium">
-                              {bookmark.title.charAt(0).toUpperCase()}
+                              {getBookmarkInitial(bookmark.title)}
                             </span>
                           )}
                         </div>
