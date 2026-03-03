@@ -26,6 +26,9 @@ pids
 *.pid
 *.seed
 *.pid.lock
+.playwright
+.playwright-cli
+.desloppify
 
 # Coverage directory used by tools like istanbul
 coverage/
