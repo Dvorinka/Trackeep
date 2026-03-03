@@ -7,8 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/handlers"
@@ -49,6 +51,40 @@ func initializeSecuritySecrets() error {
 	return nil
 }
 
+// initializeDragonflyDB initializes DragonflyDB (Redis-compatible) connection
+func initializeDragonflyDB() *redis.Client {
+	dragonflyAddr := os.Getenv("DRAGONFLY_ADDR")
+	dragonflyPassword := os.Getenv("DRAGONFLY_PASSWORD")
+
+	if dragonflyAddr == "" {
+		log.Println("DRAGONFLY_ADDR not set, using default: localhost:6379")
+		dragonflyAddr = "localhost:6379"
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         dragonflyAddr,
+		Password:     dragonflyPassword,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     20,
+	})
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		log.Printf("Warning: Failed to connect to DragonflyDB at %s: %v", dragonflyAddr, err)
+		log.Println("Falling back to in-memory cache and sessions")
+		return nil
+	}
+
+	log.Printf("Successfully connected to DragonflyDB at %s", dragonflyAddr)
+	return rdb
+}
+
 func main() {
 	os.Setenv("APP_VERSION", "1.0.0")
 
@@ -85,9 +121,27 @@ func main() {
 		log.Fatal("Failed to initialize security secrets:", err)
 	}
 
-	// Initialize session store
-	middleware.InitSessionStore()
+	// Initialize DragonflyDB
+	dragonflyClient := initializeDragonflyDB()
+
+	// Initialize session store with DragonflyDB
+	middleware.InitSessionStore(dragonflyClient)
 	log.Println("Session store initialized successfully")
+
+	// Initialize cache middleware with DragonflyDB
+	var cacheConfig middleware.CacheConfig
+	if dragonflyClient != nil {
+		cacheConfig = middleware.CacheConfig{
+			Duration:    5 * time.Minute,
+			KeyPrefix:   "trackeep:",
+			Enabled:     true,
+			RedisClient: dragonflyClient,
+		}
+		log.Println("DragonflyDB cache middleware initialized")
+	} else {
+		cacheConfig = middleware.DefaultCacheConfig()
+		log.Println("Using in-memory cache fallback")
+	}
 
 	// Seed demo data in background
 	// go func() {
@@ -105,7 +159,9 @@ func main() {
 	// Middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middleware.SessionMiddleware()) // Add session middleware
+	r.Use(middleware.CacheMiddleware(cacheConfig))                 // Add DragonflyDB cache middleware
+	r.Use(middleware.CacheInvalidationMiddleware(dragonflyClient)) // Add cache invalidation
+	r.Use(middleware.SessionMiddleware())                          // Add session middleware
 	r.Use(middleware.AuditMiddleware())
 	r.Use(middleware.InputValidationMiddleware())
 

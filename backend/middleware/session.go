@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/trackeep/backend/models"
 )
 
@@ -34,13 +37,15 @@ type SessionStore interface {
 
 // RedisSessionStore implements SessionStore using Redis (or fallback to memory)
 type RedisSessionStore struct {
-	sessions map[string]*SessionData // Fallback in-memory store
+	redisClient *redis.Client
+	sessions    map[string]*SessionData // Fallback in-memory store
 }
 
 // NewSessionStore creates a new session store
-func NewSessionStore() SessionStore {
+func NewSessionStore(redisClient *redis.Client) SessionStore {
 	return &RedisSessionStore{
-		sessions: make(map[string]*SessionData),
+		redisClient: redisClient,
+		sessions:    make(map[string]*SessionData),
 	}
 }
 
@@ -48,32 +53,109 @@ func NewSessionStore() SessionStore {
 func (r *RedisSessionStore) CreateSession(sessionData *SessionData) error {
 	sessionData.CreatedAt = time.Now()
 	sessionData.LastActive = time.Now()
+
+	// Try Redis first
+	if r.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		sessionJSON, err := json.Marshal(sessionData)
+		if err != nil {
+			return fmt.Errorf("failed to marshal session data: %w", err)
+		}
+
+		// Store in Redis with 24 hour expiration
+		err = r.redisClient.Set(ctx, "session:"+sessionData.SessionID, sessionJSON, 24*time.Hour).Err()
+		if err == nil {
+			return nil
+		}
+		// Fall back to memory if Redis fails
+	}
+
+	// Fallback to in-memory storage
 	r.sessions[sessionData.SessionID] = sessionData
 	return nil
 }
 
 // GetSession retrieves a session by ID
 func (r *RedisSessionStore) GetSession(sessionID string) (*SessionData, error) {
+	// Try Redis first
+	if r.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		sessionJSON, err := r.redisClient.Get(ctx, "session:"+sessionID).Result()
+		if err == nil {
+			var sessionData SessionData
+			if err := json.Unmarshal([]byte(sessionJSON), &sessionData); err == nil {
+				// Update last active time
+				sessionData.LastActive = time.Now()
+				// Update in Redis
+				updatedJSON, _ := json.Marshal(sessionData)
+				r.redisClient.Set(ctx, "session:"+sessionID, updatedJSON, 24*time.Hour)
+				return &sessionData, nil
+			}
+		}
+		// Fall back to memory if Redis fails
+	}
+
+	// Fallback to in-memory storage
 	if session, exists := r.sessions[sessionID]; exists {
 		// Update last active time
 		session.LastActive = time.Now()
 		return session, nil
 	}
+
 	return nil, fmt.Errorf("session not found")
 }
 
 // UpdateSession updates an existing session
 func (r *RedisSessionStore) UpdateSession(sessionID string, sessionData *SessionData) error {
+	sessionData.LastActive = time.Now()
+
+	// Try Redis first
+	if r.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		sessionJSON, err := json.Marshal(sessionData)
+		if err != nil {
+			return fmt.Errorf("failed to marshal session data: %w", err)
+		}
+
+		err = r.redisClient.Set(ctx, "session:"+sessionID, sessionJSON, 24*time.Hour).Err()
+		if err == nil {
+			return nil
+		}
+		// Fall back to memory if Redis fails
+	}
+
+	// Fallback to in-memory storage
 	if _, exists := r.sessions[sessionID]; exists {
-		sessionData.LastActive = time.Now()
 		r.sessions[sessionID] = sessionData
 		return nil
 	}
+
 	return fmt.Errorf("session not found")
 }
 
 // DeleteSession removes a session
 func (r *RedisSessionStore) DeleteSession(sessionID string) error {
+	// Try Redis first
+	if r.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err := r.redisClient.Del(ctx, "session:"+sessionID).Err()
+		if err == nil {
+			// Also remove from memory fallback
+			delete(r.sessions, sessionID)
+			return nil
+		}
+		// Fall back to memory if Redis fails
+	}
+
+	// Fallback to in-memory storage
 	delete(r.sessions, sessionID)
 	return nil
 }
@@ -93,8 +175,8 @@ func (r *RedisSessionStore) CleanupExpiredSessions() error {
 var sessionStore SessionStore
 
 // InitSessionStore initializes the session store
-func InitSessionStore() {
-	sessionStore = NewSessionStore()
+func InitSessionStore(redisClient *redis.Client) {
+	sessionStore = NewSessionStore(redisClient)
 
 	// Start cleanup goroutine
 	go func() {
