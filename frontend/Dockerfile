@@ -12,8 +12,8 @@ COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install --include=dev
 
 # Copy environment variables and source code
-COPY .env ./frontend/.env
-COPY frontend/ ./frontend/
+COPY ../.env ./frontend/.env
+COPY . ./frontend/
 
 # Create a .env.production file with build arguments
 RUN cd frontend && echo "VITE_DEMO_MODE=${VITE_DEMO_MODE}" >> .env.production && \
