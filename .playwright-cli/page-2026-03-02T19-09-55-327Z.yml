@@ -1,6 +1,0 @@
-- generic [ref=e4]:
-  - generic [ref=e5]:
-    - img "Trackeep Logo" [ref=e7]
-    - heading "Trackeep" [level=1] [ref=e8]
-    - paragraph [ref=e9]: Demo Mode
-  - button "Enter Demo Mode" [ref=e11] [cursor=pointer]
