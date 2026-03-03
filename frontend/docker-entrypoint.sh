@@ -6,6 +6,10 @@
 # Default values
 DEMO_MODE=${VITE_DEMO_MODE:-false}
 API_URL=${VITE_API_URL:-http://localhost:8080}
+FRONTEND_PORT=${FRONTEND_PORT:-3000}
+
+# Update nginx configuration to use the dynamic port
+sed -i "s/listen 80;/listen ${FRONTEND_PORT};/g" /etc/nginx/nginx.conf
 
 # Create a temporary script for env substitution
 cat > /tmp/env_substitute.sh << 'EOF'
@@ -25,6 +29,7 @@ sed -i "s|VITE_API_URL_PLACEHOLDER|$VITE_API_URL|g" $HTML_FILE
 echo "Environment variables injected:"
 echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
 echo "VITE_API_URL=$VITE_API_URL"
+echo "FRONTEND_PORT=$FRONTEND_PORT"
 EOF
 
 # Make the script executable

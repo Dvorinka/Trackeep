@@ -41,7 +41,7 @@ type AppConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port:            getEnvWithDefault("PORT", "8080"),
+			Port:            getEnvWithDefault("BACKEND_PORT", getEnvWithDefault("PORT", "8080")),
 			ReadTimeout:     getDurationEnv("READ_TIMEOUT", 15*time.Second),
 			WriteTimeout:    getDurationEnv("WRITE_TIMEOUT", 15*time.Second),
 			IdleTimeout:     getDurationEnv("IDLE_TIMEOUT", 60*time.Second),
