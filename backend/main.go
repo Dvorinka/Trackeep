@@ -149,7 +149,7 @@ func main() {
 	// }()
 
 	// Set Gin mode
-	if os.Getenv("GIN_MODE") == "release" {
+	if os.Getenv("GIN_MODE") == "release" || os.Getenv("GIN_MODE") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -159,6 +159,7 @@ func main() {
 	// Middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.CacheMiddleware(cacheConfig))                 // Add DragonflyDB cache middleware
 	r.Use(middleware.CacheInvalidationMiddleware(dragonflyClient)) // Add cache invalidation
 	r.Use(middleware.SessionMiddleware())                          // Add session middleware
@@ -171,8 +172,6 @@ func main() {
 
 	// Apply general rate limiting to all endpoints
 	r.Use(middleware.GeneralRateLimit(rateLimiters["general"]))
-
-	r.Use(middleware.CORSMiddleware())
 
 	r.GET("/health", handlers.HealthCheck)
 	r.GET("/ready", handlers.ReadinessCheck)
@@ -231,7 +230,7 @@ func main() {
 			auth.POST("/login", handlers.Login)
 			auth.POST("/login-totp", handlers.LoginWithTOTP)
 			auth.POST("/logout", handlers.Logout)
-			auth.GET("/me", handlers.GetCurrentUserWithGitHub)
+			auth.GET("/me", handlers.AuthMiddleware(), handlers.GetCurrentUserWithGitHub)
 			auth.POST("/password-reset", handlers.RequestPasswordReset)
 			auth.POST("/password-reset/confirm", handlers.ConfirmPasswordReset)
 
@@ -241,11 +240,19 @@ func main() {
 			auth.GET("/oauth/callback", handlers.HandleOAuthCallback)
 		}
 
+		// GitHub App callback (public for GitHub redirect)
+		v1.GET("/github/app/callback", handlers.GitHubAppInstallCallback)
+
 		// GitHub routes (protected)
 		github := v1.Group("/github")
 		github.Use(handlers.AuthMiddleware())
 		{
 			github.GET("/repos", handlers.GetGitHubRepos)
+			github.GET("/app/status", handlers.GetGitHubAppStatus)
+			github.GET("/app/install-url", handlers.GetGitHubAppInstallURL)
+			github.GET("/app/repos", handlers.GetGitHubAppRepos)
+			github.GET("/backups", handlers.GetGitHubBackups)
+			github.POST("/backups", handlers.BackupGitHubRepositories)
 		}
 
 		v1.POST("/youtube-search-test", handlers.YouTubeSearchTest)

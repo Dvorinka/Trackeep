@@ -4,9 +4,11 @@ import { IconUser, IconLock, IconKey, IconBrain, IconMail, IconSend, IconShield,
 import { TwoFactorAuth } from '@/components/TwoFactorAuth';
 import { Button } from '@/components/ui/Button';
 import { AIProviderIcon } from '@/components/AIProviderIcon';
+import { useHaptics } from '@/lib/haptics';
 
 export const Settings = () => {
   const { authState, updateProfile, changePassword } = useAuth();
+  const haptics = useHaptics();
   const [isLoading, setIsLoading] = createSignal(false);
   const [message, setMessage] = createSignal('');
   const [profileData, setProfileData] = createSignal({
@@ -276,8 +278,10 @@ export const Settings = () => {
       localStorage.setItem('showBrowserSearch', profileData().showBrowserSearch.toString());
       
       setMessage('Profile updated successfully!');
+      haptics.success();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to update profile');
+      haptics.error();
     } finally {
       setIsLoading(false);
     }
@@ -286,6 +290,7 @@ export const Settings = () => {
   const handleChangePassword = async () => {
     if (passwordData().newPassword !== passwordData().confirmPassword) {
       setMessage('New passwords do not match');
+      haptics.warning();
       return;
     }
 
@@ -299,8 +304,10 @@ export const Settings = () => {
       });
       setMessage('Password changed successfully!');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      haptics.success();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to change password');
+      haptics.error();
     } finally {
       setIsLoading(false);
     }
@@ -358,7 +365,10 @@ export const Settings = () => {
           <For each={tabs}>
             {(tab) => (
               <button
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  haptics.selection();
+                }}
                 class={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab() === tab.id
                     ? 'border-primary text-primary'
@@ -480,7 +490,7 @@ export const Settings = () => {
                     type="button"
                     onClick={handleUpdateProfile}
                     disabled={isLoading()}
-                    class="inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-auto items-center gap-2 py-2 px-4 w-full"
+                    class="inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50"
                   >
                     {isLoading() ? 'Updating...' : 'Update Profile'}
                   </button>
@@ -626,8 +636,9 @@ export const Settings = () => {
                         ...settings,
                         mistral: { ...settings.mistral, enabled: !settings.mistral.enabled }
                       });
+                      haptics.selection();
                     }}
-                    class="flex items-center gap-2"
+                    class="justify-start"
                   >
                     <AIProviderIcon 
                       providerId="mistral" 

@@ -7,6 +7,7 @@ import { IconPin, IconTrash, IconEdit, IconCopy, IconDownload, IconPaperclip } f
 import { getMockNotes } from '@/lib/mockData';
 import { isDemoMode, shouldUseRealBackend } from '@/lib/demo-mode';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { useHaptics } from '@/lib/haptics';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -66,6 +67,7 @@ const renderPlainTextPreviewHtml = (content: string): string => {
 };
 
 export const Notes = () => {
+  const haptics = useHaptics();
   const [notes, setNotes] = createSignal<Note[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
   const [searchTerm, setSearchTerm] = createSignal('');
@@ -518,7 +520,10 @@ export const Notes = () => {
             <p class="text-sm text-[#b9b9b9]">Your personal notes</p>
           </div>
           <Button 
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setShowAddModal(true);
+              haptics.impact();
+            }}
             class="bg-[#5865f2] hover:bg-[#4752c4] text-white border-0"
           >
             Add Note

@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
-	"gorm.io/gorm"
 
 	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
@@ -53,6 +52,8 @@ type GitHubRepo struct {
 	FullName      string `json:"full_name"`
 	Description   string `json:"description"`
 	HTMLURL       string `json:"html_url"`
+	CloneURL      string `json:"clone_url"`
+	Private       bool   `json:"private"`
 	Stargazers    int    `json:"stargazers_count"`
 	Forks         int    `json:"forks_count"`
 	Watchers      int    `json:"watchers_count"`
@@ -66,6 +67,14 @@ type GitHubRepo struct {
 
 // GitHubLogin initiates the GitHub OAuth flow
 func GitHubLogin(c *gin.Context) {
+	frontendRedirect := resolveFrontendRedirectURL(c.Request)
+	callbackURL := buildOAuthCallbackURL(c.Request, frontendRedirect)
+	if oauthServiceURL := getOAuthServiceURL(); oauthServiceURL != "" && callbackURL != "" {
+		redirectURL := fmt.Sprintf("%s/auth/github?redirect_uri=%s", oauthServiceURL, url.QueryEscape(callbackURL))
+		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+		return
+	}
+
 	if githubOAuthConfig == nil {
 		initGitHubOAuth()
 	}
@@ -119,55 +128,35 @@ func GitHubCallback(c *gin.Context) {
 	}
 
 	// Get or create user in database
-	db := c.MustGet("db").(*gorm.DB)
-	var existingUser models.User
-
-	// First try to find by GitHub ID
-	err = db.Where("github_id = ?", user.ID).First(&existingUser).Error
+	db := config.GetDB()
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
+		return
+	}
+	existingUser, err := upsertCentralizedOAuthUser(db, centralizedOAuthUser{
+		GitHubID:  user.ID,
+		Username:  user.Login,
+		Email:     user.Email,
+		Name:      user.Name,
+		AvatarURL: user.AvatarURL,
+	})
 	if err != nil {
-		// If not found by GitHub ID, try by email
-		err = db.Where("email = ?", user.Email).First(&existingUser).Error
-		if err != nil {
-			// Create new user
-			newUser := models.User{
-				Username:  user.Login,
-				Email:     user.Email,
-				FullName:  user.Name,
-				GitHubID:  user.ID,
-				AvatarURL: user.AvatarURL,
-				Provider:  "github",
-			}
-
-			if err := db.Create(&newUser).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-				return
-			}
-			existingUser = newUser
-		} else {
-			// Update existing user with GitHub info
-			existingUser.GitHubID = user.ID
-			existingUser.AvatarURL = user.AvatarURL
-			existingUser.Provider = "github"
-			db.Save(&existingUser)
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to synchronize user"})
+		return
 	}
 
-	// Generate JWT token
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":  existingUser.ID,
-		"email":    existingUser.Email,
-		"username": existingUser.Username,
-		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
-	})
-
-	tokenString, err := jwtToken.SignedString([]byte(config.JWTSecret))
+	tokenString, err := GenerateJWTWithGitHubAccessToken(*existingUser, token.AccessToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
 	// Redirect to frontend with token
-	redirectURL := fmt.Sprintf("%s/auth/callback?token=%s", os.Getenv("FRONTEND_URL"), tokenString)
+	redirectURL := buildFrontendCallbackRedirectURL("", tokenString)
+	if redirectURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Frontend redirect URL not configured"})
+		return
+	}
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
@@ -259,69 +248,41 @@ func HandleOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// Parse the JWT from the OAuth service
-	claims := jwt.MapClaims{}
-	parsedToken, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
-		// Use the OAuth service's JWT secret (should be shared)
-		return []byte(os.Getenv("OAUTH_JWT_SECRET")), nil
-	})
-
-	if err != nil || !parsedToken.Valid {
+	validationResponse, err := validateCentralizedOAuthToken(c.Request.Context(), token)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OAuth token"})
 		return
 	}
 
-	// Extract user information from OAuth service
-	username, _ := claims["username"].(string)
-	email, _ := claims["email"].(string)
-	githubID, _ := claims["github_id"]
-	accessToken, _ := claims["access_token"].(string)
-
 	// Get database
-	db := c.MustGet("db").(*gorm.DB)
-
-	// Find or create user in local database
-	var user models.User
-	err = db.Where("email = ?", email).First(&user).Error
+	db := config.GetDB()
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
+		return
+	}
+	localUser, err := upsertCentralizedOAuthUser(db, validationResponse.User)
 	if err != nil {
-		// Create new user
-		newUser := models.User{
-			Username: username,
-			Email:    email,
-			GitHubID: int(githubID.(float64)), // JWT numbers are float64
-			Provider: "github",
-		}
-
-		if err := db.Create(&newUser).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-			return
-		}
-		user = newUser
-	} else {
-		// Update existing user with GitHub info
-		user.GitHubID = int(githubID.(float64))
-		user.Provider = "github"
-		db.Save(&user)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to synchronize user"})
+		return
 	}
 
-	// Generate Trackeep JWT token
-	trackeepToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":      user.ID,
-		"email":        user.Email,
-		"username":     user.Username,
-		"github_id":    user.GitHubID,
-		"access_token": accessToken,                               // Pass through the GitHub access token
-		"exp":          time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
-	})
+	claims, err := parseOAuthTokenClaimsUnverified(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OAuth token claims"})
+		return
+	}
 
-	trackeepTokenString, err := trackeepToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	trackeepTokenString, err := GenerateJWTWithGitHubAccessToken(*localUser, getAccessTokenFromOAuthClaims(claims))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Redirect to frontend with Trackeep token
-	redirectURL := fmt.Sprintf("%s/auth/callback?token=%s", os.Getenv("FRONTEND_URL"), trackeepTokenString)
+	redirectURL := buildFrontendCallbackRedirectURL(c.Query("frontend_redirect"), trackeepTokenString)
+	if redirectURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Frontend redirect URL not configured"})
+		return
+	}
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
@@ -343,7 +304,11 @@ func GetCurrentUserWithGitHub(c *gin.Context) {
 func GetGitHubRepos(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
-	db := c.MustGet("db").(*gorm.DB)
+	db := config.GetDB()
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
+		return
+	}
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -368,26 +333,20 @@ func GetGitHubRepos(c *gin.Context) {
 		tokenString = authHeader[7:]
 	}
 
-	// Parse the JWT to get the GitHub access token from the centralized OAuth service
-	claims := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-
-	if err != nil || !token.Valid {
+	claims, err := ValidateJWT(tokenString)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
 
-	// Extract GitHub access token from the OAuth service JWT
-	githubAccessToken, ok := claims["access_token"]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub access token not found"})
+	githubAccessToken := strings.TrimSpace(claims.AccessToken)
+	if githubAccessToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub access token not found. Please reconnect GitHub."})
 		return
 	}
 
 	// Fetch repositories using the GitHub access token
-	repos, err := fetchGitHubRepos(githubAccessToken.(string))
+	repos, err := fetchGitHubRepos(githubAccessToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repos: " + err.Error()})
 		return

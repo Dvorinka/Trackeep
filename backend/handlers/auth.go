@@ -11,16 +11,16 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
-
 	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type LoginRequest struct {
@@ -60,20 +60,51 @@ type PasswordResetCode struct {
 
 // JWT Claims structure
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Email    string `json:"email"`
-	Username string `json:"username"`
+	UserID      uint   `json:"user_id"`
+	Email       string `json:"email"`
+	Username    string `json:"username"`
+	GitHubID    int    `json:"github_id,omitempty"`
+	AccessToken string `json:"access_token,omitempty"`
 	jwt.RegisteredClaims
+}
+
+// getDurationEnv parses duration from environment variable with fallback
+func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	seconds, err := strconv.Atoi(value)
+	if err != nil {
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return defaultValue
+		}
+		return duration
+	}
+
+	return time.Duration(seconds) * time.Second
 }
 
 // GenerateJWT creates a new JWT token for a user
 func GenerateJWT(user models.User) (string, error) {
+	return generateJWT(user, "")
+}
+
+func GenerateJWTWithGitHubAccessToken(user models.User, accessToken string) (string, error) {
+	return generateJWT(user, accessToken)
+}
+
+func generateJWT(user models.User, accessToken string) (string, error) {
 	claims := &Claims{
-		UserID:   user.ID,
-		Email:    user.Email,
-		Username: user.Username,
+		UserID:      user.ID,
+		Email:       user.Email,
+		Username:    user.Username,
+		GitHubID:    user.GitHubID,
+		AccessToken: accessToken,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(getDurationEnv("JWT_EXPIRES_IN", 24*time.Hour))),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "trackeep",
 		},

@@ -5,6 +5,7 @@ import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { TaskModal } from '@/components/ui/TaskModal';
 import { IconEdit, IconTrash } from '@tabler/icons-solidjs';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { useHaptics } from '@/lib/haptics';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -27,6 +28,8 @@ export const Tasks = () => {
   const [filter, setFilter] = createSignal<'all' | 'active' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = createSignal('');
   const [selectedPriority, setSelectedPriority] = createSignal('');
+  
+  const haptics = useHaptics();
 
   onMount(async () => {
     try {
@@ -91,7 +94,9 @@ export const Tasks = () => {
       const newTask = await response.json();
       setTasks(prev => [newTask, ...prev]);
       setShowAddModal(false);
+      haptics.success(); // Success feedback for adding task
     } catch (error) {
+      haptics.error(); // Error feedback
       alert(error instanceof Error ? error.message : 'Failed to add task');
     }
   };
@@ -122,7 +127,9 @@ export const Tasks = () => {
       );
       setShowEditModal(false);
       setEditingTask(null);
+      haptics.success(); // Success feedback for editing task
     } catch (error) {
+      haptics.error(); // Error feedback
       alert(error instanceof Error ? error.message : 'Failed to update task');
     }
   };
@@ -133,7 +140,9 @@ export const Tasks = () => {
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, completed: !task.completed } : task
       ));
+      haptics.completion(); // Completion feedback for toggling task
     } catch (error) {
+      haptics.error(); // Error feedback
       console.error('Failed to update task:', error);
     }
   };
@@ -154,7 +163,9 @@ export const Tasks = () => {
         }
 
         setTasks(prev => prev.filter(task => task.id !== taskId));
+        haptics.delete(); // Delete feedback
       } catch (error) {
+        haptics.error(); // Error feedback
         alert(error instanceof Error ? error.message : 'Failed to delete task');
       }
     }
@@ -188,7 +199,7 @@ export const Tasks = () => {
     <div class="p-6 space-y-6">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-[#fafafa]">Tasks</h1>
-        <Button onClick={() => setShowAddModal(true)}>
+        <Button onClick={() => setShowAddModal(true)} haptic="impact">
           Add Task
         </Button>
       </div>
@@ -245,6 +256,7 @@ export const Tasks = () => {
             variant={filter() === filterOption ? 'default' : 'outline'}
             onClick={() => setFilter(filterOption)}
             class="capitalize"
+            haptic="selection"
           >
             {filterOption}
           </Button>
@@ -297,6 +309,7 @@ export const Tasks = () => {
                             editTask(task);
                           }}
                           class="text-blue-400 hover:text-blue-300"
+                          haptic="impact"
                         >
                           <IconEdit class="w-4 h-4" />
                         </Button>
@@ -308,6 +321,7 @@ export const Tasks = () => {
                             deleteTask(task.id);
                           }}
                           class="text-red-400 hover:text-red-300"
+                          haptic="warning"
                         >
                           <IconTrash class="w-4 h-4" />
                         </Button>

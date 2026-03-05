@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/Button';
 import { GitHubActivity } from '@/components/ui/GitHubActivity';
 import { IconSettings } from '@tabler/icons-solidjs';
+import { useHaptics } from '@/lib/haptics';
 
 export const Profile = () => {
+  const haptics = useHaptics();
   // Custom events for Profile page
   const profileEvents = [
     {
@@ -72,7 +74,7 @@ export const Profile = () => {
           <p class="text-muted-foreground mt-2">Track your contributions and activity over time</p>
         </div>
         <div class="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => haptics.impact()}>
             <IconSettings class="size-4 mr-2" />
             Settings
           </Button>

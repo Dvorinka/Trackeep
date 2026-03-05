@@ -10,13 +10,16 @@ import {
   IconDownload,
   IconSettings
 } from '@tabler/icons-solidjs';
+import { useHaptics } from '@/lib/haptics';
 
 export const Activity = () => {
+  const haptics = useHaptics();
   const [refreshKey, setRefreshKey] = createSignal(0);
   const [showFilters, setShowFilters] = createSignal(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
+    haptics.selection(); // Selection feedback for refresh
   };
 
   return (
@@ -33,7 +36,10 @@ export const Activity = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setShowFilters(!showFilters())}
+            onClick={() => {
+              setShowFilters(!showFilters());
+              haptics.selection();
+            }}
           >
             <IconFilter class="size-4 mr-2" />
             Filters
@@ -46,7 +52,7 @@ export const Activity = () => {
             <IconRefresh class="size-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => haptics.impact()}>
             <IconDownload class="size-4 mr-2" />
             Export
           </Button>

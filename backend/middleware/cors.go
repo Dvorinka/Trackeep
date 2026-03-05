@@ -27,24 +27,16 @@ func CORSMiddleware() gin.HandlerFunc {
 		}
 
 		origin := c.Request.Header.Get("Origin")
-		allowed := false
 
+		// Always set CORS headers
 		if allowedOrigins == "*" {
-			allowed = true
+			c.Header("Access-Control-Allow-Origin", "*")
 		} else {
 			for _, allowedOrigin := range strings.Split(allowedOrigins, ",") {
 				if strings.TrimSpace(allowedOrigin) == origin {
-					allowed = true
+					c.Header("Access-Control-Allow-Origin", origin)
 					break
 				}
-			}
-		}
-
-		if allowed {
-			if allowedOrigins == "*" {
-				c.Header("Access-Control-Allow-Origin", "*")
-			} else {
-				c.Header("Access-Control-Allow-Origin", origin)
 			}
 		}
 

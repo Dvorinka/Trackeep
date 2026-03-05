@@ -29,6 +29,7 @@ import { Switch } from '../ui/Switch'
 import { ModalPortal } from '../ui/ModalPortal'
 import { useAuth } from '@/lib/auth'
 import { getApiV1BaseUrl } from '@/lib/api-url'
+import { useHaptics } from '@/lib/haptics'
 
 const navigation = [
   { name: 'Home', href: '/app', icon: IconHome },
@@ -74,6 +75,7 @@ export interface SidebarProps {
 export function Sidebar(props: SidebarProps) {
   const location = useLocation()
   const { logout } = useAuth()
+  const haptics = useHaptics()
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = createSignal(false)
   const [workspaces, setWorkspaces] = createSignal<WorkspaceOption[]>([])
   const [selectedWorkspaceId, setSelectedWorkspaceId] = createSignal<string>('')
@@ -421,6 +423,7 @@ export function Sidebar(props: SidebarProps) {
                       "bg-[#262626] text-white font-medium shadow-sm": active,
                       "hover:bg-[#262626] hover:text-white text-[#a3a3a3]": !active
                     }}
+                    onClick={() => haptics.navigation()}
                   >
                     <div class="relative z-10 flex items-center gap-2">
                       <Icon class={`size-5 transition-colors ${

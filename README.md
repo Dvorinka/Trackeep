@@ -44,32 +44,38 @@ docker-compose up -d
 The `docker-compose.prod.yml` file uses environment variables with sensible defaults:
 
 ```yaml
-version: '3.8'
 services:
   trackeep-frontend:
     image: 'ghcr.io/dvorinka/trackeep/frontend:latest'
     ports:
-      - '80:80'
-      - '443:443'
+      - "${FRONTEND_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     environment:
       - NODE_ENV=production
       - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
+      - FRONTEND_PORT=${FRONTEND_PORT:-80}
+      - BACKEND_PORT=${BACKEND_PORT:-8080}
     depends_on:
       - trackeep-backend
     restart: unless-stopped
     networks:
       - trackeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep nginx > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
   trackeep-backend:
     image: 'ghcr.io/dvorinka/trackeep/backend:latest'
     ports:
-      - '8080:8080'
+      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     environment:
-      - PORT=${PORT:-8080}
+      - BACKEND_PORT=${BACKEND_PORT:-8080}
+      - FRONTEND_PORT=${FRONTEND_PORT:-80}
       - GIN_MODE=${GIN_MODE:-release}
-      - READ_TIMEOUT=${READ_TIMEOUT:-15s}
-      - WRITE_TIMEOUT=${WRITE_TIMEOUT:-15s}
-      - IDLE_TIMEOUT=${IDLE_TIMEOUT:-60s}
-      - SHUTDOWN_TIMEOUT=${SHUTDOWN_TIMEOUT:-30s}
       - DB_TYPE=${DB_TYPE:-postgres}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -79,19 +85,15 @@ services:
       - DB_SSL_MODE=${DB_SSL_MODE:-disable}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
       - 'CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}'
       - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
-      - SEARCH_API_PROVIDER=${SEARCH_API_PROVIDER:-demo}
-      - SEARCH_RESULTS_LIMIT=${SEARCH_RESULTS_LIMIT:-10}
-      - SEARCH_CACHE_TTL=${SEARCH_CACHE_TTL:-300}
-      - SEARCH_RATE_LIMIT=${SEARCH_RATE_LIMIT:-100}
-      - 'OAUTH_SERVICE_URL=${OAUTH_SERVICE_URL:-http://localhost:9090}'
       - AUTO_UPDATE_CHECK=${AUTO_UPDATE_CHECK:-false}
       - UPDATE_CHECK_INTERVAL=${UPDATE_CHECK_INTERVAL:-24h}
       - PRERELEASE_UPDATES=${PRERELEASE_UPDATES:-false}
+      - DRAGONFLY_ADDR=${DRAGONFLY_ADDR:-dragonfly:6379}
+      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
     volumes:
       - './data:/data'
       - './uploads:/app/uploads'
@@ -107,30 +109,55 @@ services:
         - '--no-verbose'
         - '--tries=1'
         - '--spider'
-        - 'http://localhost:8080/health'
+        - "http://localhost:${BACKEND_PORT:-8080}/health"
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
   postgres:
     image: 'postgres:15-alpine'
+    ports:
+      - "${DB_PORT:-5432}:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-trackeep}
-      POSTGRES_USER: ${POSTGRES_USER:-trackeep}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-trackeep}
+      POSTGRES_USER: ${DB_USER:-trackeep}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - 'postgres_data:/var/lib/postgresql/data'
+      - 'postgres_data:/var/lib/postgres/data'
     restart: unless-stopped
     networks:
       - trackeep-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trackeep} -d ${POSTGRES_DB:-trackeep}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trackeep} -d ${DB_NAME:-trackeep}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+
+  dragonfly:
+    image: ghcr.io/dragonflydb/dragonfly:latest
+    container_name: dragonfly
+    ports:
+      - "${DRAGONFLY_PORT:-6379}:6379"
+    volumes:
+      - dragonfly_data:/data
+    command: dragonfly --requirepass=${DRAGONFLY_PASSWORD} --proactor_threads=2
+    environment:
+      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - trackeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${DRAGONFLY_PASSWORD} ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   postgres_data: null
+  dragonfly_data: null
 
 networks:
   trackeep-network:
@@ -139,25 +166,33 @@ networks:
 
 ### Service Architecture
 
-Trackeep production deployment consists of **3 essential services**:
+Trackeep production deployment consists of **4 essential services**:
 
 #### **🎯 Frontend Service**
 - **Image**: `ghcr.io/dvorinka/trackeep/frontend:latest`
-- **Ports**: `80:80`, `443:443`
+- **Ports**: `${FRONTEND_PORT:-80}:80`, `${HTTPS_PORT:-443}:443`
 - **Purpose**: Web interface and user experience
-- **Health**: Depends on backend service
+- **Health**: nginx process check
 
 #### **🔧 Backend Service**
 - **Image**: `ghcr.io/dvorinka/trackeep/backend:latest`
-- **Ports**: `8080:8080`
+- **Ports**: `${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}`
 - **Purpose**: API server and business logic
-- **Health**: Built-in health check endpoint
+- **Health**: HTTP health check endpoint
 
 #### **🗄️ Database Service**
 - **Image**: `postgres:15-alpine`
+- **Ports**: `${DB_PORT:-5432}:5432`
 - **Purpose**: Data persistence and storage
 - **Health**: PostgreSQL readiness check
 - **Storage**: Persistent volume for data
+
+#### **🐉 DragonflyDB Service**
+- **Image**: `ghcr.io/dragonflydb/dragonfly:latest`
+- **Ports**: `${DRAGONFLY_PORT:-6379}:6379`
+- **Purpose**: In-memory caching and session storage
+- **Health**: Redis-cli ping check
+- **Storage**: Persistent volume for cache data
 
 ### Required Environment Variables
 
@@ -166,11 +201,12 @@ Create a `.env` file from the provided `.env.example` and configure these requir
 ```env
 # Database Configuration
 DB_PASSWORD=your_secure_password
-POSTGRES_PASSWORD=your_secure_password
 
 # Security Configuration
 JWT_SECRET=your_jwt_secret_key
-ENCRYPTION_KEY=your_32_character_encryption_key
+
+# DragonflyDB Configuration
+DRAGONFLY_PASSWORD=your_dragonfly_password
 ```
 
 ### AI Services Configuration
@@ -422,9 +458,9 @@ DISABLE_CHINESE_AI=true
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:8080
-   - Health Check: http://localhost:8080/health
+   - Frontend: http://localhost:${FRONTEND_PORT:-80}
+   - Backend API: http://localhost:${BACKEND_PORT:-8080}
+   - Health Check: http://localhost:${BACKEND_PORT:-8080}/health
 
 ### Demo Login
 - Email: `demo@trackeep.com`
@@ -495,79 +531,44 @@ Key environment variables to configure:
 
 ```bash
 # Server Configuration
-PORT=8080
-FRONTEND_PORT=5173
-GIN_MODE=debug
+FRONTEND_PORT=80
+BACKEND_PORT=8080
+VITE_API_URL=http://localhost:8080
+GIN_MODE=release
 
 # Database Configuration
-DB_TYPE=sqlite
-DB_HOST=localhost
+DB_TYPE=postgres
+DB_HOST=postgres
 DB_PORT=5432
 DB_USER=trackeep
 DB_PASSWORD=your_password_here
 DB_NAME=trackeep
 DB_SSL_MODE=disable
 
-# SQLite (for development)
-SQLITE_DB_PATH=./trackeep.db
+# DragonflyDB Configuration
+DRAGONFLY_ADDR=dragonfly:6379
+DRAGONFLY_PORT=6379
+DRAGONFLY_PASSWORD=your_dragonfly_password
 
 # JWT Configuration
-# JWT_SECRET is auto-generated on startup and stored in jwt_secret.key
-# You can override by setting JWT_SECRET environment variable if needed
+# Generate a secure 64-character hex string using: openssl rand -hex 32
+JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
 JWT_EXPIRES_IN=24h
-
-# Encryption Configuration
-# ENCRYPTION_KEY is auto-generated on startup and stored in encryption.key
-# You can override by setting ENCRYPTION_KEY environment variable if needed
 
 # File Upload Configuration
 UPLOAD_DIR=./uploads
 MAX_FILE_SIZE=10485760
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-
-# SMTP Configuration for Password Reset
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
-SMTP_FROM_EMAIL=your_email@gmail.com
-SMTP_FROM_NAME=Trackeep
+CORS_ALLOWED_ORIGINS=*
 
 # Demo Mode Configuration
 VITE_DEMO_MODE=false
 
-# AI Services (All Optional)
-# Chinese AI Services (Budget-friendly)
-LONGCAT_API_KEY=your_longcat_api_key_here
-LONGCAT_BASE_URL=https://api.longcat.chat
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-
-# Western AI Services
-MISTRAL_API_KEY=your_mistral_api_key_here
-MISTRAL_MODEL=mistral-small-latest
-GROK_API_KEY=your_grok_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_BASE_URL=https://api.openai.com
-
-# Local AI (Complete Privacy)
-OLLAMA_BASE_URL=http://localhost:11434
-
-# AI Control (Disable what you don't want)
-DISABLE_AI=false
-DISABLE_LONGCAT=false
-DISABLE_DEEPSEEK=false
-DISABLE_MISTRAL=false
-DISABLE_GROK=false
-DISABLE_OPENAI=false
-DISABLE_CHINESE_AI=false
-DISABLE_ALL_CLOUD_AI=false
-
-# OAuth Configuration
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
+# Auto Update Configuration
+AUTO_UPDATE_CHECK=false
+UPDATE_CHECK_INTERVAL=24h
+PRERELEASE_UPDATES=false
 ```
 
 ## Contributing

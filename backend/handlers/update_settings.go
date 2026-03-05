@@ -91,7 +91,7 @@ func GetUpdateSettingsForAPI(userID int) (UpdateSettings, error) {
 
 func getDefaultUpdateSettings() UpdateSettings {
 	return UpdateSettings{
-		OAuthServiceURL:     getEnvWithDefault("OAUTH_SERVICE_URL", "https://oauth.tdvorak.dev"),
+		OAuthServiceURL:     getEnvWithDefault("OAUTH_SERVICE_URL", "https://oauth.trackeep.org"),
 		AutoUpdateCheck:     getBoolEnvWithDefault("AUTO_UPDATE_CHECK", false),
 		UpdateCheckInterval: getEnvWithDefault("UPDATE_CHECK_INTERVAL", "24h"),
 		PrereleaseUpdates:   getBoolEnvWithDefault("PRERELEASE_UPDATES", false),

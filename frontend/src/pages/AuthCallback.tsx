@@ -1,28 +1,49 @@
 import { createSignal, onMount } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+import { useAuth } from '@/lib/auth';
 
 export const AuthCallback = () => {
   const [status, setStatus] = createSignal<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = createSignal('Processing authentication...');
+  const { setAuth } = useAuth();
 
-  onMount(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    
-    if (token) {
-      // Store the token from Trackeep backend
-      localStorage.setItem('token', token);
+  onMount(async () => {
+    try {
+      const apiBase = getApiV1BaseUrl();
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      if (!token) {
+        throw new Error('Missing token');
+      }
+
+      window.history.replaceState({}, '', '/auth/callback');
+
+      const res = await fetch(`${apiBase}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Authentication failed');
+      }
+
+      const data = await res.json();
+      if (!data?.user) {
+        throw new Error('Invalid authentication response');
+      }
+
+      setAuth(token, data.user);
+
       setStatus('success');
       setMessage('Authentication successful! Redirecting...');
-      
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        window.location.href = '/app';
-      }, 2000);
-    } else {
+      window.location.replace('/app');
+    } catch (error) {
       setStatus('error');
-      setMessage('Authentication failed. Please try again.');
+      setMessage(error instanceof Error ? error.message : 'Authentication failed');
     }
   });
 

@@ -2,12 +2,12 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/trackeep/backend/migrations"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -26,12 +26,20 @@ func getJWTSecret() string {
 
 // InitDatabase initializes the database connection
 func InitDatabase() {
+	// Initialize logger first
+	InitLogger()
+	logger := GetLogger()
+
+	// Check if demo mode is enabled
+	if os.Getenv("VITE_DEMO_MODE") == "true" {
+		logger.Info("Demo mode enabled - skipping database initialization")
+		return
+	}
+
 	var err error
 
-	// Configure GORM logger
-	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	}
+	// Configure GORM
+	gormConfig := &gorm.Config{}
 
 	dbType := os.Getenv("DB_TYPE")
 	if dbType == "" {
@@ -49,19 +57,28 @@ func InitDatabase() {
 			os.Getenv("DB_SSL_MODE"),
 		)
 		DB, err = gorm.Open(postgres.Open(dsn), gormConfig)
-		log.Println("Using PostgreSQL database")
+		logger.Info("Using PostgreSQL database")
 	default:
-		log.Fatal("Unsupported database type: " + dbType)
+		logger.Fatal("Unsupported database type", zap.String("type", dbType))
 	}
 
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 
-	log.Println("Database connected successfully")
+	logger.Info("Database connected successfully")
+
+	// Run database migrations
+	if err := migrations.RunMigrations(); err != nil {
+		logger.Fatal("Failed to run database migrations", zap.Error(err))
+	}
 }
 
 // GetDB returns the database instance
 func GetDB() *gorm.DB {
+	// In demo mode, return nil since no database is available
+	if os.Getenv("VITE_DEMO_MODE") == "true" {
+		return nil
+	}
 	return DB
 }

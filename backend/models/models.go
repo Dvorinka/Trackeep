@@ -63,6 +63,9 @@ func AutoMigrate() {
 		&Integration{},
 		&SyncLog{},
 		&WebhookEvent{},
+		&GitHubAppInstallState{},
+		&GitHubAppInstallation{},
+		&GitHubRepoBackup{},
 		// Analytics models
 		&Analytics{},
 		&ProductivityMetrics{},

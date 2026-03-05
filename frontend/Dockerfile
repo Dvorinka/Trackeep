@@ -6,6 +6,7 @@ WORKDIR /app
 # Accept build arguments for VITE environment variables
 ARG VITE_DEMO_MODE=false
 ARG VITE_API_URL=http://localhost:8080
+ARG VITE_OAUTH_SERVICE_URL=https://oauth.trackeep.org
 
 # Copy package files
 COPY frontend/package*.json ./frontend/
@@ -16,7 +17,8 @@ COPY frontend/ ./frontend/
 
 # Create a .env.production file with build arguments
 RUN cd frontend && echo "VITE_DEMO_MODE=${VITE_DEMO_MODE}" >> .env.production && \
-    echo "VITE_API_URL=${VITE_API_URL}" >> .env.production
+    echo "VITE_API_URL=${VITE_API_URL}" >> .env.production && \
+    echo "VITE_OAUTH_SERVICE_URL=${VITE_OAUTH_SERVICE_URL}" >> .env.production
 
 # Build the application (frontend only)
 RUN cd frontend && npm run build

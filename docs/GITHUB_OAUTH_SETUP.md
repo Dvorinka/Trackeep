@@ -117,3 +117,31 @@ GIN_MODE=debug
 ```
 
 This will provide detailed logs for troubleshooting OAuth flow issues.
+
+## 9. GitHub App Backup Setup (Optional)
+
+If you want users to install Trackeep on org/repositories and back up selected repos locally, configure a GitHub App in addition to OAuth:
+
+1. GitHub Settings → Developer settings → GitHub Apps → New GitHub App
+2. Configure:
+   - **App name**: `Trackeep`
+   - **Homepage URL**: your frontend URL
+   - **Setup URL**: `http://localhost:9000/api/v1/github/app/callback` (or your production backend URL)
+3. Add to `.env`:
+
+```bash
+GITHUB_APP_SLUG=trackeep
+GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_BACKUP_ROOT=./data/github-backups
+GITHUB_BACKUP_TIMEOUT=10m
+```
+
+New API endpoints:
+
+- `GET /api/v1/github/app/status`
+- `GET /api/v1/github/app/install-url`
+- `GET /api/v1/github/app/callback`
+- `GET /api/v1/github/app/repos`
+- `GET /api/v1/github/backups`
+- `POST /api/v1/github/backups`

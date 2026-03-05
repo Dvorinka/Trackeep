@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -26,6 +26,9 @@ WORKDIR /root/
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
+
+# Copy migrations directory
+COPY --from=builder /app/migrations ./migrations
 
 # Create necessary directories
 RUN mkdir -p /app/uploads /data

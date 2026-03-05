@@ -38,6 +38,7 @@ import {
   IconUpload,
   IconX,
 } from '@tabler/icons-solidjs';
+import { useHaptics } from '@/lib/haptics';
 import './Messages.css';
 
 interface MemberOption {
@@ -158,6 +159,7 @@ type TriStateFilter = 'any' | 'yes' | 'no';
 type CallStatus = 'idle' | 'starting' | 'calling' | 'in_call' | 'error';
 
 export const Messages = () => {
+  const haptics = useHaptics();
   const [conversations, setConversations] = createSignal<ConversationListItem[]>([]);
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [selectedConversationId, setSelectedConversationId] = createSignal<number | null>(null);
@@ -283,6 +285,7 @@ export const Messages = () => {
   const openConversation = (conversationId: number) => {
     setSelectedConversationId(conversationId);
     setActiveScreen('conversation');
+    haptics.selection(); // Selection feedback for opening conversation
   };
 
   const closeConversation = () => {
@@ -1680,8 +1683,10 @@ export const Messages = () => {
       setMentionOptions([]);
       setMentionOpen(false);
       setMentionQuery('');
+      haptics.success(); // Success feedback for sending message
     } catch (error) {
       toast.error('Failed to send message', error instanceof Error ? error.message : 'Unknown error');
+      haptics.error(); // Error feedback
     } finally {
       setUploadProgress(null);
     }
@@ -1943,7 +1948,9 @@ export const Messages = () => {
   onCleanup(() => clearInterval(wsWatcher));
 
   return (
-    <div class={`messages-shell ${activeScreen() === 'conversation' ? 'messages-shell-conversation' : 'messages-shell-list'}`}>
+    <div class="mt-4 pb-32 max-w-7xl mx-auto">
+      <div class="bg-background rounded-lg border shadow-sm">
+        <div class={`messages-shell ${activeScreen() === 'conversation' ? 'messages-shell-conversation' : 'messages-shell-list'}`}>
       <aside class="messages-sidebar">
         <div class="messages-sidebar-header">
           <div class="messages-title-row">
@@ -2021,7 +2028,10 @@ export const Messages = () => {
       <section class="messages-main">
         <header class="messages-main-header">
           <div class="messages-header-main">
-            <Button size="sm" variant="ghost" class="messages-back-button" onClick={closeConversation}>
+            <Button size="sm" variant="ghost" class="messages-back-button" onClick={() => {
+              closeConversation();
+              haptics.navigation();
+            }}>
               <IconChevronLeft class="size-4" />
             </Button>
             <div class="messages-header-meta">
@@ -2491,7 +2501,10 @@ export const Messages = () => {
             </div>
 
             <Button
-              onClick={() => sendMessage()}
+              onClick={() => {
+                sendMessage();
+                haptics.impact();
+              }}
               disabled={
                 sendingMessage() ||
                 (!inputText().trim() && selectedFiles().length === 0 && attachedLibraryFiles().length === 0 && composerAiReferences().length === 0)
@@ -2976,6 +2989,8 @@ export const Messages = () => {
         </div>
       </Show>
     </div>
+  </div>
+  </div>
   );
 };
 

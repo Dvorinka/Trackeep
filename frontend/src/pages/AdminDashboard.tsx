@@ -16,6 +16,7 @@ import {
   IconChecklist
 } from '@tabler/icons-solidjs';
 import { ColorSwitcher } from './ColorSwitcher';
+import { useHaptics } from '@/lib/haptics';
 
 interface ProjectStats {
   totalUsers: number;
@@ -51,6 +52,7 @@ interface GitHubActivity {
 }
 
 export const AdminDashboard = () => {
+  const haptics = useHaptics();
   const [stats, setStats] = createSignal<ProjectStats>({
     totalUsers: 0,
     totalDocuments: 0,
@@ -161,18 +163,22 @@ export const AdminDashboard = () => {
   const handleBackupDatabase = async () => {
     try {
       alert('Database backup initiated successfully!');
+      haptics.success(); // Success feedback for backup
       // In real app, this would call the backup API
     } catch (error) {
       alert('Failed to backup database');
+      haptics.error(); // Error feedback
     }
   };
 
   const handleManageUsers = () => {
     window.open('/app/members', '_blank');
+    haptics.navigation(); // Navigation feedback
   };
 
   const handleSystemSettings = () => {
     window.open('/app/admin-settings', '_blank');
+    haptics.navigation(); // Navigation feedback
   };
 
   const getActivityIcon = (type: string) => {

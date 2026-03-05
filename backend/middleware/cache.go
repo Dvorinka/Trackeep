@@ -44,6 +44,12 @@ func CacheMiddleware(config CacheConfig) gin.HandlerFunc {
 			return
 		}
 
+		// Skip caching for auth/bootstrap requests and authenticated traffic.
+		if shouldSkipCache(c) {
+			c.Next()
+			return
+		}
+
 		// Generate cache key
 		cacheKey := generateCacheKey(c, config.KeyPrefix)
 
@@ -60,7 +66,7 @@ func CacheMiddleware(config CacheConfig) gin.HandlerFunc {
 
 		// Cache miss, continue with request
 		c.Header("X-Cache", "MISS")
-		
+
 		// Capture response
 		writer := &cachedResponseWriter{
 			ResponseWriter: c.Writer,
@@ -80,6 +86,20 @@ func CacheMiddleware(config CacheConfig) gin.HandlerFunc {
 			)
 		}
 	}
+}
+
+func shouldSkipCache(c *gin.Context) bool {
+	path := c.Request.URL.Path
+
+	if strings.HasPrefix(path, "/api/v1/auth/") {
+		return true
+	}
+
+	if c.GetHeader("Authorization") != "" || c.GetHeader("Cookie") != "" {
+		return true
+	}
+
+	return false
 }
 
 // generateCacheKey creates a unique cache key for the request

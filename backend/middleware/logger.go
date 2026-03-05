@@ -2,14 +2,12 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
-	"log"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/trackeep/backend/config"
+	"go.uber.org/zap"
 )
 
 // LoggerConfig holds configuration for the logger
@@ -19,17 +17,14 @@ type LoggerConfig struct {
 	EnableJSON bool
 }
 
-// Logger returns a middleware that logs HTTP requests
+// GetLogger returns the logger instance
+func (lc LoggerConfig) GetLogger() *zap.Logger {
+	return config.GetLogger()
+}
+
+// Logger returns a middleware that logs HTTP requests using Zap
 func Logger(config LoggerConfig) gin.HandlerFunc {
-	// Create log file if specified
-	var file *os.File
-	if config.LogFile != "" {
-		var err error
-		file, err = os.OpenFile(config.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			log.Printf("Failed to open log file: %v", err)
-		}
-	}
+	logger := config.GetLogger()
 
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		// Create log entry
@@ -45,7 +40,9 @@ func Logger(config LoggerConfig) gin.HandlerFunc {
 		}
 
 		// Add user ID if available
-		if userID, exists := param.Keys["user_id"]; exists {
+		var userID interface{}
+		if uid, exists := param.Keys["user_id"]; exists {
+			userID = uid
 			entry["user_id"] = userID
 		}
 
@@ -54,40 +51,39 @@ func Logger(config LoggerConfig) gin.HandlerFunc {
 			entry["error"] = param.ErrorMessage
 		}
 
-		// Format output
-		var output string
-		if config.EnableJSON {
-			jsonData, _ := json.Marshal(entry)
-			output = string(jsonData) + "\n"
-		} else {
-			output = fmt.Sprintf("[%s] %s %s %d %s %s %s",
-				entry["timestamp"],
-				entry["method"],
-				entry["path"],
-				entry["status"],
-				entry["latency"],
-				entry["client_ip"],
-				entry["user_agent"],
+		// Log with Zap
+		if param.ErrorMessage != "" {
+			logger.Error("HTTP request",
+				zap.String("method", param.Method),
+				zap.String("path", param.Path),
+				zap.Int("status", param.StatusCode),
+				zap.Duration("latency", param.Latency),
+				zap.String("client_ip", param.ClientIP),
+				zap.String("user_agent", param.Request.UserAgent()),
+				zap.Any("user_id", userID),
+				zap.String("error", param.ErrorMessage),
 			)
-			if userID, exists := entry["user_id"]; exists {
-				output += fmt.Sprintf(" user_id:%v", userID)
-			}
-			if param.ErrorMessage != "" {
-				output += fmt.Sprintf(" error:%s", param.ErrorMessage)
-			}
-			output += "\n"
+		} else {
+			logger.Info("HTTP request",
+				zap.String("method", param.Method),
+				zap.String("path", param.Path),
+				zap.Int("status", param.StatusCode),
+				zap.Duration("latency", param.Latency),
+				zap.String("client_ip", param.ClientIP),
+				zap.String("user_agent", param.Request.UserAgent()),
+				zap.Any("user_id", userID),
+			)
 		}
 
-		// Write to file and console
-		if file != nil {
-			file.WriteString(output)
-		}
-		return output
+		// Return empty string since Zap handles output
+		return ""
 	})
 }
 
-// RequestLogger logs detailed request information
+// RequestLogger logs detailed request information using Zap
 func RequestLogger() gin.HandlerFunc {
+	logger := config.GetLogger()
+
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
@@ -104,12 +100,6 @@ func RequestLogger() gin.HandlerFunc {
 		// Calculate latency
 		latency := time.Since(start)
 
-		// Get client IP
-		clientIP := c.ClientIP()
-
-		// Get status code
-		statusCode := c.Writer.Status()
-
 		// Get request ID
 		requestID := c.GetHeader("X-Request-ID")
 		if requestID == "" {
@@ -122,46 +112,52 @@ func RequestLogger() gin.HandlerFunc {
 			userID = uid
 		}
 
-		// Create log entry
-		logEntry := map[string]interface{}{
-			"timestamp":      start.Format(time.RFC3339),
-			"request_id":     requestID,
-			"method":         c.Request.Method,
-			"path":           path,
-			"query":          raw,
-			"status":         statusCode,
-			"latency_ms":     latency.Milliseconds(),
-			"client_ip":      clientIP,
-			"user_agent":     c.Request.UserAgent(),
-			"referer":        c.Request.Referer(),
-			"content_type":   c.GetHeader("Content-Type"),
-			"content_length": c.Request.ContentLength,
+		// Log request body for POST/PUT requests (excluding sensitive data)
+		var requestBody string
+		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
+			requestBody = logRequestBody(c)
+		}
+
+		// Create log fields
+		fields := []zap.Field{
+			zap.String("request_id", requestID),
+			zap.String("method", c.Request.Method),
+			zap.String("path", path),
+			zap.String("query", raw),
+			zap.Int("status", c.Writer.Status()),
+			zap.Duration("latency_ms", latency),
+			zap.String("client_ip", c.ClientIP()),
+			zap.String("user_agent", c.Request.UserAgent()),
+			zap.String("referer", c.Request.Referer()),
+			zap.String("content_type", c.GetHeader("Content-Type")),
+			zap.Int64("content_length", c.Request.ContentLength),
 		}
 
 		if userID != nil {
-			logEntry["user_id"] = userID
+			fields = append(fields, zap.Any("user_id", userID))
 		}
 
-		// Log request body for POST/PUT requests (excluding sensitive data)
-		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
-			body := logRequestBody(c)
-			if body != "" {
-				logEntry["request_body"] = body
-			}
+		if requestBody != "" {
+			fields = append(fields, zap.String("request_body", requestBody))
 		}
 
-		// Log response size
 		if c.Writer.Size() > 0 {
-			logEntry["response_size"] = c.Writer.Size()
+			fields = append(fields, zap.Int("response_size", c.Writer.Size()))
 		}
 
-		// Log errors
 		if len(c.Errors) > 0 {
-			logEntry["errors"] = c.Errors.String()
+			fields = append(fields, zap.String("errors", c.Errors.String()))
 		}
 
-		// Write structured log
-		logJSON(logEntry)
+		// Log based on status code
+		statusCode := c.Writer.Status()
+		if statusCode >= 500 {
+			logger.Error("HTTP request", fields...)
+		} else if statusCode >= 400 {
+			logger.Warn("HTTP request", fields...)
+		} else {
+			logger.Info("HTTP request", fields...)
+		}
 	}
 }
 
@@ -194,17 +190,6 @@ func logRequestBody(c *gin.Context) string {
 	return string(bodyBytes)
 }
 
-// logJSON writes structured JSON logs
-func logJSON(data map[string]interface{}) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("Failed to marshal log entry: %v", err)
-		return
-	}
-
-	log.Println(string(jsonData))
-}
-
 // SecurityLogger logs security-related events
 func SecurityLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -232,19 +217,21 @@ func SecurityLogger() gin.HandlerFunc {
 	}
 }
 
-// logSecurityEvent logs security-related events
+// logSecurityEvent logs security-related events using Zap
 func logSecurityEvent(eventType string, data map[string]interface{}) {
-	event := map[string]interface{}{
-		"event_type": "security",
-		"event":      eventType,
-		"timestamp":  time.Now().Format(time.RFC3339),
+	logger := config.GetLogger()
+
+	fields := []zap.Field{
+		zap.String("event_type", "security"),
+		zap.String("event", eventType),
+		zap.String("timestamp", time.Now().Format(time.RFC3339)),
 	}
 
 	for k, v := range data {
-		event[k] = v
+		fields = append(fields, zap.Any(k, v))
 	}
 
-	logJSON(event)
+	logger.Warn("Security event", fields...)
 }
 
 // PerformanceLogger logs performance metrics
@@ -269,17 +256,19 @@ func PerformanceLogger() gin.HandlerFunc {
 	}
 }
 
-// logPerformanceEvent logs performance-related events
+// logPerformanceEvent logs performance-related events using Zap
 func logPerformanceEvent(eventType string, data map[string]interface{}) {
-	event := map[string]interface{}{
-		"event_type": "performance",
-		"event":      eventType,
-		"timestamp":  time.Now().Format(time.RFC3339),
+	logger := config.GetLogger()
+
+	fields := []zap.Field{
+		zap.String("event_type", "performance"),
+		zap.String("event", eventType),
+		zap.String("timestamp", time.Now().Format(time.RFC3339)),
 	}
 
 	for k, v := range data {
-		event[k] = v
+		fields = append(fields, zap.Any(k, v))
 	}
 
-	logJSON(event)
+	logger.Info("Performance event", fields...)
 }

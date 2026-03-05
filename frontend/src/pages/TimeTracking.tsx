@@ -4,8 +4,10 @@ import { TimeEntriesList } from '@/components/TimeEntriesList';
 import { type TimeEntry, timeEntriesApi, demoTimeEntriesApi } from '@/lib/api';
 import { IconClock, IconActivity, IconCurrencyDollar } from '@tabler/icons-solidjs';
 import { isDemoMode } from '@/lib/demo-mode';
+import { useHaptics } from '@/lib/haptics';
 
 export const TimeTracking = () => {
+  const haptics = useHaptics();
   const [refreshTrigger, setRefreshTrigger] = createSignal(0);
   const [timeEntries, setTimeEntries] = createSignal<TimeEntry[]>([]);
   const [loading, setLoading] = createSignal(true);
@@ -100,9 +102,10 @@ export const TimeTracking = () => {
     return `$${amount.toFixed(2)}`;
   };
 
-  const handleTimeEntryCreated = (_timeEntry: TimeEntry) => {
-    // Trigger refresh of the time entries list
+  const handleTimeEntryCreated = (newEntry: TimeEntry) => {
+    setTimeEntries(prev => [newEntry, ...prev]);
     setRefreshTrigger(prev => prev + 1);
+    haptics.success(); // Success feedback for time entry creation
   };
 
   // Handle real-time timer updates

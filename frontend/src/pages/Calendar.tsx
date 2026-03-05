@@ -14,6 +14,7 @@ import {
 } from '@tabler/icons-solidjs'
 import { getMockCalendarEvents } from '@/lib/mockData';
 import { isDemoMode as isDemoModeEnabled } from '@/lib/demo-mode';
+import { useHaptics } from '@/lib/haptics';
 
 interface CalendarEvent {
   id: number
@@ -52,6 +53,7 @@ interface NewEvent {
 }
 
 export function Calendar() {
+  const haptics = useHaptics();
   const [upcomingEvents, setUpcomingEvents] = createSignal<CalendarEvent[]>([])
   const [todayEvents, setTodayEvents] = createSignal<CalendarEvent[]>([])
   const [deadlines, setDeadlines] = createSignal<CalendarEvent[]>([])
@@ -238,6 +240,7 @@ export function Calendar() {
           is_all_day: false
         });
         fetchCalendarData();
+        haptics.success(); // Success feedback for event creation
         return;
       }
 
@@ -266,6 +269,9 @@ export function Calendar() {
           is_all_day: false
         })
         fetchCalendarData()
+        haptics.success(); // Success feedback for event creation
+      } else {
+        haptics.error(); // Error feedback
       }
     } catch (error) {
       console.error('Failed to create event:', error)
@@ -281,7 +287,7 @@ export function Calendar() {
         location: '',
         is_all_day: false
       });
-      fetchCalendarData();
+      haptics.error(); // Error feedback
     }
   }
 
@@ -291,6 +297,7 @@ export function Calendar() {
         // Simulate event completion toggle in demo mode
         console.log('Toggling event completion (demo mode):', eventId);
         fetchCalendarData();
+        haptics.completion(); // Completion feedback
         return;
       }
 
@@ -307,11 +314,15 @@ export function Calendar() {
 
       if (response.ok) {
         fetchCalendarData()
+        haptics.completion(); // Completion feedback
+      } else {
+        haptics.error(); // Error feedback
       }
     } catch (error) {
       console.error('Failed to toggle event completion:', error)
       // Fallback to demo mode behavior
       fetchCalendarData();
+      haptics.error(); // Error feedback
     }
   }
 
@@ -385,7 +396,10 @@ export function Calendar() {
           </p>
         </div>
         <button
-          onClick={() => openEventModal(new Date())}
+          onClick={() => {
+            openEventModal(new Date());
+            haptics.impact();
+          }}
           class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           <IconPlus class="size-4" />
@@ -400,7 +414,10 @@ export function Calendar() {
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-2">
                 <button
-                  onClick={() => navigateMonth(-1)}
+                  onClick={() => {
+                    navigateMonth(-1);
+                    haptics.selection();
+                  }}
                   class="p-2 hover:bg-accent rounded-lg transition-colors"
                 >
                   <IconChevronLeft class="size-4" />
@@ -409,7 +426,10 @@ export function Calendar() {
                   {currentDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h2>
                 <button
-                  onClick={() => navigateMonth(1)}
+                  onClick={() => {
+                    navigateMonth(1);
+                    haptics.selection();
+                  }}
                   class="p-2 hover:bg-accent rounded-lg transition-colors"
                 >
                   <IconChevronRight class="size-4" />
@@ -417,7 +437,10 @@ export function Calendar() {
               </div>
               <div class="flex gap-2">
                 <button
-                  onClick={() => setView('month')}
+                  onClick={() => {
+                    setView('month');
+                    haptics.selection();
+                  }}
                   class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                     view() === 'month' 
                       ? 'bg-primary text-primary-foreground' 
@@ -427,7 +450,10 @@ export function Calendar() {
                   Month
                 </button>
                 <button
-                  onClick={() => setView('week')}
+                  onClick={() => {
+                    setView('week');
+                    haptics.selection();
+                  }}
                   class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                     view() === 'week' 
                       ? 'bg-primary text-primary-foreground' 
@@ -437,7 +463,10 @@ export function Calendar() {
                   Week
                 </button>
                 <button
-                  onClick={() => setView('day')}
+                  onClick={() => {
+                    setView('day');
+                    haptics.selection();
+                  }}
                   class={`px-3 py-1 rounded-lg text-sm transition-colors ${
                     view() === 'day' 
                       ? 'bg-primary text-primary-foreground' 

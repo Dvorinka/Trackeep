@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-solidjs';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useHaptics } from '@/lib/haptics';
 
 interface AnalyticsData {
   period: {
@@ -117,6 +118,7 @@ interface AnalyticsData {
 }
 
 export const Analytics = () => {
+  const haptics = useHaptics();
   const [analytics, setAnalytics] = createSignal<AnalyticsData | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -238,14 +240,20 @@ export const Analytics = () => {
         <div class="flex gap-2">
           <select
             value={selectedPeriod()}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
+            onChange={(e) => {
+              setSelectedPeriod(e.target.value);
+              haptics.selection();
+            }}
             class="px-3 py-2 border rounded-md bg-background"
           >
             <option value="7">Last 7 days</option>
             <option value="30">Last 30 days</option>
             <option value="90">Last 90 days</option>
           </select>
-          <Button onClick={fetchAnalytics}>Refresh</Button>
+          <Button onClick={() => {
+            fetchAnalytics();
+            haptics.selection();
+          }}>Refresh</Button>
         </div>
       </div>
 

@@ -26,6 +26,7 @@ import {
   IconBrain,
   IconBook
 } from '@tabler/icons-solidjs';
+import { useHaptics } from '@/lib/haptics';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -65,6 +66,7 @@ interface LearningPath {
 }
 
 export const LearningPaths = () => {
+  const haptics = useHaptics();
   const [learningPaths, setLearningPaths] = createSignal<LearningPath[]>([]);
   const [categories, setCategories] = createSignal<string[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
@@ -207,6 +209,7 @@ export const LearningPaths = () => {
         setEnrolledPaths(prev => new Set(prev).add(pathId));
         setSuccessMessage('Successfully enrolled in learning path!');
         setTimeout(() => setSuccessMessage(''), 3000);
+        haptics.success(); // Success feedback for enrollment
         return;
       }
 
@@ -221,6 +224,7 @@ export const LearningPaths = () => {
         setEnrolledPaths(prev => new Set(prev).add(pathId));
         setSuccessMessage('Successfully enrolled in learning path!');
         setTimeout(() => setSuccessMessage(''), 3000);
+        haptics.success(); // Success feedback for enrollment
       } else {
         throw new Error('Failed to enroll');
       }
@@ -228,6 +232,7 @@ export const LearningPaths = () => {
       console.error('Error enrolling in learning path:', error);
       setErrorMessage('Failed to enroll. Please try again.');
       setTimeout(() => setErrorMessage(''), 3000);
+      haptics.error(); // Error feedback
     }
   };
 
@@ -327,7 +332,10 @@ export const LearningPaths = () => {
             <option value="advanced">Advanced</option>
           </select>
 
-          <Button onClick={handleSearch} class="whitespace-nowrap">
+          <Button onClick={() => {
+            handleSearch();
+            haptics.selection();
+          }} class="whitespace-nowrap">
             <IconFilter class="size-4 mr-2" />
             Apply Filters
           </Button>
@@ -442,6 +450,7 @@ export const LearningPaths = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEnroll(path.id);
+                      haptics.impact();
                     }}
                     disabled={enrolledPaths().has(path.id)}
                     class="flex-1"
@@ -465,7 +474,7 @@ export const LearningPaths = () => {
             setSearchTerm('');
             setSelectedCategory('');
             setSelectedDifficulty('');
-            fetchData();
+            haptics.selection();
           }}>
             Clear Filters
           </Button>

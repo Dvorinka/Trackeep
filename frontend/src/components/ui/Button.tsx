@@ -2,6 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { splitProps, Show } from 'solid-js'
 import { cn } from '@/lib/utils'
 import { IconLoader2 } from '@tabler/icons-solidjs'
+import { useHaptics, type HapticPattern } from '@/lib/haptics'
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-papra focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
@@ -46,6 +47,7 @@ export interface ButtonProps
     loading?: boolean
     onClick?: (e: MouseEvent) => void
     children: any
+    haptic?: HapticPattern
   }
 
 export function Button(props: ButtonProps) {
@@ -58,15 +60,28 @@ export function Button(props: ButtonProps) {
     'loading',
     'onClick',
     'children',
+    'haptic',
   ])
 
+  const haptics = useHaptics()
+
   const isDisabled = () => local.disabled || local.loading
+
+  const handleClick = (e: MouseEvent) => {
+    // Trigger haptic feedback if specified
+    if (local.haptic && !isDisabled()) {
+      haptics[local.haptic]?.()
+    }
+    
+    // Call original onClick handler
+    local.onClick?.(e)
+  }
 
   return (
     <button
       class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)}
       disabled={isDisabled()}
-      onClick={local.onClick}
+      onClick={handleClick}
       {...others}
     >
       <Show when={local.loading}>

@@ -48,6 +48,7 @@ import {
 } from '@/lib/credentials';
 import { isDemoMode } from '@/lib/demo-mode';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { useHaptics } from '@/lib/haptics';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -174,6 +175,7 @@ const deriveFileType = (fileName: string): string => {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const haptics = useHaptics();
   const [documents, setDocuments] = createSignal<Document[]>([]);
   const [, setRecentActivity] = createSignal<RecentActivity[]>([]);
   const [githubActivityEvents, setGithubActivityEvents] = createSignal<GitHubActivityEvent[]>([]);
@@ -810,7 +812,10 @@ export const Dashboard = () => {
         <div class="lg:col-span-2 space-y-4">
           <button 
             type="button" 
-            onClick={() => setShowUploadModal(true)}
+            onClick={() => {
+              setShowUploadModal(true);
+              haptics.impact();
+            }}
             class="w-full h-32 inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 items-start flex-col gap-4 py-6 px-6 text-left"
           >
             <IconUpload class="size-6" />
@@ -824,7 +829,10 @@ export const Dashboard = () => {
           <div class="grid grid-cols-2 gap-4">
             <button 
               type="button" 
-              onClick={() => setShowVideoModal(true)}
+              onClick={() => {
+                setShowVideoModal(true);
+                haptics.impact();
+              }}
               class="w-full inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow hover:bg-secondary/90 items-start flex-col gap-4 py-4 px-4 text-left"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-video size-5">
@@ -840,7 +848,10 @@ export const Dashboard = () => {
             
             <button 
               type="button" 
-              onClick={() => setShowBookmarkModal(true)}
+              onClick={() => {
+                setShowBookmarkModal(true);
+                haptics.impact();
+              }}
               class="w-full inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow hover:bg-secondary/90 items-start flex-col gap-4 py-4 px-4 text-left"
             >
               <IconBookmark class="size-5" />
@@ -922,7 +933,10 @@ export const Dashboard = () => {
               <h3 class="font-semibold">Activity Feed</h3>
             </div>
             <button 
-              onClick={() => setActivityRefreshKey(prev => prev + 1)}
+              onClick={() => {
+                setActivityRefreshKey(prev => prev + 1);
+                haptics.selection();
+              }}
               class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8"
             >
               <IconRefresh class="size-4" />
@@ -993,11 +1007,12 @@ export const Dashboard = () => {
               {stats().topTags.map((tag) => (
                 <button
                   class="inline-flex gap-2 px-2.5 py-1 rounded-lg items-center bg-muted group hover:underline text-xs"
-                  onClick={() =>
+                  onClick={() => {
                     navigate(
                       `/app/search?tag=${encodeURIComponent(tag.name)}&query=${encodeURIComponent(tag.name)}`
-                    )
-                  }
+                    );
+                    haptics.navigation();
+                  }}
                 >
                   <span
                     class="size-1.5 rounded-full"

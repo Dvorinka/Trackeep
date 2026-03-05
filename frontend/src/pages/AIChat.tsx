@@ -12,6 +12,7 @@ import {
   Bot
 } from 'lucide-solid'
 import { AIProviderIcon } from '@/components/AIProviderIcon'
+import { useHaptics } from '@/lib/haptics'
 
 interface AIModel {
   id: string
@@ -30,6 +31,7 @@ interface Message {
 }
 
 export const AIChat = () => {
+  const haptics = useHaptics();
   const [activeView, setActiveView] = createSignal<'chat' | 'settings'>('chat')
   const [isSidebarOpen, setIsSidebarOpen] = createSignal(true)
   
@@ -96,6 +98,7 @@ export const AIChat = () => {
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
     setIsLoading(true)
+    haptics.impact(); // Impact feedback for sending message
 
     try {
       // Call AI API
@@ -109,8 +112,10 @@ export const AIChat = () => {
       }
       
       setMessages(prev => [...prev, aiMessage])
+      haptics.success(); // Success feedback for AI response
     } catch (error) {
       console.error('AI API call failed:', error)
+      haptics.error(); // Error feedback
       
       // Fallback response
       const errorMessage: Message = {
@@ -488,7 +493,10 @@ export const AIChat = () => {
                       </div>
                       <Button 
                         disabled={isLoading() || !inputMessage().trim()}
-                        onClick={handleSendMessage}
+                        onClick={() => {
+                          handleSendMessage();
+                          haptics.impact();
+                        }}
                         class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send class="h-4 w-4" />

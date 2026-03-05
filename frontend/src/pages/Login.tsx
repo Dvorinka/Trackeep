@@ -2,7 +2,9 @@ import { createSignal, onMount } from 'solid-js';
 import { useAuth, type LoginRequest, type RegisterRequest } from '@/lib/auth';
 import { isEnvDemoMode } from '@/lib/demo-mode';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { startGitHubOAuth } from '@/lib/oauth';
 import { useNavigate } from '@solidjs/router';
+import { IconBrandGithub } from '@tabler/icons-solidjs';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -81,6 +83,10 @@ export const Login = () => {
             fullName: '',
           });
         }
+      } else {
+        // Default to login mode if backend returns error
+        setIsLogin(true);
+        setRegistrationDisabled(true);
       }
     } catch (err) {
       console.warn('Failed to check if users exist:', err);
@@ -282,6 +288,21 @@ export const Login = () => {
                 class="w-full bg-[#39b9ff] text-white py-2 px-4 rounded-md hover:bg-[#2a8fdb] focus:outline-none focus:ring-2 focus:ring-[#39b9ff] focus:ring-offset-2 focus:ring-offset-[#141415] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading() ? 'Please wait...' : isLogin() ? 'Sign In' : 'Sign Up'}
+              </button>
+
+              <div class="flex items-center gap-3">
+                <div class="h-px flex-1 bg-[#262626]"></div>
+                <span class="text-xs uppercase tracking-[0.2em] text-[#6b7280]">or</span>
+                <div class="h-px flex-1 bg-[#262626]"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={startGitHubOAuth}
+                class="w-full flex items-center justify-center gap-2 bg-[#0f0f10] text-[#fafafa] py-2 px-4 rounded-md border border-[#262626] hover:border-[#39b9ff]/50 hover:bg-[#18181b] focus:outline-none focus:ring-2 focus:ring-[#39b9ff] focus:ring-offset-2 focus:ring-offset-[#141415] transition-colors"
+              >
+                <IconBrandGithub class="size-4" />
+                Continue with GitHub
               </button>
             </form>
 

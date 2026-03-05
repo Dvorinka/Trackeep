@@ -72,12 +72,9 @@ export const AuthProvider: ParentComponent = (props) => {
 
   // Initialize auth state from localStorage
   onMount(() => {
-    console.log('[Auth] onMount: Initializing auth state');
-    console.log('[Auth] onMount: Demo mode check:', isDemoMode());
     
     // First check if demo mode should be cleared
     if (!isDemoMode()) {
-      console.log('[Auth] onMount: Demo mode disabled, clearing demo-specific data only');
       // Only clear demo mode data, not legitimate user auth data
       localStorage.removeItem('demoMode');
       
@@ -88,7 +85,6 @@ export const AuthProvider: ParentComponent = (props) => {
       if (token && userStr) {
         try {
           const user = JSON.parse(userStr);
-          console.log('[Auth] onMount: Found existing auth, restoring:', user);
           setAuthState({
             user,
             token,
@@ -107,7 +103,6 @@ export const AuthProvider: ParentComponent = (props) => {
           clearAuth();
         }
       } else {
-        console.log('[Auth] onMount: No existing auth found, setting isLoading to false');
         setAuthState('isLoading', false);
         // Set dark mode by default when not authenticated
         document.documentElement.setAttribute('data-kb-theme', 'dark');
@@ -116,7 +111,6 @@ export const AuthProvider: ParentComponent = (props) => {
     }
     
     // Demo mode is enabled - use in-memory auth only
-    console.log('[Auth] onMount: Demo mode enabled, using in-memory auth');
     const mockUser = {
       id: 1,
       email: 'demo@trackeep.com',
@@ -128,8 +122,6 @@ export const AuthProvider: ParentComponent = (props) => {
     };
     
     const mockToken = 'demo-token-' + Date.now();
-    
-    console.log('[Auth] onMount: Setting mock auth state:', { mockUser, mockToken });
     setAuthState({
       user: mockUser,
       token: mockToken,
@@ -146,7 +138,6 @@ export const AuthProvider: ParentComponent = (props) => {
     // Apply theme
     document.documentElement.setAttribute('data-kb-theme', 'dark');
     document.title = 'Trackeep - Demo Mode';
-    console.log('[Auth] onMount: Demo mode setup complete');
   });
 
 
@@ -167,23 +158,18 @@ export const AuthProvider: ParentComponent = (props) => {
   };
 
   const setAuth = (token: string, user: User) => {
-    console.log('[Auth] setAuth called with:', { token, user });
 
     localStorage.setItem('trackeep_token', token);
     localStorage.setItem('trackeep_user', JSON.stringify(user));
     // Also set the legacy keys for compatibility
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
-    
-    console.log('[Auth] setAuth: Updating auth state');
     setAuthState({
       user,
       token,
       isAuthenticated: true,
       isLoading: false,
     });
-    
-    console.log('[Auth] setAuth: Auth state updated');
     // Apply theme immediately
     if (user.theme === 'dark') {
       document.documentElement.setAttribute('data-kb-theme', 'dark');

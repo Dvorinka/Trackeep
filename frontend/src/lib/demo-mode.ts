@@ -1,6 +1,6 @@
 // Demo mode API interceptor to provide mock data instead of making real API calls
 
-import { hasAnyCredentials, isBackendAvailable, isSearchAvailable, hasSearchCredentials, hasDatabaseCredentials, hasAICredentials } from './credentials';
+import { hasAnyCredentials, isBackendAvailable, isSearchAvailable } from './credentials';
 
 // Check if demo mode is enabled via environment variable
 export const isEnvDemoMode = (): boolean => {
@@ -14,7 +14,6 @@ export const isEnvDemoMode = (): boolean => {
   const buildTimeResult = import.meta.env.VITE_DEMO_MODE === 'true';
   
   const result = runtimeResult || importMetaEnvResult || buildTimeResult;
-  console.log('[Demo Mode] isEnvDemoMode:', result, 'runtime:', runtimeResult, 'importMetaEnv:', importMetaEnvResult, 'buildTime:', buildTimeResult, 'VITE_DEMO_MODE:', import.meta.env.VITE_DEMO_MODE, 'window.ENV:', (window as any).ENV, 'window.importMetaEnv:', (window as any).importMetaEnv);
   return result;
 };
 
@@ -29,14 +28,6 @@ export const shouldUseRealAPIs = (): boolean => {
   const hasCredentials = hasAnyCredentials();
   const hasBackend = shouldUseRealBackend();
   const result = hasCredentials || hasBackend;
-  console.log('[Demo Mode] shouldUseRealAPIs:', { 
-    hasCredentials, 
-    hasBackend, 
-    result,
-    searchCreds: hasSearchCredentials(),
-    dbCreds: hasDatabaseCredentials(),
-    aiCreds: hasAICredentials()
-  });
   return result;
 };
 
@@ -944,11 +935,9 @@ const parseBody = (options?: RequestInit): Record<string, any> => {
 // Demo mode fetch interceptor
 export const demoFetch = async (url: string, options?: RequestInit): Promise<Response> => {
   const shouldUseReal = shouldUseRealAPIs();
-  console.log('[Demo Mode] demoFetch called:', { url, shouldUseReal });
 
   if (shouldUseReal) {
     if (url.includes('youtube') && Math.random() < 0.02) {
-      console.log('[Demo Mode] Real credentials detected, using real API for:', url);
     }
 
     if (url.includes('youtube')) {
@@ -970,7 +959,6 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
   }
 
   if (!isDemoMode()) {
-    console.log('[Demo Mode] Not in demo mode, using real fetch for:', url);
     return (originalFetch || window.fetch)(url, options);
   }
 
@@ -986,8 +974,6 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
 
   const method = (options?.method || 'GET').toUpperCase();
   const body = parseBody(options);
-
-  console.log(`[Demo Mode] Intercepting request to: ${method} ${path}`);
   await new Promise((resolve) => setTimeout(resolve, 180));
 
   // Auth endpoints
@@ -1946,7 +1932,6 @@ export const initializeDemoMode = () => {
     // Store original fetch to use for real API calls and restore later if needed
     originalFetch = window.fetch;
     window.fetch = demoFetch as typeof fetch;
-    console.log('[Demo Mode] API interceptor initialized');
     return originalFetch;
   }
   return null;

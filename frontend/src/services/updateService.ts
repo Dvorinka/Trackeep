@@ -32,7 +32,6 @@ export const updateService = {
   async checkForUpdates(): Promise<UpdateCheckResponse> {
     // If in demo mode, return mock update data
     if (isDemoMode()) {
-      console.log('[Demo Mode] Using mock update data');
       return {
         updateAvailable: true,
         currentVersion: '1.0.0',
@@ -84,7 +83,6 @@ export const updateService = {
   async installUpdate(version: string): Promise<{ message: string; version: string }> {
     // If in demo mode, simulate update installation
     if (isDemoMode()) {
-      console.log('[Demo Mode] Simulating update installation for version:', version);
       return {
         message: 'Update started',
         version: version
@@ -116,7 +114,6 @@ export const updateService = {
   async getUpdateProgress(): Promise<UpdateStatus> {
     // If in demo mode, return mock progress
     if (isDemoMode()) {
-      console.log('[Demo Mode] Using mock update progress');
       return {
         available: true,
         downloading: false,

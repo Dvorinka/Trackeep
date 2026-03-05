@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo, IconBookmark } from '@tabler/icons-solidjs';
 import { getApiV1BaseUrl } from '@/lib/api-url';
+import { useHaptics } from '@/lib/haptics';
 
 const API_BASE_URL = getApiV1BaseUrl();
 
@@ -102,6 +103,8 @@ export const Bookmarks = () => {
   const [showVideoModal, setShowVideoModal] = createSignal(false);
   const [editingBookmark, setEditingBookmark] = createSignal<Bookmark | null>(null);
   const [activeTab, setActiveTab] = createSignal<'bookmarks' | 'videos'>('bookmarks');
+  
+  const haptics = useHaptics();
   // We no longer show inline HTML content previews, only the bookmark cards themselves
 
   onMount(async () => {
@@ -229,7 +232,9 @@ export const Bookmarks = () => {
       const newBookmark = adaptBookmarkFromApi(raw);
       setBookmarks(prev => [newBookmark, ...prev]);
       setShowAddModal(false);
+      haptics.success(); // Success feedback for adding bookmark
     } catch (error) {
+      haptics.error(); // Error feedback
       alert(error instanceof Error ? error.message : 'Failed to add bookmark');
     }
   };
@@ -242,6 +247,7 @@ export const Bookmarks = () => {
           : bookmark
       )
     );
+    haptics.selection(); // Selection feedback for starring
   };
 
   const deleteBookmark = async (bookmarkId: number) => {
@@ -261,7 +267,9 @@ export const Bookmarks = () => {
         }
 
         setBookmarks(prev => prev.filter(bookmark => bookmark.id !== bookmarkId));
+        haptics.delete(); // Delete feedback
       } catch (error) {
+        haptics.error(); // Error feedback
         alert(error instanceof Error ? error.message : 'Failed to delete bookmark');
       }
     }
@@ -356,13 +364,13 @@ export const Bookmarks = () => {
           <h1 class="text-3xl font-bold text-foreground">Bookmarks</h1>
         </div>
         <Show when={activeTab() === 'bookmarks'}>
-          <Button onClick={() => setShowAddModal(true)}>
+          <Button onClick={() => setShowAddModal(true)} haptic="impact">
             <IconBookmark class="size-4 mr-2" />
             Add Bookmark
           </Button>
         </Show>
         <Show when={activeTab() === 'videos'}>
-          <Button onClick={() => setShowVideoModal(true)}>
+          <Button onClick={() => setShowVideoModal(true)} haptic="impact">
             <IconVideo class="size-4 mr-2" />
             Add Video
           </Button>
@@ -373,7 +381,10 @@ export const Bookmarks = () => {
       <div class="border-b border-border">
         <nav class="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('bookmarks')}
+            onClick={() => {
+              setActiveTab('bookmarks');
+              haptics.navigation();
+            }}
             class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab() === 'bookmarks'
                 ? 'border-primary text-primary'
@@ -384,7 +395,10 @@ export const Bookmarks = () => {
             Web Bookmarks
           </button>
           <button
-            onClick={() => setActiveTab('videos')}
+            onClick={() => {
+              setActiveTab('videos');
+              haptics.navigation();
+            }}
             class={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab() === 'videos'
                 ? 'border-primary text-primary'

@@ -11,6 +11,7 @@ import { getApiV1BaseUrl } from '@/lib/api-url';
 import { 
   IconAlertCircle
 } from '@tabler/icons-solidjs';
+import { useHaptics } from '@/lib/haptics';
 
 type TabType = 'search' | 'predefined' | 'bookmarked';
 
@@ -40,6 +41,7 @@ interface VideoCardProps {
   video: YouTubeVideo;
   onPreview: (video: YouTubeVideo) => void;
   onSave?: (video: YouTubeVideo) => void;
+  haptics: ReturnType<typeof useHaptics>;
 }
 
 const VideoCard = (props: VideoCardProps) => (
@@ -58,7 +60,10 @@ const VideoCard = (props: VideoCardProps) => (
       {/* Play button overlay */}
       <div
         class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-        onClick={() => props.onPreview(props.video)}
+        onClick={() => {
+          props.onPreview(props.video);
+          props.haptics.impact();
+        }}
         role="button"
         aria-label="Play video"
         tabIndex={0}
@@ -100,14 +105,20 @@ const VideoCard = (props: VideoCardProps) => (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => props.onPreview(props.video)}
+            onClick={() => {
+              props.onPreview(props.video);
+              props.haptics.impact();
+            }}
           >
             Preview
           </Button>
           {props.onSave && (
             <Button
               size="sm"
-              onClick={() => props.onSave?.(props.video)}
+              onClick={() => {
+                props.onSave?.(props.video);
+                props.haptics.success();
+              }}
             >
               Save
             </Button>
@@ -119,6 +130,7 @@ const VideoCard = (props: VideoCardProps) => (
 );
 
 export const Youtube = () => {
+  const haptics = useHaptics();
   const [activeTab, setActiveTab] = createSignal<TabType>('search');
   const [searchQuery, setSearchQuery] = createSignal('');
   const [videos, setVideos] = createSignal<YouTubeVideo[]>([]);
@@ -438,6 +450,7 @@ export const Youtube = () => {
   // Load predefined videos when tab is switched to predefined
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
+    haptics.selection(); // Selection feedback for tab switching
     if (tab === 'predefined' && predefinedVideos().length === 0) {
       loadPredefinedVideos();
     }
@@ -449,6 +462,7 @@ export const Youtube = () => {
 
     setIsLoading(true);
     setError('');
+    haptics.impact(); // Impact feedback for search
 
     try {
       // Always use real data, no demo mode check
@@ -473,6 +487,7 @@ export const Youtube = () => {
         };
         
         setVideos([video]);
+        haptics.success(); // Success feedback for found video
       } else {
         // It's a regular search query - use backend API
         try {
@@ -499,6 +514,7 @@ export const Youtube = () => {
             }));
             
             setVideos(videos);
+            haptics.success(); // Success feedback for search results
           } else {
             throw new Error('Search API failed');
           }
@@ -511,6 +527,7 @@ export const Youtube = () => {
       console.error('Search failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to search YouTube');
       setTimeout(() => setError(''), 3000);
+      haptics.error(); // Error feedback
     } finally {
       setIsLoading(false);
     }
@@ -807,7 +824,7 @@ export const Youtube = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <For each={videos()}>
                 {(video) => (
-                  <VideoCard video={video} onPreview={handlePreviewVideo} onSave={handleSaveVideo} />
+                  <VideoCard video={video} onPreview={handlePreviewVideo} onSave={handleSaveVideo} haptics={haptics} />
                 )}
               </For>
             </div>
@@ -821,7 +838,7 @@ export const Youtube = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <For each={predefinedVideos()}>
                 {(video) => (
-                  <VideoCard video={video} onPreview={handlePreviewVideo} onSave={handleSaveVideo} />
+                  <VideoCard video={video} onPreview={handlePreviewVideo} onSave={handleSaveVideo} haptics={haptics} />
                 )}
               </For>
             </div>
@@ -835,7 +852,7 @@ export const Youtube = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <For each={savedVideos()}>
                 {(video) => (
-                  <VideoCard video={video} onPreview={handlePreviewVideo} />
+                  <VideoCard video={video} onPreview={handlePreviewVideo} haptics={haptics} />
                 )}
               </For>
             </div>
@@ -862,7 +879,7 @@ export const Youtube = () => {
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <For each={savedVideos()}>
                   {(video) => (
-                    <VideoCard video={video} onPreview={handlePreviewVideo} />
+                    <VideoCard video={video} onPreview={handlePreviewVideo} haptics={haptics} />
                   )}
                 </For>
               </div>

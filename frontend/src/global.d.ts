@@ -39,5 +39,23 @@ declare module "*.bmp" {
   export default content;
 }
 
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+  readonly VITE_DEMO_MODE?: string;
+  readonly VITE_OAUTH_SERVICE_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
+interface Window {
+  importMetaEnv?: {
+    VITE_API_URL?: string;
+    VITE_DEMO_MODE?: string;
+    VITE_OAUTH_SERVICE_URL?: string;
+  };
+}
+
 // Global build-time constants
 declare const __APP_VERSION__: string;
