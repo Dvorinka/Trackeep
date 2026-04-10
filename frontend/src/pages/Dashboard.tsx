@@ -127,6 +127,36 @@ interface GitHubActivityEvent {
   type: 'push' | 'commit' | 'bookmark' | 'note';
 }
 
+const demoGithubActivityEvents: GitHubActivityEvent[] = [
+  {
+    id: 'github-demo-1',
+    title: 'Pushed 4 commits to trackeep/frontend',
+    date: '2 hours ago',
+    repo: 'trackeep',
+    action: 'pushed',
+    link: 'https://github.com/tdvorak/trackeep',
+    type: 'push',
+  },
+  {
+    id: 'github-demo-2',
+    title: 'Commit: refine demo-mode note rendering',
+    date: 'Yesterday',
+    repo: 'trackeep',
+    action: 'committed',
+    link: 'https://github.com/tdvorak/trackeep',
+    type: 'commit',
+  },
+  {
+    id: 'github-demo-3',
+    title: 'Pushed 2 commits to docker-homelab',
+    date: '3 days ago',
+    repo: 'docker-homelab',
+    action: 'pushed',
+    link: 'https://github.com/tdvorak/docker-homelab',
+    type: 'push',
+  },
+];
+
 const createEmptyStats = (): QuickStats => ({
   totalDocuments: 0,
   totalBookmarks: 0,
@@ -268,7 +298,7 @@ export const Dashboard = () => {
     if (isDemoMode()) {
       setDashboardStats(getMockStats());
       setDocuments(getMockDocuments());
-      setGithubActivityEvents([]);
+      setGithubActivityEvents(demoGithubActivityEvents);
 
       const mockActivities = getMockActivities();
       const filteredActivities = mockActivities

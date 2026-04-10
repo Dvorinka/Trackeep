@@ -184,19 +184,14 @@ Content-Type: application/json
 }
 ```
 
-### GitHub OAuth Login
+### GitHub App Sign-In
 ```http
 GET /auth/github
 ```
 
-### GitHub OAuth Callback
+### GitHub App Sign-In Callback
 ```http
 GET /auth/github/callback?code=github_code_here
-```
-
-### Handle OAuth Callback
-```http
-GET /auth/oauth/callback?provider=github&code=code_here
 ```
 
 ### Update Profile

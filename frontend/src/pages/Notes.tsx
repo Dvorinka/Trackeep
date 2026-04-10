@@ -1,8 +1,10 @@
-import { createSignal, createEffect, onMount, For, Show } from 'solid-js';
+import { createSignal, onMount, For, Show } from 'solid-js';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { NoteModal } from '@/components/ui/NoteModal';
 import { ViewNoteModal } from '@/components/ui/ViewNoteModal';
+import { NoteContentRenderer } from '@/components/notes/NoteContentRenderer';
 import { IconPin, IconTrash, IconEdit, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
 import { getMockNotes } from '@/lib/mockData';
 import { isDemoMode, shouldUseRealBackend } from '@/lib/demo-mode';
@@ -30,46 +32,69 @@ interface Note {
   isHtml?: boolean;
 }
 
-const renderMarkdownPreviewHtml = (content: string, maxBlocks = 4): string => {
-  const html = content
-    .replace(/^# (.*$)/gim, '<h1 class="text-base font-semibold mb-1">$1<\/h1>')
-    .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1">$1<\/h2>')
-    .replace(/^### (.*$)/gim, '<h3 class="text-sm font-semibold mb-1">$1<\/h3>')
-    .replace(/^#### (.*$)/gim, '<h4 class="text-xs font-semibold mb-1">$1<\/h4>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1<\/strong>')
-    .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
-    .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-xs">$1<\/code>')
-    .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2<\/code><\/pre>')
-    .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="this.parentElement.nextElementSibling.textContent=this.checked?\'x\':\' \'"><span class="text-xs">$1</span></div>')
-    .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked" onchange="this.parentElement.nextElementSibling.textContent=this.checked?\'x\':\' \'"><span class="text-xs">$1</span></div>')
-    .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1<\/li>')
-    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1<\/li>')
-    .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-3 italic text-[#aaa] mb-2">$1<\/blockquote>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1<\/a>')
-    .replace(/\n\n+/g, '<\/p><p class="mb-2">');
-
-  const parts = html.split('<\/p><p class="mb-2">');
-  const limited = parts.slice(0, maxBlocks).join('<\/p><p class="mb-2">');
-  return limited;
+const normalizeNoteId = (value: unknown, fallback: number): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const digits = value.match(/\d+/)?.[0];
+    if (digits) {
+      const parsed = Number(digits);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return fallback;
 };
 
-const renderPlainTextPreviewHtml = (content: string): string => {
-  return content
-    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1<\/a>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1<\/strong>')
-    .replace(/\*(.*?)\*/g, '<em class="italic">$1<\/em>')
-    .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked"><span class="text-xs">$1</span></div>')
-    .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;" onclick="this.checked=!this.checked"><span class="text-xs">$1</span></div>')
-    .split('\n')
-    .slice(0, 6)
-    .map((line) => (line ? line : '<br \/>'))
-    .join('\n');
+const normalizeNoteDate = (value: unknown, fallback: Date = new Date()): string => {
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+
+    const relativeMatch = value.trim().match(/^(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago$/i);
+    if (relativeMatch) {
+      const amount = Number(relativeMatch[1]);
+      const unit = relativeMatch[2].toLowerCase();
+      const relativeDate = new Date();
+      const operations: Record<string, (date: Date, quantity: number) => void> = {
+        minute: (date, quantity) => date.setMinutes(date.getMinutes() - quantity),
+        hour: (date, quantity) => date.setHours(date.getHours() - quantity),
+        day: (date, quantity) => date.setDate(date.getDate() - quantity),
+        week: (date, quantity) => date.setDate(date.getDate() - quantity * 7),
+        month: (date, quantity) => date.setMonth(date.getMonth() - quantity),
+        year: (date, quantity) => date.setFullYear(date.getFullYear() - quantity),
+      };
+      operations[unit]?.(relativeDate, amount);
+      return relativeDate.toISOString();
+    }
+  }
+
+  return fallback.toISOString();
+};
+
+const getNoteKind = (note: Note): 'html' | 'markdown' | 'plain' => {
+  if (note.isHtml) return 'html';
+  if (note.isMarkdown) return 'markdown';
+  return 'plain';
+};
+
+const formatDisplayDate = (value: string): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Unknown';
+  }
+  return parsed.toLocaleDateString();
 };
 
 export const Notes = () => {
   const haptics = useHaptics();
   const [notes, setNotes] = createSignal<Note[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
+  const [loadError, setLoadError] = createSignal('');
   const [searchTerm, setSearchTerm] = createSignal('');
   const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
   const [showAddModal, setShowAddModal] = createSignal(false);
@@ -83,6 +108,7 @@ export const Notes = () => {
   onMount(async () => {
     try {
       let notesData: any[] = [];
+      setLoadError('');
 
       // Check if we should use demo mode or real API
       if (isDemoMode() && !shouldUseRealBackend()) {
@@ -113,11 +139,11 @@ export const Notes = () => {
           : [];
 
         const content = note.content || '';
-        const createdAt = note.created_at || note.createdAt || new Date().toISOString();
-        const updatedAt = note.updated_at || note.updatedAt || createdAt;
+        const createdAt = normalizeNoteDate(note.created_at || note.createdAt || note.createdAtLabel, new Date());
+        const updatedAt = normalizeNoteDate(note.updated_at || note.updatedAt || createdAt, new Date(createdAt));
 
         return {
-          id: Number(note.id || index + 1),
+          id: normalizeNoteId(note.id, index + 1),
           title: note.title || 'Untitled note',
           content,
           createdAt,
@@ -133,7 +159,7 @@ export const Notes = () => {
                 url: att.url,
               }))
             : [],
-          isMarkdown: content.includes('#') || content.includes('*'),
+          isMarkdown: Boolean(note.isMarkdown) || content.includes('#') || content.includes('*') || content.includes('```'),
           isHtml: content.includes('<') && content.includes('>'),
         };
       });
@@ -141,44 +167,9 @@ export const Notes = () => {
       setNotes(adaptedNotes);
     } catch (error) {
       console.error('Failed to load notes:', error);
-      // Fallback to demo data if API fails
-      if (!isDemoMode()) {
-        console.log('[Notes] API failed, falling back to demo data');
-        const mockNotesData = getMockNotes();
-        const adaptedNotes: Note[] = mockNotesData.map((note: any, index) => {
-          const tags = Array.isArray(note.tags)
-            ? note.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag?.name)).filter(Boolean)
-            : [];
-
-          const content = note.content || '';
-          const createdAt = note.created_at || note.createdAt || new Date().toISOString();
-          const updatedAt = note.updated_at || note.updatedAt || createdAt;
-
-          return {
-            id: Number(note.id || index + 1),
-            title: note.title || 'Untitled note',
-            content,
-            createdAt,
-            updatedAt,
-            tags,
-            pinned: Boolean(note.pinned ?? note.is_pinned ?? tags.includes('pinned')),
-            attachments: Array.isArray(note.attachments)
-              ? note.attachments.map((att: any, attachmentIndex: number) => ({
-                  id: String(att.id || `att_${attachmentIndex}`),
-                  name: att.name || 'attachment',
-                  type: att.type || 'file',
-                  size: att.size || '',
-                  url: att.url,
-                }))
-              : [],
-            isMarkdown: content.includes('#') || content.includes('*'),
-            isHtml: content.includes('<') && content.includes('>'),
-          };
-        });
-        setNotes(adaptedNotes);
-      } else {
-        setNotes([]);
-      }
+      setNotes([]);
+      const message = error instanceof Error ? error.message : 'Failed to load notes.';
+      setLoadError(message);
     } finally {
       setIsLoading(false);
     }
@@ -225,14 +216,17 @@ export const Notes = () => {
     try {
       if (isDemoMode() && !shouldUseRealBackend()) {
         // Demo mode: Add note locally
+        const now = new Date();
         const note: Note = {
           id: Date.now(),
           title: noteData.title,
           content: noteData.content,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
           tags: noteData.tags,
-          pinned: false
+          pinned: false,
+          isMarkdown: Boolean(noteData.content?.includes('```') || noteData.content?.includes('#')),
+          isHtml: Boolean(noteData.content?.includes('<') && noteData.content?.includes('>')),
         };
         
         setNotes(prev => [note, ...prev]);
@@ -255,16 +249,16 @@ export const Notes = () => {
 
         const newNote = await response.json();
         const adaptedNote: Note = {
-          id: newNote.id,
+          id: normalizeNoteId(newNote.id, Date.now()),
           title: newNote.title,
-          content: newNote.content,
-          createdAt: newNote.created_at || newNote.createdAt,
-          updatedAt: newNote.updated_at || newNote.updatedAt,
+          content: newNote.content || '',
+          createdAt: normalizeNoteDate(newNote.created_at || newNote.createdAt || new Date().toISOString()),
+          updatedAt: normalizeNoteDate(newNote.updated_at || newNote.updatedAt || newNote.created_at || new Date().toISOString()),
           tags: Array.isArray(newNote.tags) ? newNote.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.name) : [],
           pinned: Boolean(newNote.pinned ?? newNote.is_pinned),
           attachments: [],
-          isMarkdown: newNote.content.includes('#') || newNote.content.includes('*'),
-          isHtml: newNote.content.includes('<') && newNote.content.includes('>'),
+          isMarkdown: Boolean(newNote.content?.includes('#') || newNote.content?.includes('*') || newNote.content?.includes('```')),
+          isHtml: Boolean(newNote.content?.includes('<') && newNote.content?.includes('>')),
         };
 
         setNotes(prev => [adaptedNote, ...prev]);
@@ -431,7 +425,6 @@ export const Notes = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Add this function to handle checkbox changes
   const updateNoteCheckbox = (noteId: number, checkboxIndex: number, isChecked: boolean) => {
     setNotes(prev => prev.map(note => {
       if (note.id === noteId) {
@@ -443,11 +436,12 @@ export const Notes = () => {
           const checkedMatch = line.match(/^- \[x\] (.*)$/);
           
           if (uncheckedMatch || checkedMatch) {
-            if (checkboxCount === checkboxIndex) {
+            const currentCheckboxIndex = checkboxCount;
+            checkboxCount++;
+            if (currentCheckboxIndex === checkboxIndex) {
               const text = uncheckedMatch ? uncheckedMatch[1] : (checkedMatch ? checkedMatch[1] : '');
               return isChecked ? `- [x] ${text}` : `- [ ] ${text}`;
             }
-            checkboxCount++;
           }
           return line;
         });
@@ -460,6 +454,35 @@ export const Notes = () => {
       }
       return note;
     }));
+
+    setViewingNote(prev => {
+      if (!prev || prev.id !== noteId) {
+        return prev;
+      }
+
+      const lines = prev.content.split('\n');
+      let checkboxCount = 0;
+      const updatedLines = lines.map(line => {
+        const uncheckedMatch = line.match(/^- \[ \] (.*)$/);
+        const checkedMatch = line.match(/^- \[x\] (.*)$/);
+
+        if (uncheckedMatch || checkedMatch) {
+          const currentCheckboxIndex = checkboxCount;
+          checkboxCount++;
+          if (currentCheckboxIndex === checkboxIndex) {
+            const text = uncheckedMatch ? uncheckedMatch[1] : (checkedMatch ? checkedMatch[1] : '');
+            return isChecked ? `- [x] ${text}` : `- [ ] ${text}`;
+          }
+        }
+        return line;
+      });
+
+      return {
+        ...prev,
+        content: updatedLines.join('\n'),
+        updatedAt: new Date().toISOString(),
+      };
+    });
   };
 
   // Handler for updating note content from ViewNoteModal
@@ -469,327 +492,235 @@ export const Notes = () => {
         ? { ...note, content, updatedAt: new Date().toISOString() }
         : note
     ));
+    setViewingNote(prev =>
+      prev && prev.id === noteId
+        ? { ...prev, content, updatedAt: new Date().toISOString() }
+        : prev
+    );
   };
 
-  // Make the function available globally for checkbox onchange handlers
-  createEffect(() => {
-    (window as any).updateNoteContent = (checkbox: HTMLInputElement) => {
-      const noteElement = checkbox.closest('[data-note-id]');
-      if (noteElement) {
-        const noteId = parseInt(noteElement.getAttribute('data-note-id') || '0');
-        const checkboxElements = noteElement.querySelectorAll('input[type="checkbox"]');
-        const checkboxIndex = Array.from(checkboxElements).indexOf(checkbox);
-        updateNoteCheckbox(noteId, checkboxIndex, checkbox.checked);
-      }
-    };
-  });
-
   return (
-    <div class="fixed inset-0 bg-background flex flex-col">
-      <style>
-        {`
-          .note-checkbox {
-            width: 16px !important;
-            height: 16px !important;
-            cursor: pointer !important;
-            accent-color: #3b82f6 !important;
-            border: 2px solid #4b5563 !important;
-            border-radius: 3px !important;
-            transition: all 0.2s ease !important;
-          }
-          .note-checkbox:hover {
-            border-color: #3b82f6 !important;
-            transform: scale(1.1) !important;
-          }
-          .note-checkbox:checked {
-            background-color: #3b82f6 !important;
-            border-color: #3b82f6 !important;
-          }
-          .note-checkbox:focus {
-            outline: 2px solid #3b82f6 !important;
-            outline-offset: 2px !important;
-          }
-        `}
-      </style>
-      
-      {/* Header - Signal/Discord style */}
-      <div class="bg-[#2c2c2e] border-b border-[#404040] px-4 py-3 flex-shrink-0">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-xl font-semibold text-white">Notes</h1>
-            <p class="text-sm text-[#b9b9b9]">Your personal notes</p>
-          </div>
-          <Button 
-            onClick={() => {
-              setShowAddModal(true);
-              haptics.impact();
-            }}
-            class="bg-[#5865f2] hover:bg-[#4752c4] text-white border-0"
-          >
-            Add Note
-          </Button>
+    <div class="p-6 space-y-6">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 class="text-3xl font-bold text-foreground">Notes</h1>
+          <p class="text-muted-foreground mt-1">Your personal notes</p>
         </div>
+        <Button
+          onClick={() => {
+            setShowAddModal(true);
+            haptics.impact();
+          }}
+        >
+          Add Note
+        </Button>
       </div>
 
-      {/* Main Content Area */}
-      <div class="flex-1 flex overflow-hidden">
-        {/* Sidebar - Discord style */}
-        <div class="w-64 bg-[#202225] border-r border-[#404040] flex-shrink-0 overflow-y-auto">
-          <div class="p-4">
-            <h3 class="text-xs font-semibold text-[#8e9297] uppercase tracking-wide mb-3">Search & Filter</h3>
-            <SearchTagFilterBar
-              searchPlaceholder="Search notes..."
-              searchValue={searchTerm()}
-              onSearchChange={(value) => setSearchTerm(value)}
-              tagOptions={allTags()}
-              selectedTag={selectedTags()[0] || ''}
-              onTagChange={(value) => setSelectedTags(value ? [value] : [])}
-              onReset={() => {
-                setSearchTerm('');
-                setSelectedTags([]);
-              }}
-            />
-            
-            <div class="mt-6">
-              <h3 class="text-xs font-semibold text-[#8e9297] uppercase tracking-wide mb-3">Quick Stats</h3>
-              <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-[#b9b9b9]">Total Notes</span>
-                  <span class="text-sm font-medium text-white">{filteredNotes().length}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-[#b9b9b9]">Pinned</span>
-                  <span class="text-sm font-medium text-white">{filteredNotes().filter(n => n.pinned).length}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-[#b9b9b9]">Tags</span>
-                  <span class="text-sm font-medium text-white">{allTags().length}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <SearchTagFilterBar
+        searchPlaceholder="Search notes..."
+        searchValue={searchTerm()}
+        onSearchChange={(value) => setSearchTerm(value)}
+        tagOptions={allTags()}
+        selectedTag={selectedTags()[0] || ''}
+        onTagChange={(value) => setSelectedTags(value ? [value] : [])}
+        onReset={() => {
+          setSearchTerm('');
+          setSelectedTags([]);
+        }}
+      />
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card class="p-4">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Total Notes</p>
+          <p class="text-xl font-semibold text-foreground">{filteredNotes().length}</p>
+        </Card>
+        <Card class="p-4">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Pinned</p>
+          <p class="text-xl font-semibold text-foreground">{filteredNotes().filter((note) => note.pinned).length}</p>
+        </Card>
+        <Card class="p-4">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Tags</p>
+          <p class="text-xl font-semibold text-foreground">{allTags().length}</p>
+        </Card>
+      </div>
+
+      <Show when={loadError()}>
+        <Card class="border-destructive/30 bg-destructive/5 p-4">
+          <p class="text-sm font-medium text-foreground">Notes could not be loaded</p>
+          <p class="mt-1 text-sm text-muted-foreground">{loadError()}</p>
+        </Card>
+      </Show>
+
+      <Show when={copiedContent()}>
+        <div class="bg-primary/15 text-primary px-3 py-1 rounded-md text-sm">
+          Content copied!
         </div>
+      </Show>
 
-        {/* Notes List - Signal style chat */}
-        <div class="flex-1 bg-[#36393f] overflow-y-auto">
-          <div class="p-4 space-y-2">
-            <Show when={copiedContent()}>
-              <div class="bg-green-500/20 border border-green-500/50 text-green-400 px-3 py-2 rounded-lg text-sm mb-4">
-                Content copied!
+      <Show when={isLoading()}>
+        <div class="space-y-4">
+          {[...Array(3)].map(() => (
+            <Card class="p-6">
+              <div class="animate-pulse">
+                <div class="h-6 bg-muted rounded mb-2"></div>
+                <div class="h-4 bg-muted rounded w-3/4"></div>
               </div>
-            </Show>
+            </Card>
+          ))}
+        </div>
+      </Show>
 
-            {isLoading() ? (
-              <div class="space-y-3">
-                {[...Array(3)].map(() => (
-                  <div class="bg-[#2c2c2e] rounded-lg p-4 animate-pulse">
-                    <div class="h-4 bg-[#404040] rounded mb-2"></div>
-                    <div class="h-3 bg-[#404040] rounded w-3/4"></div>
+      <Show when={!isLoading()}>
+        <div class="space-y-4">
+          <For each={filteredNotes()}>
+            {(note) => (
+              <Card
+                data-note-id={note.id}
+                class={`p-6 cursor-pointer transition-colors hover:bg-accent/50 ${note.pinned ? 'border-l-4 border-l-primary' : ''}`}
+                onClick={() => viewNote(note)}
+              >
+                <div class="flex justify-between items-start mb-3 gap-3">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <h3 class="text-lg font-semibold text-foreground truncate">{note.title}</h3>
+                    <Show when={note.pinned}>
+                      <IconPin class="size-4 text-primary" />
+                    </Show>
+                    <Show when={note.isMarkdown}>
+                      <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">MD</span>
+                    </Show>
+                    <Show when={note.isHtml}>
+                      <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">HTML</span>
+                    </Show>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <>
-                {filteredNotes().length > 0 ? (
-                  filteredNotes().map((note) => (
-                    <div 
-                      data-note-id={note.id}
-                      class={`bg-[#2c2c2e] hover:bg-[#35363c] rounded-lg p-4 cursor-pointer transition-all border border-transparent ${note.pinned ? 'border-l-4 border-l-[#5865f2]' : ''}`}
-                      onClick={() => viewNote(note)}
+                  <div class="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyNoteContent(note);
+                      }}
+                      class="text-muted-foreground hover:text-foreground p-1"
                     >
-                      <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center gap-2">
-                          <h3 class="text-white font-medium">{note.title}</h3>
-                          {note.pinned && <IconPin class="size-4 text-[#faa61a]" />}
-                          {note.isMarkdown && <span class="text-xs px-2 py-1 bg-[#5865f2]/20 text-[#5865f2] rounded">MD</span>}
-                          {note.isHtml && <span class="text-xs px-2 py-1 bg-[#5865f2]/20 text-[#5865f2] rounded">HTML</span>}
-                        </div>
-                        <div class="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyNoteContent(note);
-                            }}
-                            class="text-[#b9b9b9] hover:text-white p-1 h-6 w-6"
-                          >
-                            <IconCopy size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              exportNote(note);
-                            }}
-                            class="text-[#b9b9b9] hover:text-white p-1 h-6 w-6"
-                          >
-                            <IconDownload size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditNote(note);
-                            }}
-                            class="text-[#b9b9b9] hover:text-white p-1 h-6 w-6"
-                          >
-                            <IconEdit size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePin(note.id);
-                            }}
-                            class="text-[#b9b9b9] hover:text-white p-1 h-6 w-6"
-                            {...{title: note.pinned ? "Unpin note" : "Pin note"}}
-                          >
-                            <IconPin size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNote(note.id);
-                            }}
-                            class="text-[#ed4245] hover:text-[#ff6b6b] p-1 h-6 w-6"
-                          >
-                            <IconTrash size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {/* Note Preview */}
-                      <div class="text-[#dcddde] text-sm">
-                        <div class="prose prose-invert max-w-none">
-                          <Show 
-                            when={expandedNotes().has(note.id)} 
-                            fallback={
-                              <div
-                                class="overflow-hidden"
-                                style={{
-                                  display: '-webkit-box',
-                                  '-webkit-line-clamp': '2',
-                                  '-webkit-box-orient': 'vertical',
-                                  'max-height': '3em',
-                                  'line-height': '1.5em'
-                                }}
-                                innerHTML={
-                                  note.isHtml
-                                    ? note.content
-                                    : note.isMarkdown
-                                      ? renderMarkdownPreviewHtml(note.content)
-                                      : renderPlainTextPreviewHtml(note.content)
-                                }
-                              />
-                            }
-                          >
-                            <div
-                              innerHTML={
-                                note.isHtml
-                                  ? note.content
-                                  : note.isMarkdown
-                                    ? note.content.replace(/^# (.*$)/gim, '<h1 class="text-base font-semibold mb-2">$1</h1>')
-                                      .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1">$1</h2>')
-                                      .replace(/^### (.*$)/gim, '<h3 class="text-sm font-semibold mb-1">$1</h3>')
-                                      .replace(/^#### (.*$)/gim, '<h4 class="text-xs font-semibold mb-1">$1</h4>')
-                                      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-                                      .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                                      .replace(/`(.*?)`/g, '<code class="bg-[#404040] px-1 py-0.5 rounded text-xs">$1</code>')
-                                      .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#404040] p-3 rounded mb-2 overflow-x-auto"><code class="text-xs">$2</code></pre>')
-                                      .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #5865f2;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
-                                      .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #5865f2;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
-                                      .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
-                                      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-                                      .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#404040] pl-3 italic text-[#b9b9b9] mb-2">$1</blockquote>')
-                                      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#5865f2] hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-                                      .replace(/\n\n+/g, '</p><p class="mb-2">')
-                                    : note.content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-[#5865f2] hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-                                      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-                                      .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                                      .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #5865f2;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
-                                      .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-1"><input type="checkbox" checked class="note-checkbox" style="width: 16px; height: 16px; cursor: pointer; accent-color: #5865f2;" onclick="this.checked=!this.checked" onchange="updateNoteContent(this)"><span class="text-sm">$1</span></div>')
-                                      .split('\n').map((line) => line ? `<p class="mb-2">${line}</p>` : '<br />').join('')
-                              }
-                            />
-                          </Show>
-                        </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            console.log('Show more clicked for note:', note.title);
-                            toggleNoteExpansion(note.id);
-                          }}
-                          class="mt-2 text-xs text-[#5865f2] hover:text-[#7289da] font-medium cursor-pointer transition-colors"
-                        >
-                          {expandedNotes().has(note.id) ? 'Show less ←' : 'Show more →'}
-                        </button>
-                      </div>
-                      
-                      {/* Tags */}
-                      <div class="flex flex-wrap gap-1 mt-3">
-                        <For each={note.tags}>
-                          {(tag) => (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTag(tag);
-                              }}
-                              class="px-2 py-1 bg-[#404040] hover:bg-[#4a4b4e] text-[#b9b9b9] hover:text-white text-xs rounded-md transition-colors cursor-pointer"
-                            >
-                              {tag}
-                            </button>
-                          )}
-                        </For>
-                      </div>
-                      
-                      {/* Attachments */}
-                      <Show when={note.attachments && note.attachments.length > 0}>
-                        <div class="mt-3">
-                          <div class="flex items-center gap-2 mb-2">
-                            <IconPaperclip class="size-3 text-[#b9b9b9]" />
-                            <span class="text-xs text-[#b9b9b9]">Attachments ({note.attachments?.length || 0})</span>
-                          </div>
-                          <div class="flex flex-wrap gap-2">
-                            <For each={note.attachments || []}>
-                              {(attachment) => (
-                                <div class="flex items-center gap-2 px-2 py-1 bg-[#404040] rounded-md text-xs">
-                                  <span class="text-[#dcddde]">{attachment.name}</span>
-                                  <span class="text-[#8e9297]">({attachment.size})</span>
-                                </div>
-                              )}
-                            </For>
-                          </div>
-                        </div>
-                      </Show>
-                      
-                      <div class="flex justify-between items-center mt-3 pt-3 border-t border-[#404040]">
-                        <p class="text-xs text-[#8e9297]">
-                          Updated: {note.updatedAt && !isNaN(new Date(note.updatedAt).getTime()) ? new Date(note.updatedAt).toLocaleDateString() : 'Invalid Date'}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div class="bg-[#2c2c2e] rounded-lg p-8 text-center">
-                    <div class="text-6xl mb-4">📝</div>
-                    <p class="text-[#b9b9b9] text-lg font-medium mb-2">
-                      {searchTerm() || selectedTags().length > 0 
-                        ? 'No notes found matching your search or filters.' 
-                        : 'No notes yet. Add your first note!'}
-                    </p>
-                    <p class="text-[#8e9297] text-sm">
-                      {searchTerm() || selectedTags().length > 0 
-                        ? 'Try adjusting your search terms or filters.'
-                        : 'Click the "Add Note" button to get started.'}
-                    </p>
+                      <IconCopy size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportNote(note);
+                      }}
+                      class="text-muted-foreground hover:text-foreground p-1"
+                    >
+                      <IconDownload size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditNote(note);
+                      }}
+                      class="text-muted-foreground hover:text-foreground p-1"
+                    >
+                      <IconEdit size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(note.id);
+                      }}
+                      class="text-primary hover:text-primary/80 p-1"
+                      {...{ title: note.pinned ? 'Unpin note' : 'Pin note' }}
+                    >
+                      <IconPin size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
+                      class="text-destructive hover:text-destructive/80 p-1"
+                    >
+                      <IconTrash size={16} />
+                    </Button>
                   </div>
-                )}
-              </>
+                </div>
+
+                <div class="text-muted-foreground text-sm mb-3">
+                  <div class={expandedNotes().has(note.id) ? '' : 'max-h-72 overflow-hidden'}>
+                    <NoteContentRenderer
+                      content={note.content}
+                      kind={getNoteKind(note)}
+                      preview={!expandedNotes().has(note.id)}
+                      maxBlocks={4}
+                      onToggleTask={(taskIndex, nextChecked) => updateNoteCheckbox(note.id, taskIndex, nextChecked)}
+                    />
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleNoteExpansion(note.id);
+                    }}
+                    class="mt-2 text-xs text-primary hover:text-primary/80 font-medium cursor-pointer transition-colors"
+                  >
+                    {expandedNotes().has(note.id) ? 'Show less ←' : 'Show more →'}
+                  </button>
+                </div>
+
+                <Show when={note.attachments && note.attachments.length > 0}>
+                  <div class="mb-3">
+                    <div class="flex items-center gap-2 mb-2">
+                      <IconPaperclip class="size-4 text-muted-foreground" />
+                      <span class="text-xs text-muted-foreground">Attachments ({note.attachments?.length || 0})</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <For each={note.attachments || []}>
+                        {(attachment) => (
+                          <div class="flex items-center gap-2 px-2 py-1 bg-muted rounded-md text-xs">
+                            <span class="text-foreground">{attachment.name}</span>
+                            <span class="text-muted-foreground">({attachment.size})</span>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
+
+                <div class="flex flex-wrap gap-2 mb-3">
+                  <For each={note.tags}>
+                    {(tag) => (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTag(tag);
+                        }}
+                        class="px-2 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs rounded-md transition-colors cursor-pointer"
+                      >
+                        {tag}
+                      </button>
+                    )}
+                  </For>
+                </div>
+
+                <p class="text-muted-foreground text-xs">
+                  Updated: {formatDisplayDate(note.updatedAt)}
+                </p>
+              </Card>
             )}
-          </div>
+          </For>
+
+          <Show when={filteredNotes().length === 0}>
+            <Card class="p-12 text-center">
+              <p class="text-muted-foreground">
+                {searchTerm() || selectedTags().length > 0
+                  ? 'No notes found matching your search or filters.'
+                  : 'No notes yet. Add your first note!'}
+              </p>
+            </Card>
+          </Show>
         </div>
-      </div>
+      </Show>
 
       {/* Add Note Modal */}
       <NoteModal

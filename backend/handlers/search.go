@@ -46,7 +46,6 @@ type BraveSearchResult struct {
 
 // SearchWeb handles POST /api/v1/search/web
 func SearchWeb(c *gin.Context) {
-	fmt.Printf("DEBUG: SearchWeb function called\n")
 	var req struct {
 		Query string `json:"query" binding:"required"`
 		Count int    `json:"count"`
@@ -233,7 +232,6 @@ func SearchWeb(c *gin.Context) {
 
 // SearchNews handles POST /api/v1/search/news
 func SearchNews(c *gin.Context) {
-	fmt.Printf("DEBUG: SearchNews function called\n")
 	var req struct {
 		Query string `json:"query" binding:"required"`
 		Count int    `json:"count"`
@@ -304,18 +302,18 @@ func SearchNews(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
+		
 
 		var braveResp BraveNewsResponse
 		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
-			fmt.Printf("DEBUG: JSON decode error: %v\n", err)
+			
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
 			return
 		}
 
 		// Debug logging
-		fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
-		fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
+		
+		
 
 		resultsRaw := braveResp.Results
 		results := make([]BraveSearchResult, 0, len(resultsRaw))
@@ -400,18 +398,18 @@ func SearchNews(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("DEBUG: Raw Brave News API response: %s\n", string(bodyBytes))
+		
 
 		var braveResp BraveNewsResponse
 		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&braveResp); err != nil {
-			fmt.Printf("DEBUG: JSON decode error: %v\n", err)
+			
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode Brave news response"})
 			return
 		}
 
 		// Debug logging
-		fmt.Printf("DEBUG: Parsed BraveNewsResponse: %+v\n", braveResp)
-		fmt.Printf("DEBUG: Number of results: %d\n", len(braveResp.Results))
+		
+		
 
 		resultsRaw := braveResp.Results
 		results := make([]BraveSearchResult, 0, len(resultsRaw))

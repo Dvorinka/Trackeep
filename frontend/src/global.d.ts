@@ -42,7 +42,6 @@ declare module "*.bmp" {
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_DEMO_MODE?: string;
-  readonly VITE_OAUTH_SERVICE_URL?: string;
 }
 
 interface ImportMeta {
@@ -53,7 +52,6 @@ interface Window {
   importMetaEnv?: {
     VITE_API_URL?: string;
     VITE_DEMO_MODE?: string;
-    VITE_OAUTH_SERVICE_URL?: string;
   };
 }
 

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trackeep Desktop Integrations</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <h1>Trackeep Desktop Integrations</h1>
+        <p>
+          The main window always shows your exact Trackeep web UI. Configure the
+          instance and native desktop features here.
+        </p>
+      </header>
+
+      <form id="connect-form" autocomplete="off">
+        <label for="instance-url">Instance URL</label>
+        <input
+          id="instance-url"
+          name="instance-url"
+          type="url"
+          placeholder="https://trackeep.your-domain.com"
+          required
+        />
+
+        <label for="api-key">Desktop API key / token (optional)</label>
+        <div class="row">
+          <input
+            id="api-key"
+            name="api-key"
+            type="password"
+            placeholder="tk_xxx or JWT token"
+            autocomplete="off"
+          />
+          <button id="validate-token" type="button">Validate Permissions</button>
+        </div>
+        <p class="hint">
+          For desktop uploads/sync, use a key with <code>files:read</code> and
+          <code>files:write</code> permissions.
+        </p>
+        <p id="permission-status" class="hint"></p>
+
+        <label for="sync-folder">Local sync folder (optional)</label>
+        <div class="row">
+          <input
+            id="sync-folder"
+            name="sync-folder"
+            type="text"
+            placeholder="Choose a local folder"
+            readonly
+          />
+          <button id="choose-sync-folder" type="button">Choose Folder</button>
+          <button id="open-sync-folder" type="button">Open</button>
+        </div>
+
+        <button id="connect-button" type="submit">Save and Open Instance</button>
+      </form>
+
+      <section class="native-actions">
+        <h2>Native Actions</h2>
+        <div class="row">
+          <button id="upload-now" type="button">Upload Files Now</button>
+          <button id="quick-share-now" type="button">Quick Share Files</button>
+          <button id="sync-now" type="button">Sync Folder Now</button>
+        </div>
+      </section>
+
+      <p id="status" class="status" aria-live="polite"></p>
+      <p id="error" class="error" aria-live="assertive"></p>
+
+      <footer>
+        <p>
+          Menu shortcuts: <strong>Trackeep -> Desktop Integrations...</strong>,
+          <strong>Upload Files...</strong>, <strong>Quick Share Files...</strong>,
+          <strong>Sync Folder Now</strong>
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

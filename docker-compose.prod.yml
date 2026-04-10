@@ -1,122 +1,164 @@
+version: '3.8'
+
 services:
-  trackeep-frontend:
-    image: 'ghcr.io/dvorinka/trackeep/frontend:latest'
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-    environment:
-      - NODE_ENV=production
-      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
-      - VITE_OAUTH_SERVICE_URL=${VITE_OAUTH_SERVICE_URL:-https://oauth.trackeep.org}
-      - FRONTEND_PORT=${FRONTEND_PORT:-80}
-      - BACKEND_PORT=${BACKEND_PORT:-8080}
-    depends_on:
-      - trackeep-backend
-    restart: unless-stopped
-    networks:
-      - trackeep-network
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep nginx > /dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  trackeep-backend:
-    image: 'ghcr.io/dvorinka/trackeep/backend:latest'
-    ports:
-      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
-    environment:
-      - BACKEND_PORT=${BACKEND_PORT:-8080}
-      - FRONTEND_PORT=${FRONTEND_PORT:-80}
-      - GIN_MODE=${GIN_MODE:-release}
-      - DB_TYPE=${DB_TYPE:-postgres}
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USER=${DB_USER:-trackeep}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME:-trackeep}
-      - DB_SSL_MODE=${DB_SSL_MODE:-disable}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
-      - OAUTH_SERVICE_URL=${OAUTH_SERVICE_URL:-https://oauth.trackeep.org}
-      - UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
-      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
-      - 'CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}'
-      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
-      - SEARCH_API_PROVIDER=${SEARCH_API_PROVIDER:-demo}
-      - SEARCH_RESULTS_LIMIT=${SEARCH_RESULTS_LIMIT:-10}
-      - AUTO_UPDATE_CHECK=${AUTO_UPDATE_CHECK:-false}
-      - UPDATE_CHECK_INTERVAL=${UPDATE_CHECK_INTERVAL:-24h}
-      - PRERELEASE_UPDATES=${PRERELEASE_UPDATES:-false}
-      - DRAGONFLY_ADDR=${DRAGONFLY_ADDR:-dragonfly:6379}
-      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
-    volumes:
-      - './data:/data'
-      - './uploads:/app/uploads'
-      - './logs:/app/logs'
-      - '/var/run/docker.sock:/var/run/docker.sock'
-    restart: unless-stopped
-    networks:
-      - trackeep-network
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - '--no-verbose'
-        - '--tries=1'
-        - '--spider'
-        - "http://localhost:${BACKEND_PORT:-8080}/health"
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   postgres:
-    image: 'postgres:15-alpine'
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    image: postgres:15-alpine
+    container_name: trackeep-postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-trackeep}
       POSTGRES_USER: ${DB_USER:-trackeep}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
     volumes:
-      - 'postgres_data:/var/lib/postgres/data'
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
     restart: unless-stopped
-    networks:
-      - trackeep-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trackeep} -d ${DB_NAME:-trackeep}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - trackeep-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   dragonfly:
     image: ghcr.io/dragonflydb/dragonfly:latest
-    container_name: dragonfly
+    container_name: trackeep-dragonfly
     ports:
-      - "${DRAGONFLY_PORT:-6379}:6379"
+      - "${DRAGONFLY_HOST_PORT:-6380}:6379"
     volumes:
       - dragonfly_data:/data
-    command: dragonfly --requirepass=${DRAGONFLY_PASSWORD} --proactor_threads=2
+    command: >
+      dragonfly
+      --requirepass=${DRAGONFLY_PASSWORD:?DRAGONFLY_PASSWORD is required}
+      --proactor_threads=4
+      --maxmemory=2gb
+      --maxmemory-policy=allkeys-lru
+      --save_schedule=*:30
+      --dir=/data
     environment:
       - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
     restart: unless-stopped
-    networks:
-      - trackeep-network
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${DRAGONFLY_PASSWORD} ping"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - trackeep-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  trackeep-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - GO_VERSION=1.22
+    container_name: trackeep-backend
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:${BACKEND_PORT:-8080}"
+    env_file:
+      - .env
+    environment:
+      - APP_VERSION=${APP_VERSION:-1.2.5}
+      - BACKEND_PORT=${BACKEND_PORT:-8080}
+      - FRONTEND_PORT=${FRONTEND_PORT:-80}
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DRAGONFLY_ADDR=dragonfly:6379
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT:-8080}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trackeep-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  trackeep-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NODE_VERSION=20
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:${BACKEND_HOST_PORT:-8080}}
+    container_name: trackeep-frontend
+    ports:
+      - "${FRONTEND_HOST_PORT:-80}:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:${BACKEND_HOST_PORT:-8080}}
+      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
+    depends_on:
+      - trackeep-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trackeep-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
-  postgres_data: null
-  dragonfly_data: null
+  postgres_data:
+    driver: local
+  dragonfly_data:
+    driver: local
 
 networks:
   trackeep-network:

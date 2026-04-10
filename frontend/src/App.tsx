@@ -8,7 +8,7 @@ import { Bookmarks } from '@/pages/Bookmarks'
 import { Tasks } from '@/pages/Tasks'
 import { Files } from '@/pages/Files'
 import { Notes } from '@/pages/Notes'
-import { AIChat } from '@/pages/AIChat'
+import Chat from '@/pages/Chat'
 import { Settings } from '@/pages/Settings'
 import { Login } from '@/pages/Login'
 import { Youtube } from '@/pages/Youtube'
@@ -28,6 +28,7 @@ import { AuthProvider, useAuth } from '@/lib/auth'
 import { Search } from '@/pages/Search'
 import { Analytics } from '@/pages/Analytics'
 import { Messages } from '@/pages/Messages'
+import { ShareTarget } from '@/pages/ShareTarget'
 import BrowserExtensionSettings from '@/pages/BrowserExtensionSettings'
 import { initializeDemoMode, clearDemoMode, isEnvDemoMode } from '@/lib/demo-mode'
 import { onMount, createEffect } from 'solid-js'
@@ -134,6 +135,7 @@ function App() {
           <Route path="/" component={RootRoute} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/share-target" component={ShareTarget} />
           <Route path="/app" component={() => (
             <ProtectedRoute>
               <Layout title="Dashboard">
@@ -207,7 +209,7 @@ function App() {
           <Route path="/app/chat" component={() => (
             <ProtectedRoute>
               <Layout title="AI Chat" fullBleed>
-                <AIChat />
+                <Chat />
               </Layout>
             </ProtectedRoute>
           )} />

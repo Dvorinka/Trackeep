@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/trackeep/backend/migrations"
 	"go.uber.org/zap"
@@ -24,6 +25,10 @@ func getJWTSecret() string {
 	return "your-secret-key-change-in-production"
 }
 
+func shouldRunLegacySQLMigrations() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("RUN_LEGACY_SQL_MIGRATIONS")), "true")
+}
+
 // InitDatabase initializes the database connection
 func InitDatabase() {
 	// Initialize logger first
@@ -39,7 +44,9 @@ func InitDatabase() {
 	var err error
 
 	// Configure GORM
-	gormConfig := &gorm.Config{}
+	gormConfig := &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
 
 	dbType := os.Getenv("DB_TYPE")
 	if dbType == "" {
@@ -68,9 +75,15 @@ func InitDatabase() {
 
 	logger.Info("Database connected successfully")
 
-	// Run database migrations
-	if err := migrations.RunMigrations(); err != nil {
-		logger.Fatal("Failed to run database migrations", zap.Error(err))
+	// The checked-in Goose bootstrap targets an older UUID-based schema.
+	// Use it only when explicitly requested; the current application schema is
+	// maintained via GORM auto-migrations during startup.
+	if shouldRunLegacySQLMigrations() {
+		if err := migrations.RunMigrations(); err != nil {
+			logger.Fatal("Failed to run legacy database migrations", zap.Error(err))
+		}
+	} else {
+		logger.Info("Skipping legacy SQL migrations; relying on GORM auto-migration for the current schema")
 	}
 }
 

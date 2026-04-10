@@ -1,25 +1,19 @@
 package handlers
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
 )
-
-const defaultOAuthServiceURL = "https://oauth.trackeep.org"
 
 type centralizedOAuthUser struct {
 	ID        int    `json:"id"`
@@ -30,20 +24,8 @@ type centralizedOAuthUser struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-type centralizedOAuthValidationResponse struct {
-	Token string               `json:"token"`
-	User  centralizedOAuthUser `json:"user"`
-}
-
 func getOAuthServiceURL() string {
-	value := strings.TrimSpace(os.Getenv("OAUTH_SERVICE_URL"))
-	if value == "" {
-		value = strings.TrimSpace(os.Getenv("VITE_OAUTH_SERVICE_URL"))
-	}
-	if value == "" {
-		value = defaultOAuthServiceURL
-	}
-	return strings.TrimRight(value, "/")
+	return config.ControlServiceURL
 }
 
 func headerValue(headers http.Header, key string) string {
@@ -133,21 +115,15 @@ func resolveFrontendRedirectURL(r *http.Request) string {
 	return ""
 }
 
-func buildOAuthCallbackURL(r *http.Request, frontendRedirect string) string {
+func buildGitHubUserCallbackURL(r *http.Request) string {
 	baseURL := backendPublicBaseURL(r)
 	if baseURL == "" {
 		return ""
 	}
 
-	callbackURL, err := url.Parse(baseURL + "/api/v1/auth/oauth/callback")
+	callbackURL, err := url.Parse(baseURL + "/api/v1/auth/github/callback")
 	if err != nil {
 		return ""
-	}
-
-	if frontendRedirect != "" {
-		query := callbackURL.Query()
-		query.Set("frontend_redirect", frontendRedirect)
-		callbackURL.RawQuery = query.Encode()
 	}
 
 	return callbackURL.String()
@@ -173,73 +149,6 @@ func buildFrontendCallbackRedirectURL(frontendRedirect, token string) string {
 
 	return parsed.String()
 }
-
-func validateCentralizedOAuthToken(ctx context.Context, token string) (*centralizedOAuthValidationResponse, error) {
-	serviceURL := getOAuthServiceURL()
-	if serviceURL == "" {
-		return nil, fmt.Errorf("oauth service url not configured")
-	}
-
-	requestBody, err := json.Marshal(map[string]string{"token": token})
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, serviceURL+"/api/v1/auth/oauth/callback", bytes.NewReader(requestBody))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		message := strings.TrimSpace(string(body))
-		if message == "" {
-			message = resp.Status
-		}
-		return nil, fmt.Errorf("oauth service validation failed: %s", message)
-	}
-
-	var response centralizedOAuthValidationResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, err
-	}
-
-	return &response, nil
-}
-
-func parseOAuthTokenClaimsUnverified(token string) (jwt.MapClaims, error) {
-	parser := jwt.NewParser()
-	parsedToken, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return nil, err
-	}
-
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
-	}
-
-	return claims, nil
-}
-
-func getAccessTokenFromOAuthClaims(claims jwt.MapClaims) string {
-	accessToken, _ := claims["access_token"].(string)
-	return strings.TrimSpace(accessToken)
-}
-
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		trimmed := strings.TrimSpace(value)

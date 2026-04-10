@@ -25,7 +25,6 @@ cp /usr/share/nginx/html/index.html /usr/share/nginx/html/index.html.orig
 # Replace environment variables in the HTML file
 sed -i "s|VITE_DEMO_MODE_PLACEHOLDER|$VITE_DEMO_MODE|g" $HTML_FILE
 sed -i "s|VITE_API_URL_PLACEHOLDER|$VITE_API_URL|g" $HTML_FILE
-sed -i "s|VITE_OAUTH_SERVICE_URL_PLACEHOLDER|$VITE_OAUTH_SERVICE_URL|g" $HTML_FILE
 
 # Find the actual CSS file name and update the stylesheet link
 CSS_FILE=$(find /usr/share/nginx/html/assets -name "*.css" | head -1 | xargs basename)
@@ -36,7 +35,6 @@ fi
 echo "Environment variables injected:"
 echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
 echo "VITE_API_URL=$VITE_API_URL"
-echo "VITE_OAUTH_SERVICE_URL=$VITE_OAUTH_SERVICE_URL"
 echo "FRONTEND_PORT=$FRONTEND_PORT"
 EOF
 

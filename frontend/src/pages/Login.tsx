@@ -2,7 +2,7 @@ import { createSignal, onMount } from 'solid-js';
 import { useAuth, type LoginRequest, type RegisterRequest } from '@/lib/auth';
 import { isEnvDemoMode } from '@/lib/demo-mode';
 import { getApiV1BaseUrl } from '@/lib/api-url';
-import { startGitHubOAuth } from '@/lib/oauth';
+import { startGitHubSignIn } from '@/lib/oauth';
 import { useNavigate } from '@solidjs/router';
 import { IconBrandGithub } from '@tabler/icons-solidjs';
 
@@ -13,6 +13,14 @@ interface LoginFormData {
   password: string;
   username: string;
   fullName: string;
+}
+
+function getSafeNextPath(): string {
+  const next = new URLSearchParams(window.location.search).get('next') || '';
+  if (!next.startsWith('/') || next.startsWith('//')) {
+    return '/app';
+  }
+  return next;
 }
 
 export const Login = () => {
@@ -26,6 +34,7 @@ export const Login = () => {
     fullName: '',
   });
   const [error, setError] = createSignal('');
+  const [setupError, setSetupError] = createSignal('');
   const [noAccountsExist, setNoAccountsExist] = createSignal(false);
   const [registrationDisabled, setRegistrationDisabled] = createSignal(false);
   const [loading, setLoading] = createSignal(false);
@@ -57,6 +66,7 @@ export const Login = () => {
       });
       
       if (response.ok) {
+        setSetupError('');
         const data = await response.json();
         if (data.hasUsers) {
           // Users exist - disable registration
@@ -84,15 +94,27 @@ export const Login = () => {
           });
         }
       } else {
-        // Default to login mode if backend returns error
+        let backendMessage = 'Unable to determine whether this Trackeep instance has been initialized. Check the backend logs and database schema.';
+        try {
+          const data = await response.json();
+          if (typeof data?.error === 'string' && data.error.trim() !== '') {
+            backendMessage = `${backendMessage} Backend error: ${data.error}`;
+          }
+        } catch {
+          // Ignore JSON parsing errors and fall back to the generic message.
+        }
+
+        setSetupError(backendMessage);
         setIsLogin(true);
-        setRegistrationDisabled(true);
+        setRegistrationDisabled(false);
+        setNoAccountsExist(false);
       }
     } catch (err) {
       console.warn('Failed to check if users exist:', err);
-      // Default to login mode if backend is unavailable
+      setSetupError('Unable to reach the backend to determine whether any accounts exist yet.');
       setIsLogin(true);
-      setRegistrationDisabled(true);
+      setRegistrationDisabled(false);
+      setNoAccountsExist(false);
     }
   });
 
@@ -117,8 +139,7 @@ export const Login = () => {
         };
         await register(registerPayload);
       }
-      // Navigate to app after successful login/registration
-      navigate('/app');
+      navigate(getSafeNextPath(), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -189,6 +210,16 @@ export const Login = () => {
         ) : (
           <>
             {/* Registration disabled message */}
+            {setupError() && (
+              <div class="mb-6 bg-amber-500/10 border border-amber-500/50 text-amber-300 px-4 py-3 rounded">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+                  <span class="font-medium">Setup Check Failed</span>
+                </div>
+                <p class="text-xs">{setupError()}</p>
+              </div>
+            )}
+
             {registrationDisabled() && (
               <div class="mb-6 bg-blue-500/10 border border-blue-500/50 text-blue-400 px-4 py-3 rounded">
                 <div class="flex items-center gap-2 mb-1">
@@ -298,11 +329,11 @@ export const Login = () => {
 
               <button
                 type="button"
-                onClick={startGitHubOAuth}
+                onClick={startGitHubSignIn}
                 class="w-full flex items-center justify-center gap-2 bg-[#0f0f10] text-[#fafafa] py-2 px-4 rounded-md border border-[#262626] hover:border-[#39b9ff]/50 hover:bg-[#18181b] focus:outline-none focus:ring-2 focus:ring-[#39b9ff] focus:ring-offset-2 focus:ring-offset-[#141415] transition-colors"
               >
                 <IconBrandGithub class="size-4" />
-                Continue with GitHub
+                Continue with GitHub App
               </button>
             </form>
 

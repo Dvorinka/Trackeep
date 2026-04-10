@@ -847,13 +847,23 @@
                 More secure than JWT tokens, revocable anytime
               </div>
           </div>
+
+          <div class="form-group">
+            <label for="youtubeAutoPrompt">YouTube Auto Prompt</label>
+            <div class="input-help">
+              <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; letter-spacing: normal; margin: 0;">
+                <input type="checkbox" id="youtubeAutoPrompt" style="width: 16px; height: 16px;" />
+                <span>Ask to save when a YouTube video is detected</span>
+              </label>
+            </div>
+          </div>
           
           <div id="connectionStatus" class="connection-status" style="display: none;">
             <div class="status-content">
               <img src="https://www.svgrepo.com/show/448375/connection-gateway.svg" alt="Status" class="icon" style="width: 16px; height: 16px;" />
               <div>
                 <strong id="statusTitle">Testing Connection...</strong>
-                <p id="statusMessage">Please wait</p>
+                <p id="connectionStatusMessage">Please wait</p>
               </div>
             </div>
           </div>

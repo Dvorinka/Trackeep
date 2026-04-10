@@ -5,20 +5,31 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "mobile",
+    "video"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && go run main.go",
+    "dev:mobile": "npm --workspace mobile run start",
+    "dev:desktop": "cd desktop && npm run tauri:dev",
+    "dev:video": "npm --workspace video run dev",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && go build -o ../dist/trackeep-server main.go",
-    "install:all": "npm install && cd frontend && npm install",
-    "clean": "rm -rf dist node_modules frontend/node_modules backend/vendor"
+    "build:desktop": "cd desktop && npm run tauri:build",
+    "render:video": "npm --workspace video run render",
+    "render:video:vertical": "npm --workspace video run render:vertical",
+    "render:video:poster": "npm --workspace video run render:poster",
+    "install:all": "npm install && cd frontend && npm install && cd ../mobile && npm install && cd ../desktop && npm install",
+    "clean": "rm -rf dist node_modules frontend/node_modules mobile/node_modules desktop/node_modules backend/vendor desktop/dist desktop/src-tauri/target",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "patch-package": "^8.0.1",
+    "shadcn": "^4.0.5"
   },
   "engines": {
     "node": ">=18.0.0",

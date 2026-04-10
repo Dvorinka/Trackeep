@@ -134,6 +134,7 @@ export const AuthProvider: ParentComponent = (props) => {
     localStorage.setItem('token', mockToken);
     localStorage.setItem('trackeep_user', JSON.stringify(mockUser));
     localStorage.setItem('user', JSON.stringify(mockUser));
+    localStorage.setItem('theme', 'dark');
     
     // Apply theme
     document.documentElement.setAttribute('data-kb-theme', 'dark');

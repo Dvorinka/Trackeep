@@ -1,0 +1,405 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e37]:
+    - generic [ref=e40]:
+      - link "Trackeep Logo Trackeep" [ref=e42] [cursor=pointer]:
+        - /url: /app
+        - img "Trackeep Logo" [ref=e43]
+        - generic [ref=e44]: Trackeep
+      - group [ref=e46]:
+        - button "Trackeep Workspace" [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]:
+            - img [ref=e50]
+            - generic [ref=e53]: Trackeep Workspace
+          - img [ref=e55]
+      - navigation [ref=e57]:
+        - link "Home" [ref=e58] [cursor=pointer]:
+          - /url: /app
+          - generic [ref=e59]:
+            - img [ref=e60]
+            - generic [ref=e64]: Home
+        - link "Bookmarks" [ref=e66] [cursor=pointer]:
+          - /url: /app/bookmarks
+          - generic [ref=e67]:
+            - img [ref=e68]
+            - generic [ref=e70]: Bookmarks
+        - link "Tasks" [ref=e72] [cursor=pointer]:
+          - /url: /app/tasks
+          - generic [ref=e73]:
+            - img [ref=e74]
+            - generic [ref=e77]: Tasks
+        - link "Time Tracking" [ref=e79] [cursor=pointer]:
+          - /url: /app/time-tracking
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - generic [ref=e84]: Time Tracking
+        - link "Calendar" [ref=e86] [cursor=pointer]:
+          - /url: /app/calendar
+          - generic [ref=e87]:
+            - img [ref=e88]
+            - generic [ref=e90]: Calendar
+        - link "Files" [ref=e92] [cursor=pointer]:
+          - /url: /app/files
+          - generic [ref=e93]:
+            - img [ref=e94]
+            - generic [ref=e96]: Files
+        - link "Notes" [ref=e98] [cursor=pointer]:
+          - /url: /app/notes
+          - generic [ref=e99]:
+            - img [ref=e100]
+            - generic [ref=e102]: Notes
+        - link "Messages" [ref=e104] [cursor=pointer]:
+          - /url: /app/messages
+          - generic [ref=e105]:
+            - img [ref=e106]
+            - generic [ref=e108]: Messages
+        - link "YouTube" [ref=e110] [cursor=pointer]:
+          - /url: /app/youtube
+          - generic [ref=e111]:
+            - img [ref=e112]
+            - generic [ref=e115]: YouTube
+        - link "Members" [ref=e117] [cursor=pointer]:
+          - /url: /app/members
+          - generic [ref=e118]:
+            - img [ref=e119]
+            - generic [ref=e124]: Members
+        - link "Learning" [ref=e126] [cursor=pointer]:
+          - /url: /app/learning-paths
+          - generic [ref=e127]:
+            - img [ref=e128]
+            - generic [ref=e131]: Learning
+        - link "Stats" [ref=e133] [cursor=pointer]:
+          - /url: /app/stats
+          - generic [ref=e134]:
+            - img [ref=e135]
+            - generic [ref=e137]: Stats
+        - link "GitHub" [ref=e139] [cursor=pointer]:
+          - /url: /app/github
+          - generic [ref=e140]:
+            - img [ref=e141]
+            - generic [ref=e143]: GitHub
+        - link "AI Assistant" [ref=e145] [cursor=pointer]:
+          - /url: /app/chat
+          - generic [ref=e146]:
+            - img [ref=e147]
+            - generic [ref=e154]: AI Assistant
+      - navigation [ref=e156]:
+        - link "Removed stuff" [ref=e157] [cursor=pointer]:
+          - /url: /app/removed-stuff
+          - generic [ref=e158]:
+            - img [ref=e159]
+            - generic [ref=e162]: Removed stuff
+        - link "Settings" [ref=e164] [cursor=pointer]:
+          - /url: /app/settings
+          - generic [ref=e165]:
+            - img [ref=e166]
+            - generic [ref=e169]: Settings
+        - button "Logout" [ref=e171] [cursor=pointer]:
+          - generic [ref=e172]:
+            - img [ref=e173]
+            - generic [ref=e177]: Logout
+    - generic [ref=e179]:
+      - generic [ref=e180]:
+        - generic [ref=e181]:
+          - button [ref=e182] [cursor=pointer]:
+            - img [ref=e183]
+          - button "Quick search" [ref=e184] [cursor=pointer]:
+            - img [ref=e185]
+            - text: Quick search
+        - generic [ref=e188]:
+          - button "Import a document" [ref=e189] [cursor=pointer]:
+            - img [ref=e190]
+            - text: Import a document
+          - button [ref=e194] [cursor=pointer]:
+            - img [ref=e195]
+            - img [ref=e200]
+          - button "AU" [ref=e204] [cursor=pointer]:
+            - generic [ref=e205]: AU
+            - img [ref=e206]
+      - main [ref=e208]:
+        - generic [ref=e210]:
+          - generic [ref=e211]:
+            - generic [ref=e213]:
+              - img [ref=e215]
+              - generic [ref=e218]:
+                - paragraph [ref=e219]: "0"
+                - paragraph [ref=e220]: Documents
+            - generic [ref=e222]:
+              - img [ref=e224]
+              - generic [ref=e226]:
+                - paragraph [ref=e227]: "0"
+                - paragraph [ref=e228]: Bookmarks
+            - generic [ref=e230]:
+              - img [ref=e232]
+              - generic [ref=e235]:
+                - paragraph [ref=e236]: "0"
+                - paragraph [ref=e237]: Tasks
+            - generic [ref=e239]:
+              - img [ref=e241]
+              - generic [ref=e243]:
+                - paragraph [ref=e244]: "0"
+                - paragraph [ref=e245]: Notes
+          - generic [ref=e246]:
+            - generic [ref=e248]:
+              - img [ref=e250]
+              - generic [ref=e253]:
+                - paragraph [ref=e254]: "0"
+                - paragraph [ref=e255]: Videos
+            - generic [ref=e257]:
+              - img [ref=e259]
+              - generic [ref=e262]:
+                - paragraph [ref=e263]: "0"
+                - paragraph [ref=e264]: Learning
+            - generic [ref=e266]:
+              - img [ref=e268]
+              - generic [ref=e271]:
+                - paragraph [ref=e272]: 0m
+                - paragraph [ref=e273]: Time
+            - generic [ref=e275]:
+              - img [ref=e277]
+              - generic [ref=e280]:
+                - paragraph [ref=e281]: 0%
+                - paragraph [ref=e282]: Productivity
+            - generic [ref=e284]:
+              - img [ref=e286]
+              - generic [ref=e288]:
+                - paragraph [ref=e289]: "0"
+                - paragraph [ref=e290]: Documents
+            - generic [ref=e292]:
+              - img [ref=e294]
+              - generic [ref=e296]:
+                - paragraph [ref=e297]: "0"
+                - paragraph [ref=e298]: Notes
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - generic [ref=e301]:
+                - img [ref=e302]
+                - heading "Recent Achievements" [level=3] [ref=e305]
+              - paragraph [ref=e306]: No achievements yet.
+            - generic [ref=e307]:
+              - generic [ref=e308]:
+                - img [ref=e309]
+                - heading "Upcoming Deadlines" [level=3] [ref=e312]
+              - paragraph [ref=e313]: No upcoming deadlines.
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]:
+                - img [ref=e317]
+                - heading "Task Completion" [level=3] [ref=e319]
+              - generic [ref=e320]:
+                - generic [ref=e321]:
+                  - generic [ref=e322]: Progress
+                  - generic [ref=e323]: 0/0
+                - paragraph [ref=e325]: 0% completion rate
+                - generic [ref=e326]:
+                  - generic [ref=e327]:
+                    - paragraph [ref=e328]: "0"
+                    - paragraph [ref=e329]: Completed
+                  - generic [ref=e330]:
+                    - paragraph [ref=e331]: "0"
+                    - paragraph [ref=e332]: Active
+            - generic [ref=e333]:
+              - generic [ref=e334]:
+                - img [ref=e335]
+                - heading "Storage Usage" [level=3] [ref=e337]
+              - generic [ref=e338]:
+                - generic [ref=e339]:
+                  - generic [ref=e340]: Used Space
+                  - generic [ref=e341]: 0 MB
+                - paragraph [ref=e343]: 0% of 50 GB used
+            - generic [ref=e344]:
+              - generic [ref=e345]:
+                - img [ref=e346]
+                - heading "Weekly Activity" [level=3] [ref=e348]
+              - generic [ref=e349]:
+                - paragraph [ref=e351]: No activity data yet.
+                - generic [ref=e352]:
+                  - generic [ref=e353]: "Total: 0 activities"
+                  - generic [ref=e354]: "Avg: 0 per day"
+          - generic [ref=e355]:
+            - generic [ref=e356]:
+              - button "Upload documents Drag and drop or click to browse" [ref=e357] [cursor=pointer]:
+                - img [ref=e358]
+                - generic [ref=e361]:
+                  - generic [ref=e362]: Upload documents
+                  - generic [ref=e363]: Drag and drop or click to browse
+              - generic [ref=e364]:
+                - button "Save YouTube Video Save a YouTube video link" [ref=e365] [cursor=pointer]:
+                  - img [ref=e366]
+                  - generic [ref=e370]:
+                    - generic [ref=e371]: Save YouTube Video
+                    - generic [ref=e372]: Save a YouTube video link
+                - button "Add Bookmark Save web links" [ref=e373] [cursor=pointer]:
+                  - img [ref=e374]
+                  - generic [ref=e376]:
+                    - generic [ref=e377]: Add Bookmark
+                    - generic [ref=e378]: Save web links
+              - generic [ref=e379]:
+                - generic [ref=e381]:
+                  - img [ref=e382]
+                  - heading "GitHub Activity" [level=3] [ref=e384]
+                - paragraph [ref=e385]: No GitHub activity yet.
+            - generic [ref=e386]:
+              - generic [ref=e387]:
+                - generic [ref=e388]:
+                  - img [ref=e389]
+                  - heading "Activity Feed" [level=3] [ref=e392]
+                - button [ref=e393] [cursor=pointer]:
+                  - img [ref=e394]
+              - generic [ref=e397]:
+                - generic [ref=e400]: (0 items)
+                - generic [ref=e401]:
+                  - img [ref=e402]
+                  - paragraph [ref=e405]: No activity yet
+                  - paragraph [ref=e406]: Start using Trackeep to see your activity here
+          - generic [ref=e408]:
+            - generic [ref=e409]:
+              - img [ref=e410]
+              - heading "Popular Tags" [level=3] [ref=e413]
+            - paragraph [ref=e414]: No tags yet.
+          - heading "Latest imported documents" [level=2] [ref=e415]
+          - table [ref=e418]:
+            - rowgroup [ref=e419]:
+              - row "File name Actions" [ref=e420]:
+                - columnheader "File name" [ref=e421]
+                - columnheader [ref=e422]
+                - columnheader [ref=e423]
+                - columnheader "Actions" [ref=e424]:
+                  - generic [ref=e425]: Actions
+            - rowgroup [ref=e426]:
+              - row "No documents yet." [ref=e427]:
+                - cell "No documents yet." [ref=e428]
+    - button "AI Assistant" [ref=e429] [cursor=pointer]:
+      - img [ref=e430]
+    - generic [ref=e437]:
+      - generic [ref=e438]:
+        - generic [ref=e439]:
+          - img [ref=e441]
+          - generic [ref=e448]:
+            - heading "AI Assistant" [level=3] [ref=e449]
+            - paragraph [ref=e450]: Always here to help
+        - button [ref=e452] [cursor=pointer]:
+          - img [ref=e453]
+      - generic [ref=e457]:
+        - img [ref=e459]
+        - generic [ref=e466]:
+          - paragraph [ref=e467]: Hello! I'm your AI assistant. How can I help you today?
+          - paragraph [ref=e469]: 01:18 PM
+      - generic [ref=e470]:
+        - generic [ref=e471]:
+          - textbox "Type your message..." [ref=e472]
+          - button [disabled]:
+            - img
+        - generic [ref=e474]:
+          - button "longcat icon LongCat" [ref=e476] [cursor=pointer]:
+            - img "longcat icon" [ref=e477]
+            - generic [ref=e478]: LongCat
+            - img [ref=e479]
+          - generic [ref=e481]:
+            - generic [ref=e482]: longcat
+            - link "AI settings" [ref=e483] [cursor=pointer]:
+              - /url: /app/settings#ai
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - heading [level=3]
+          - generic: Unknown size
+        - button:
+          - img
+      - generic:
+        - generic: Unknown file type
+        - generic:
+          - button "Download":
+            - img
+            - text: Download
+          - button "Open":
+            - img
+            - text: Open
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]
+  - generic:
+    - generic:
+      - generic:
+        - heading "Add New Bookmark" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - textbox "URL *"
+        - textbox "Title (optional)"
+        - textbox "Description (optional)"
+        - generic:
+          - text: Tags
+          - generic:
+            - generic:
+              - textbox "Add tags..."
+      - generic:
+        - button "Cancel"
+        - button "Save Bookmark" [disabled]
+  - generic:
+    - generic:
+      - generic:
+        - heading "Add YouTube Video" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - text: YouTube URL
+          - textbox "https://www.youtube.com/watch?v=..."
+        - generic:
+          - text: Title (optional)
+          - textbox "Video title"
+        - generic:
+          - text: Description (optional)
+          - textbox "Video description"
+        - generic:
+          - text: Tags (comma-separated)
+          - textbox "tutorial, learning, tech"
+      - generic:
+        - button "Cancel"
+        - button "Add Video" [disabled]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - heading [level=3]
+          - generic: Unknown size
+        - button:
+          - img
+      - generic:
+        - generic: Unknown file type
+        - generic:
+          - button "Download":
+            - img
+            - text: Download
+          - button "Open":
+            - img
+            - text: Open
+  - generic:
+    - generic:
+      - generic:
+        - heading "Import Documents" [level=3]
+        - button:
+          - img
+      - generic:
+        - generic:
+          - img
+          - heading "Drop files here" [level=4]
+          - paragraph: or click to browse
+          - button "Browse Files"
+      - generic:
+        - button "Cancel"
+        - button "Upload 0 Files" [disabled]

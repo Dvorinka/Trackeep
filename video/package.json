@@ -1,0 +1,25 @@
+{
+  "name": "video",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render": "sh -c 'mkdir -p ../dist/video && remotion render src/index.ts TrackeepTrailer16x9 ../dist/video/trackeep-trailer.mp4'",
+    "render:vertical": "sh -c 'mkdir -p ../dist/video && remotion render src/index.ts TrackeepTrailer9x16 ../dist/video/trackeep-trailer-vertical.mp4'",
+    "render:poster": "sh -c 'mkdir -p ../dist/video && remotion still src/index.ts TrackeepPoster16x9 ../dist/video/trackeep-poster.png'"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@remotion/cli": "4.0.434",
+    "@tabler/icons-react": "^3.39.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "4.0.434"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "~5.9.3"
+  }
+}

@@ -833,7 +833,8 @@ func restartApplication() {
 		return
 	}
 
-	// Exit the current process
+	// Exit the current process gracefully
+	log.Println("Exiting current process to complete update")
 	os.Exit(0)
 }
 

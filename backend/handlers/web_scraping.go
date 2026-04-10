@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -454,7 +455,7 @@ func (h *WebScrapingHandler) scrapeWebPage(pageURL string, job models.ScrapingJo
 
 	// Set error handler
 	c.OnError(func(r *colly.Response, err error) {
-		fmt.Printf("Error scraping %s: %v\n", r.Request.URL, err)
+		log.Printf("Error scraping %s: %v", r.Request.URL, err)
 	})
 
 	// Start scraping

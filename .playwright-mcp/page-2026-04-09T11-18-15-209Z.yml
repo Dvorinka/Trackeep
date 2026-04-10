@@ -1,0 +1,30 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img "Trackeep Logo" [ref=e7]
+    - heading "Trackeep" [level=1] [ref=e8]
+    - paragraph [ref=e9]: Create your account
+  - generic [ref=e10]:
+    - generic [ref=e13]: Create Admin Account
+    - paragraph [ref=e14]: No accounts exist yet. Create the first administrator account to get started.
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: Email
+      - textbox "Email" [ref=e18]:
+        - /placeholder: your@email.com
+    - generic [ref=e19]:
+      - generic [ref=e20]: Username
+      - textbox "Username" [ref=e21]:
+        - /placeholder: username
+    - generic [ref=e22]:
+      - generic [ref=e23]: Full Name
+      - textbox "Full Name" [ref=e24]:
+        - /placeholder: Your Name
+    - generic [ref=e25]:
+      - generic [ref=e26]: Password
+      - textbox "Password" [ref=e27]:
+        - /placeholder: ••••••••
+    - button "Sign Up" [ref=e28] [cursor=pointer]
+    - generic [ref=e31]: or
+    - button "Continue with GitHub App" [ref=e33] [cursor=pointer]:
+      - img [ref=e34]
+      - text: Continue with GitHub App

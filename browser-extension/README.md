@@ -5,6 +5,7 @@ This folder contains a WebExtension (Manifest v3) that lets you:
 - **Save the current page or video** as a **Trackeep bookmark**.
 - **Upload a local file** directly to Trackeep.
 - **Right‑click** any page, link, selection, image, or video and choose **“Save to Trackeep”** from the context menu.
+- **Auto-detect YouTube videos** and show an in-page prompt asking whether to save to Trackeep.
 
 It is designed to work in **Chrome**, **Microsoft Edge**, and **Firefox** (Manifest v3 where available).
 
@@ -14,8 +15,9 @@ It is designed to work in **Chrome**, **Microsoft Edge**, and **Firefox** (Manif
 
 - `manifest.json` – WebExtension manifest (v3) with background service worker and context menu.
 - `popup.html` / `popup.js` – Popup UI and logic to save bookmarks and upload files.
-- `options.html` / `options.js` – Options page to configure API URL and auth token.
-- `background.js` – Service worker that creates and handles the context menu.
+- `options.html` / `options.js` – Options page to configure API URL, key/token, and YouTube auto-prompt.
+- `background.js` – Service worker for context menus, quick-save, and YouTube auto-save integration.
+- `youtube-content.js` – Content script for YouTube page detection and in-page save prompt.
 - `icons/` – Placeholder icon files (copied from the repo favicon).
 - `README.md` – This documentation.
 
@@ -62,14 +64,16 @@ It is designed to work in **Chrome**, **Microsoft Edge**, and **Firefox** (Manif
    - Example for production:
      - `https://your-trackeep-domain.example.com/api/v1`
 
-3. **Get your Trackeep auth token**
-   - Log into Trackeep in your browser.
-   - Open **DevTools → Application → Local Storage**.
-   - Select your Trackeep origin (e.g. `http://localhost:5173` or your production domain).
-   - Find the key `trackeep_token` and copy its **value**.
-   - Paste this value into the **Auth token** field in the options page.
+3. **Set your Trackeep API key or token**
+   - Recommended: create an API key in Trackeep and paste it in the options page.
+   - You can also use a JWT token if your instance expects that flow.
+   - The extension stores this value and uses it for bookmark/file requests and YouTube quick-save.
 
-4. **Save settings**
+4. **YouTube auto prompt (optional)**
+   - Keep **YouTube Auto Prompt** enabled to get an in-page prompt on YouTube video pages.
+   - Click **Save now** in the prompt to store the video directly in Trackeep.
+
+5. **Save settings**
    - Click **Save settings**.
    - The popup will now use these values to call the API.
 

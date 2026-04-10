@@ -111,7 +111,9 @@ func main() {
 	if !cfg.App.DemoMode {
 		config.InitDatabase()
 		models.InitDB()
-		models.AutoMigrate()
+		if err := models.AutoMigrate(); err != nil {
+			log.Fatal("Failed to auto-migrate database:", err)
+		}
 	} else {
 		log.Println("Demo mode enabled, skipping database initialization")
 	}
@@ -223,24 +225,22 @@ func main() {
 	{
 		// Auth routes
 		auth := v1.Group("/auth")
-		auth.Use(middleware.AuthRateLimit(rateLimiters["auth"]))
 		{
 			auth.GET("/check-users", handlers.CheckUsers)
-			auth.POST("/register", handlers.Register)
-			auth.POST("/login", handlers.Login)
-			auth.POST("/login-totp", handlers.LoginWithTOTP)
+			auth.POST("/register", middleware.AuthRateLimit(rateLimiters["auth"]), handlers.Register)
+			auth.POST("/login", middleware.AuthRateLimit(rateLimiters["auth"]), handlers.Login)
+			auth.POST("/login-totp", middleware.AuthRateLimit(rateLimiters["auth"]), handlers.LoginWithTOTP)
 			auth.POST("/logout", handlers.Logout)
 			auth.GET("/me", handlers.AuthMiddleware(), handlers.GetCurrentUserWithGitHub)
-			auth.POST("/password-reset", handlers.RequestPasswordReset)
-			auth.POST("/password-reset/confirm", handlers.ConfirmPasswordReset)
+			auth.POST("/password-reset", middleware.AuthRateLimit(rateLimiters["auth"]), handlers.RequestPasswordReset)
+			auth.POST("/password-reset/confirm", middleware.AuthRateLimit(rateLimiters["auth"]), handlers.ConfirmPasswordReset)
+			auth.GET("/control/callback", handlers.HandleOAuthCallback)
 
-			// GitHub OAuth routes
+			// Unified GitHub sign-in route
 			auth.GET("/github", handlers.GitHubLogin)
-			auth.GET("/github/callback", handlers.GitHubCallback)
-			auth.GET("/oauth/callback", handlers.HandleOAuthCallback)
 		}
 
-		// GitHub App callback (public for GitHub redirect)
+		// GitHub App callback (public for control service redirect)
 		v1.GET("/github/app/callback", handlers.GitHubAppInstallCallback)
 
 		// GitHub routes (protected)
@@ -253,6 +253,7 @@ func main() {
 			github.GET("/app/repos", handlers.GetGitHubAppRepos)
 			github.GET("/backups", handlers.GetGitHubBackups)
 			github.POST("/backups", handlers.BackupGitHubRepositories)
+			github.GET("/activity", handlers.GetGitHubActivity)
 		}
 
 		v1.POST("/youtube-search-test", handlers.YouTubeSearchTest)
@@ -343,6 +344,9 @@ func main() {
 			files.POST("/upload", handlers.UploadFile)
 			files.GET("/:id", handlers.GetFile)
 			files.GET("/:id/download", handlers.DownloadFile)
+			files.POST("/:id/share", handlers.CreateFileShare)
+			files.GET("/:id/shares", handlers.GetFileShares)
+			files.DELETE("/:id/shares/:shareId", handlers.DeleteFileShare)
 			files.DELETE("/:id", handlers.DeleteFile)
 
 			// Encrypted files

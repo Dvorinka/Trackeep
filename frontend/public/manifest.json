@@ -1,0 +1,33 @@
+{
+  "name": "Trackeep - Your Self-Hosted Productivity & Knowledge Hub",
+  "short_name": "Trackeep",
+  "description": "Track, save, and organize everything that matters to you.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#39b9ff",
+  "orientation": "portrait-primary",
+  "share_target": {
+    "action": "/share-target",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "icons": [
+    {
+      "src": "/trackeep.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/trackeepfavi_bg.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

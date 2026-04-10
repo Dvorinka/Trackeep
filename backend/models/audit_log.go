@@ -31,22 +31,22 @@ const (
 type AuditResource string
 
 const (
-	AuditResourceUser         AuditResource = "user"
-	AuditResourceNote         AuditResource = "note"
-	AuditResourceFile         AuditResource = "file"
-	AuditResourceBookmark     AuditResource = "bookmark"
-	AuditResourceTask         AuditResource = "task"
-	AuditResourceTimeEntry    AuditResource = "time_entry"
-	AuditResourceIntegration  AuditResource = "integration"
-	AuditResourceTeam         AuditResource = "team"
-	AuditResourceGoal         AuditResource = "goal"
-	AuditResourceHabit        AuditResource = "habit"
-	AuditResourceCalendar     AuditResource = "calendar"
-	AuditResourceSearch       AuditResource = "search"
-	AuditResourceAI           AuditResource = "ai"
-	AuditResourceAnalytics    AuditResource = "analytics"
-	AuditResourceSecurity     AuditResource = "security"
-	AuditResourceSystem       AuditResource = "system"
+	AuditResourceUser        AuditResource = "user"
+	AuditResourceNote        AuditResource = "note"
+	AuditResourceFile        AuditResource = "file"
+	AuditResourceBookmark    AuditResource = "bookmark"
+	AuditResourceTask        AuditResource = "task"
+	AuditResourceTimeEntry   AuditResource = "time_entry"
+	AuditResourceIntegration AuditResource = "integration"
+	AuditResourceTeam        AuditResource = "team"
+	AuditResourceGoal        AuditResource = "goal"
+	AuditResourceHabit       AuditResource = "habit"
+	AuditResourceCalendar    AuditResource = "calendar"
+	AuditResourceSearch      AuditResource = "search"
+	AuditResourceAI          AuditResource = "ai"
+	AuditResourceAnalytics   AuditResource = "analytics"
+	AuditResourceSecurity    AuditResource = "security"
+	AuditResourceSystem      AuditResource = "system"
 )
 
 // AuditLog represents an audit log entry
@@ -57,16 +57,16 @@ type AuditLog struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// User information
-	UserID      uint   `json:"user_id" gorm:"not null;index"`
-	User        User   `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	UserEmail   string `json:"user_email" gorm:"not null"`
-	UserIP      string `json:"user_ip"`
-	UserAgent   string `json:"user_agent"`
+	UserID    uint   `json:"user_id" gorm:"not null;index"`
+	User      User   `json:"user,omitempty" gorm:"foreignKey:UserID;-:migration"`
+	UserEmail string `json:"user_email" gorm:"not null"`
+	UserIP    string `json:"user_ip"`
+	UserAgent string `json:"user_agent"`
 
 	// Action information
-	Action      AuditAction   `json:"action" gorm:"not null;index"`
-	Resource    AuditResource `json:"resource" gorm:"not null;index"`
-	ResourceID  *uint         `json:"resource_id,omitempty" gorm:"index"`
+	Action     AuditAction   `json:"action" gorm:"not null;index"`
+	Resource   AuditResource `json:"resource" gorm:"not null;index"`
+	ResourceID *uint         `json:"resource_id,omitempty" gorm:"index"`
 
 	// Details
 	Description string                 `json:"description"`
@@ -75,20 +75,20 @@ type AuditLog struct {
 	NewValues   map[string]interface{} `json:"new_values" gorm:"serializer:json"`
 
 	// Security context
-	SessionID   string `json:"session_id"`
-	Success     bool   `json:"success" gorm:"default:true"`
+	SessionID     string `json:"session_id"`
+	Success       bool   `json:"success" gorm:"default:true"`
 	FailureReason string `json:"failure_reason"`
 
 	// Geographic and device info
-	Country     string `json:"country"`
-	City        string `json:"city"`
-	Device      string `json:"device"`
-	Platform    string `json:"platform"`
-	Browser     string `json:"browser"`
+	Country  string `json:"country"`
+	City     string `json:"city"`
+	Device   string `json:"device"`
+	Platform string `json:"platform"`
+	Browser  string `json:"browser"`
 
 	// Risk assessment
-	RiskLevel   string `json:"risk_level" gorm:"default:low"` // low, medium, high, critical
-	Suspicious  bool   `json:"suspicious" gorm:"default:false"`
+	RiskLevel  string `json:"risk_level" gorm:"default:low"` // low, medium, high, critical
+	Suspicious bool   `json:"suspicious" gorm:"default:false"`
 }
 
 // TableName returns the table name for AuditLog

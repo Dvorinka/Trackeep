@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { AIChatPanel } from './AIChatPanel'
 import { IconBrain } from '@tabler/icons-solidjs'
+import { isEnvDemoMode } from '@/lib/demo-mode'
 
 export interface LayoutProps {
   children: any
@@ -27,8 +28,11 @@ export function Layout(props: LayoutProps) {
     // Initialize dark mode from localStorage or system preference
     const savedTheme = localStorage.getItem('theme')
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
-    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+
+    if (isEnvDemoMode()) {
+      localStorage.setItem('theme', 'dark')
+      document.documentElement.setAttribute('data-kb-theme', 'dark')
+    } else if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
       document.documentElement.setAttribute('data-kb-theme', 'dark')
     } else {
       document.documentElement.removeAttribute('data-kb-theme')

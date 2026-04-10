@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +16,89 @@ import (
 	"github.com/trackeep/backend/models"
 	"gorm.io/gorm"
 )
+
+type createFileShareRequest struct {
+	Title         string     `json:"title"`
+	Description   string     `json:"description"`
+	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	AllowDownload *bool      `json:"allow_download,omitempty"`
+}
+
+type fileShareResponse struct {
+	ID             uint       `json:"id"`
+	ContentType    string     `json:"content_type"`
+	ContentID      uint       `json:"content_id"`
+	ShareToken     string     `json:"share_token"`
+	ShareURL       string     `json:"share_url"`
+	PublicShareURL string     `json:"public_share_url"`
+	Title          string     `json:"title"`
+	Description    string     `json:"description"`
+	AllowDownload  bool       `json:"allow_download"`
+	IsActive       bool       `json:"is_active"`
+	ExpiresAt      *time.Time `json:"expires_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+func generateSecureShareToken() (string, error) {
+	raw := make([]byte, 24)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+
+	return "share_" + base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+func buildPublicShareURL(c *gin.Context, relative string) string {
+	relativePath := strings.TrimSpace(relative)
+	if relativePath == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(relativePath, "http://") || strings.HasPrefix(relativePath, "https://") {
+		return relativePath
+	}
+
+	if !strings.HasPrefix(relativePath, "/") {
+		relativePath = "/" + relativePath
+	}
+
+	scheme := "http"
+	if c.Request.TLS != nil {
+		scheme = "https"
+	}
+
+	if forwardedProto := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")); forwardedProto != "" {
+		scheme = forwardedProto
+	}
+
+	host := strings.TrimSpace(c.GetHeader("X-Forwarded-Host"))
+	if host == "" {
+		host = c.Request.Host
+	}
+
+	if host == "" {
+		return relativePath
+	}
+
+	return fmt.Sprintf("%s://%s%s", scheme, host, relativePath)
+}
+
+func mapFileShareResponse(c *gin.Context, share models.ContentShare) fileShareResponse {
+	return fileShareResponse{
+		ID:             share.ID,
+		ContentType:    share.ContentType,
+		ContentID:      share.ContentID,
+		ShareToken:     share.ShareToken,
+		ShareURL:       share.ShareURL,
+		PublicShareURL: buildPublicShareURL(c, share.ShareURL),
+		Title:          share.Title,
+		Description:    share.Description,
+		AllowDownload:  share.AllowDownload,
+		IsActive:       share.IsActive,
+		ExpiresAt:      share.ExpiresAt,
+		CreatedAt:      share.CreatedAt,
+	}
+}
 
 // GetFiles retrieves all files for a user
 func GetFiles(c *gin.Context) {
@@ -186,6 +271,165 @@ func DownloadFile(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", file.OriginalName))
 	c.Header("Content-Type", file.MimeType)
 	c.File(file.FilePath)
+}
+
+// CreateFileShare creates a share link for a file owned by the current user.
+func CreateFileShare(c *gin.Context) {
+	id := c.Param("id")
+
+	userID := c.GetUint("user_id")
+	if userID == 0 {
+		userID = c.GetUint("userID")
+	}
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var file models.File
+	if err := models.DB.Where("id = ? AND user_id = ?", id, userID).First(&file).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve file"})
+		return
+	}
+
+	var req createFileShareRequest
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if req.ExpiresAt != nil && req.ExpiresAt.Before(time.Now()) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Share expiration must be in the future"})
+		return
+	}
+
+	shareToken, err := generateSecureShareToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate share token"})
+		return
+	}
+
+	allowDownload := true
+	if req.AllowDownload != nil {
+		allowDownload = *req.AllowDownload
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		title = file.OriginalName
+	}
+
+	share := models.ContentShare{
+		OwnerID:       userID,
+		ContentType:   "file",
+		ContentID:     file.ID,
+		ShareToken:    shareToken,
+		ShareURL:      "/api/v1/shared/" + shareToken,
+		Title:         title,
+		Description:   strings.TrimSpace(req.Description),
+		ExpiresAt:     req.ExpiresAt,
+		AllowDownload: allowDownload,
+		AllowComment:  false,
+		AllowEdit:     false,
+		IsActive:      true,
+	}
+
+	if err := models.DB.Create(&share).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create file share"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, mapFileShareResponse(c, share))
+}
+
+// GetFileShares lists active and historical shares for a file owned by the user.
+func GetFileShares(c *gin.Context) {
+	id := c.Param("id")
+
+	userID := c.GetUint("user_id")
+	if userID == 0 {
+		userID = c.GetUint("userID")
+	}
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var file models.File
+	if err := models.DB.Where("id = ? AND user_id = ?", id, userID).First(&file).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve file"})
+		return
+	}
+
+	var shares []models.ContentShare
+	if err := models.DB.
+		Where("owner_id = ? AND content_type = ? AND content_id = ?", userID, "file", file.ID).
+		Order("created_at DESC").
+		Find(&shares).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve file shares"})
+		return
+	}
+
+	result := make([]fileShareResponse, 0, len(shares))
+	for _, share := range shares {
+		result = append(result, mapFileShareResponse(c, share))
+	}
+
+	c.JSON(http.StatusOK, gin.H{"shares": result})
+}
+
+// DeleteFileShare deletes a single share link for a file owned by the user.
+func DeleteFileShare(c *gin.Context) {
+	id := c.Param("id")
+	shareID := c.Param("shareId")
+
+	userID := c.GetUint("user_id")
+	if userID == 0 {
+		userID = c.GetUint("userID")
+	}
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var file models.File
+	if err := models.DB.Where("id = ? AND user_id = ?", id, userID).First(&file).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve file"})
+		return
+	}
+
+	var share models.ContentShare
+	if err := models.DB.
+		Where("id = ? AND owner_id = ? AND content_type = ? AND content_id = ?", shareID, userID, "file", file.ID).
+		First(&share).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File share not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve file share"})
+		return
+	}
+
+	if err := models.DB.Delete(&share).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file share"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "File share deleted successfully"})
 }
 
 // DeleteFile removes a file record and the actual file

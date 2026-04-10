@@ -39,6 +39,14 @@ interface GitHubActivityProps {
   customEvents?: ActivityEvent[];
   hideHeader?: boolean;
   fullWidth?: boolean;
+  externalData?: {
+    contributions: Array<{
+      date: string;
+      count: number;
+      level: number;
+    }>;
+    total_count: number;
+  };
 }
 
 export const GitHubActivity = (props: GitHubActivityProps) => {
@@ -141,11 +149,54 @@ export const GitHubActivity = (props: GitHubActivityProps) => {
   };
 
   onMount(() => {
-    if (isDemoMode()) {
+    // Listen for external GitHub activity data
+    const handleGitHubActivityData = (event: CustomEvent) => {
+      const data = event.detail as {
+        contributions: Array<{
+          date: string;
+          count: number;
+          level: number;
+        }>;
+        total_count: number;
+      };
+      
+      if (data.contributions && data.contributions.length > 0) {
+        const activityData = data.contributions.map(c => ({
+          date: c.date,
+          count: c.count,
+          level: c.level
+        }));
+        setActivities(activityData);
+        setStats(prev => ({
+          ...prev,
+          totalContributions: data.total_count
+        }));
+      }
+    };
+
+    window.addEventListener('githubActivityData', handleGitHubActivityData as EventListener);
+
+    if (props.externalData) {
+      // Use provided external data
+      const activityData = props.externalData.contributions.map(c => ({
+        date: c.date,
+        count: c.count,
+        level: c.level
+      }));
+      setActivities(activityData);
+      setStats(prev => ({
+        ...prev,
+        totalContributions: props.externalData!.total_count
+      }));
+    } else if (isDemoMode()) {
       setDemoData();
     } else {
       setEmptyData();
     }
+
+    return () => {
+      window.removeEventListener('githubActivityData', handleGitHubActivityData as EventListener);
+    };
   });
 
   const getMonthLabels = () => {

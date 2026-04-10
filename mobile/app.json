@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Trackeep",
+    "slug": "trackeep-mobile",
+    "version": "1.0.0",
+    "scheme": "trackeepmobile",
+    "orientation": "portrait",
+    "icon": "./assets/trackeep-icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/trackeep-splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trackeep.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.trackeep.mobile",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-share-intent",
+        {
+          "iosShareExtensionName": "Trackeep",
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsImageWithMaxCount": 1,
+            "NSExtensionActivationSupportsMovieWithMaxCount": 1,
+            "NSExtensionActivationSupportsFileWithMaxCount": 1
+          },
+          "androidIntentFilters": [
+            "text/plain",
+            "text/uri-list",
+            "text/*",
+            "image/*",
+            "video/*",
+            "application/*"
+          ],
+          "androidMultiIntentFilters": [
+            "text/plain",
+            "text/*",
+            "image/*",
+            "video/*",
+            "*/*"
+          ]
+        }
+      ]
+    ]
+  }
+}

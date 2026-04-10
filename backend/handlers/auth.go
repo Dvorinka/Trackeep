@@ -89,20 +89,19 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 
 // GenerateJWT creates a new JWT token for a user
 func GenerateJWT(user models.User) (string, error) {
-	return generateJWT(user, "")
+	return generateJWT(user)
 }
 
-func GenerateJWTWithGitHubAccessToken(user models.User, accessToken string) (string, error) {
-	return generateJWT(user, accessToken)
+func GenerateJWTWithGitHubAccessToken(user models.User, _ string) (string, error) {
+	return generateJWT(user)
 }
 
-func generateJWT(user models.User, accessToken string) (string, error) {
+func generateJWT(user models.User) (string, error) {
 	claims := &Claims{
-		UserID:      user.ID,
-		Email:       user.Email,
-		Username:    user.Username,
-		GitHubID:    user.GitHubID,
-		AccessToken: accessToken,
+		UserID:   user.ID,
+		Email:    user.Email,
+		Username: user.Username,
+		GitHubID: user.GitHubID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(getDurationEnv("JWT_EXPIRES_IN", 24*time.Hour))),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -153,6 +152,81 @@ func getAuthenticatedUserFromHeader(c *gin.Context, db *gorm.DB) (*models.User, 
 	var user models.User
 	if err := db.First(&user, claims.UserID).Error; err != nil {
 		return nil, err
+	}
+
+	return &user, nil
+}
+
+func hasAPIKeyPermission(permissions []string, required string) bool {
+	if required == "" {
+		return true
+	}
+
+	for _, permission := range permissions {
+		if permission == "*" || permission == required {
+			return true
+		}
+		if required == "files:share" && permission == "files:write" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func requiredAPIKeyPermission(method, path string) (string, bool) {
+	if strings.Contains(path, "/api/v1/browser-extension/validate") {
+		return "", true
+	}
+
+	if !strings.Contains(path, "/api/v1/files") {
+		return "", false
+	}
+
+	if strings.Contains(path, "/share") {
+		return "files:share", true
+	}
+
+	switch strings.ToUpper(method) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return "files:read", true
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return "files:write", true
+	default:
+		return "", false
+	}
+}
+
+func validateAPIKeyForRequest(tokenString, method, path string) (*models.User, error) {
+	requiredPermission, supported := requiredAPIKeyPermission(method, path)
+	if !supported {
+		return nil, errors.New("api keys are not allowed for this endpoint")
+	}
+
+	db := config.GetDB()
+
+	var keyRecord models.APIKey
+	if err := db.Where("key = ? AND is_active = ?", tokenString, true).Preload("User").First(&keyRecord).Error; err != nil {
+		return nil, errors.New("invalid API key")
+	}
+
+	if keyRecord.ExpiresAt != nil && keyRecord.ExpiresAt.Before(time.Now()) {
+		return nil, errors.New("api key expired")
+	}
+
+	if !hasAPIKeyPermission(keyRecord.Permissions, requiredPermission) {
+		return nil, errors.New("insufficient API key permissions")
+	}
+
+	now := time.Now()
+	keyRecord.LastUsed = &now
+	_ = db.Model(&keyRecord).Update("last_used", now).Error
+
+	user := keyRecord.User
+	if user.ID == 0 {
+		if err := db.First(&user, keyRecord.UserID).Error; err != nil {
+			return nil, errors.New("user not found for API key")
+		}
 	}
 
 	return &user, nil
@@ -218,24 +292,39 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		claims, err := ValidateJWT(tokenString)
-		if err != nil {
-			c.JSON(401, gin.H{"error": "Invalid token"})
-			c.Abort()
+		if err == nil {
+			// Get user from database
+			var user models.User
+			if err := config.GetDB().First(&user, claims.UserID).Error; err != nil {
+				c.JSON(401, gin.H{"error": "User not found"})
+				c.Abort()
+				return
+			}
+
+			c.Set("user", user)
+			c.Set("user_id", user.ID)
+			c.Set("userID", user.ID) // Add this for compatibility with handlers
+			c.Next()
 			return
 		}
 
-		// Get user from database
-		var user models.User
-		if err := config.GetDB().First(&user, claims.UserID).Error; err != nil {
-			c.JSON(401, gin.H{"error": "User not found"})
-			c.Abort()
+		if strings.HasPrefix(tokenString, "tk_") {
+			user, apiKeyErr := validateAPIKeyForRequest(tokenString, c.Request.Method, c.Request.URL.Path)
+			if apiKeyErr != nil {
+				c.JSON(401, gin.H{"error": "Invalid token"})
+				c.Abort()
+				return
+			}
+
+			c.Set("user", *user)
+			c.Set("user_id", user.ID)
+			c.Set("userID", user.ID)
+			c.Next()
 			return
 		}
 
-		c.Set("user", user)
-		c.Set("user_id", user.ID)
-		c.Set("userID", user.ID) // Add this for compatibility with handlers
-		c.Next()
+		c.JSON(401, gin.H{"error": "Invalid token"})
+		c.Abort()
 	}
 }
 

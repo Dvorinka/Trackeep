@@ -211,19 +211,7 @@ export const AIChat = () => {
             </div>
           </div>
 
-          {/* Model Switcher */}
           <div class="flex items-center gap-3">
-            <select
-              value={selectedModel()}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              class="px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="standard">Standard Model</option>
-              <option value="advanced">Advanced Model</option>
-              <option value="fast">Fast Model</option>
-              <option value="creative">Creative Model</option>
-            </select>
-            
             {/* View Switcher */}
             <div class="flex items-center gap-1 p-1 bg-muted rounded-lg">
               <button

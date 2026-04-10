@@ -12,7 +12,8 @@ Welcome to the Trackeep documentation hub. This directory contains comprehensive
 - **[API Documentation](./API.md)** – REST API reference and integration guide
 - **[Development Guide](./DEVELOPMENT.md)** – Development setup and guidelines
 - **[Security Analysis](./SECURITY_ANALYSIS.md)** – Security considerations and best practices
-- **[GitHub OAuth Setup](./GITHUB_OAUTH_SETUP.md)** – OAuth configuration guide
+- **[GitHub App Setup](./GITHUB_OAUTH_SETUP.md)** – GitHub App sign-in and installation guide
+- **[Desktop App Guide](../desktop/README.md)** – Tauri v2 desktop shell setup for Linux, Windows, and macOS
 
 ### Project Documentation
 - **[Features Roadmap](./FEATURES_ROADMAP.md)** – Planned features and improvements
@@ -38,7 +39,7 @@ Welcome to the Trackeep documentation hub. This directory contains comprehensive
 
 ### For Administrators
 - [Security Guide](./SECURITY_ANALYSIS.md) – Security best practices
-- [OAuth Setup](./GITHUB_OAUTH_SETUP.md) – Authentication configuration
+- [GitHub App Setup](./GITHUB_OAUTH_SETUP.md) – Authentication configuration
 - [Deployment Guide](../README.md#quick-start) – Docker deployment instructions
 
 ## 📖 Documentation Structure
@@ -51,7 +52,7 @@ docs/
 ├── AI_ASSISTANT.md             # AI features guide
 ├── DEVELOPMENT.md              # Development setup
 ├── SECURITY_ANALYSIS.md        # Security considerations
-├── GITHUB_OAUTH_SETUP.md       # OAuth configuration
+├── GITHUB_OAUTH_SETUP.md       # GitHub App configuration
 ├── FEATURES_ROADMAP.md          # Feature planning
 ├── TIMELINE.md                 # Development timeline
 ├── TRACKEEP_IMPLEMENTATION_COMPLETE.md  # Implementation status

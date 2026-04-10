@@ -14,6 +14,15 @@ export const isEnvDemoMode = (): boolean => {
   const buildTimeResult = import.meta.env.VITE_DEMO_MODE === 'true';
   
   const result = runtimeResult || importMetaEnvResult || buildTimeResult;
+  
+  // Debug logging to help troubleshoot demo mode issues
+  console.debug('Demo mode check:', {
+    runtimeEnv: (window as any).ENV?.VITE_DEMO_MODE,
+    importMetaEnv: (window as any).importMetaEnv?.VITE_DEMO_MODE,
+    buildTimeEnv: import.meta.env.VITE_DEMO_MODE,
+    finalResult: result
+  });
+  
   return result;
 };
 
@@ -54,6 +63,15 @@ export const clearDemoMode = (): void => {
     localStorage.removeItem('trackeep_token');
     localStorage.removeItem('trackeep_user');
   }
+  
+  // Clear any sessionStorage demo data
+  const sessionToken = sessionStorage.getItem('token');
+  if (sessionToken && sessionToken.includes('demo-token')) {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+  }
+  
+  console.debug('Demo mode data cleared from storage');
 };
 
 // Set demo mode (no-op - environment variable only)

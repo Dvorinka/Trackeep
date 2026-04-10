@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { toast } from '../components/ui/Toast';
 import { CheckCircle, AlertCircle, Shield, Key, Globe, Clock, Users, Settings } from 'lucide-solid';
+import { getApiV1BaseUrl } from '@/lib/api-url';
 
 interface APIKey {
   id: number;
@@ -41,6 +42,7 @@ interface Example {
 }
 
 const BrowserExtensionSettings = () => {
+  const apiBaseUrl = getApiV1BaseUrl();
   const [apiKeys, setApiKeys] = createSignal<APIKey[]>([]);
   const [extensions, setExtensions] = createSignal<BrowserExtension[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -175,7 +177,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
 
   const loadApiKeys = async () => {
     try {
-      const response = await fetch('/api/v1/browser-extension/api-keys', {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/api-keys`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -194,7 +196,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
 
   const loadExtensions = async () => {
     try {
-      const response = await fetch('/api/v1/browser-extension/extensions', {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/extensions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -224,7 +226,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
 
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/browser-extension/api-keys/generate', {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/api-keys/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -261,7 +263,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
     }
 
     try {
-      const response = await fetch(`/api/v1/browser-extension/api-keys/${keyId}`, {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/api-keys/${keyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -286,7 +288,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
     }
 
     try {
-      const response = await fetch(`/api/v1/browser-extension/extensions/${extensionId}`, {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/extensions/${extensionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

@@ -70,6 +70,7 @@ func GetGitHubAppStatus(c *gin.Context) {
 	response := gin.H{
 		"app_slug":               getGitHubAppSlug(),
 		"install_enabled":        isGitHubAppInstallEnabled(),
+		"sign_in_configured":     hasGitHubUserAuthConfig(),
 		"credentials_configured": hasGitHubAppCredentials(),
 		"installed":              false,
 	}
@@ -77,6 +78,18 @@ func GetGitHubAppStatus(c *gin.Context) {
 	if db == nil {
 		c.JSON(http.StatusOK, response)
 		return
+	}
+
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		if info, infoErr := fetchControlServiceGitHubAppInfo(c.Request.Context(), db, userID); infoErr == nil && info != nil {
+			response["app_slug"] = info.AppSlug
+			response["install_enabled"] = info.InstallEnabled
+			response["sign_in_configured"] = info.SignInConfigured
+			response["credentials_configured"] = info.CredentialsConfigured
+		} else {
+			response["sign_in_configured"] = true
+			response["credentials_configured"] = true
+		}
 	}
 
 	installation, err := getUserGitHubInstallation(db, userID)
@@ -96,11 +109,6 @@ func GetGitHubAppInstallURL(c *gin.Context) {
 		return
 	}
 
-	if !isGitHubAppInstallEnabled() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub App slug is not configured"})
-		return
-	}
-
 	db := config.GetDB()
 	if db == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
@@ -116,6 +124,35 @@ func GetGitHubAppInstallURL(c *gin.Context) {
 	}
 	if err := db.Create(&stateRecord).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create install state"})
+		return
+	}
+
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		callbackURL := buildGitHubAppInstallCallbackURL(c.Request, state)
+		if callbackURL == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to determine local install callback URL"})
+			return
+		}
+
+		installURL, err := fetchControlServiceGitHubAppInstallURL(c.Request.Context(), db, userID, callbackURL)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to create unified GitHub App install URL: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"install_url": installURL,
+			"expires_at":  expiresAt,
+		})
+		return
+	}
+
+	if !isGitHubAppInstallEnabled() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub App slug is not configured"})
+		return
+	}
+	if _, _, err := getGitHubUserAccessTokenForUser(c.Request.Context(), db, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sign in with GitHub before installing the GitHub App"})
 		return
 	}
 
@@ -172,13 +209,32 @@ func GitHubAppInstallCallback(c *gin.Context) {
 	accountLogin := ""
 	accountType := ""
 	lastValidated := (*time.Time)(nil)
-	if hasGitHubAppCredentials() {
-		details, detailsErr := fetchGitHubAppInstallationDetails(c.Request.Context(), installationID)
-		if detailsErr == nil && details != nil {
-			accountLogin = details.Account.Login
-			accountType = details.Account.Type
-			now := time.Now()
-			lastValidated = &now
+	if _, err := getControlServiceSessionRecord(db, stateRecord.UserID); err == nil {
+		verification, verifyErr := verifyControlServiceGitHubInstallation(c.Request.Context(), db, stateRecord.UserID, installationID)
+		if verifyErr != nil {
+			redirectToGitHubIntegrationPage(c, false, installationID, setupAction, "installation_not_accessible")
+			return
+		}
+		accountLogin = verification.AccountLogin
+		accountType = verification.AccountType
+		if verification.AppSlug != "" {
+			lastValidatedNow := time.Now()
+			lastValidated = &lastValidatedNow
+		}
+	} else {
+		if err := verifyGitHubInstallationAccessForUser(c.Request.Context(), db, stateRecord.UserID, installationID); err != nil {
+			redirectToGitHubIntegrationPage(c, false, installationID, setupAction, "installation_not_accessible")
+			return
+		}
+
+		if hasGitHubAppCredentials() {
+			details, detailsErr := fetchGitHubAppInstallationDetails(c.Request.Context(), installationID)
+			if detailsErr == nil && details != nil {
+				accountLogin = details.Account.Login
+				accountType = details.Account.Type
+				now := time.Now()
+				lastValidated = &now
+			}
 		}
 	}
 
@@ -186,10 +242,16 @@ func GitHubAppInstallCallback(c *gin.Context) {
 	lookupErr := db.Where("installation_id = ?", installationID).First(&installation).Error
 	switch {
 	case errors.Is(lookupErr, gorm.ErrRecordNotFound):
+		appSlug := getGitHubAppSlug()
+		if accountLogin == "" && accountType == "" {
+			if info, infoErr := fetchControlServiceGitHubAppInfo(c.Request.Context(), db, stateRecord.UserID); infoErr == nil && info != nil && info.AppSlug != "" {
+				appSlug = info.AppSlug
+			}
+		}
 		installation = models.GitHubAppInstallation{
 			UserID:         stateRecord.UserID,
 			InstallationID: installationID,
-			AppSlug:        getGitHubAppSlug(),
+			AppSlug:        appSlug,
 			AccountLogin:   accountLogin,
 			AccountType:    accountType,
 			LastValidated:  lastValidated,
@@ -202,9 +264,13 @@ func GitHubAppInstallCallback(c *gin.Context) {
 		redirectToGitHubIntegrationPage(c, false, installationID, setupAction, "installation_lookup_failed")
 		return
 	default:
+		appSlug := getGitHubAppSlug()
+		if info, infoErr := fetchControlServiceGitHubAppInfo(c.Request.Context(), db, stateRecord.UserID); infoErr == nil && info != nil && info.AppSlug != "" {
+			appSlug = info.AppSlug
+		}
 		updates := map[string]interface{}{
 			"user_id":       stateRecord.UserID,
-			"app_slug":      getGitHubAppSlug(),
+			"app_slug":      appSlug,
 			"account_login": accountLogin,
 			"account_type":  accountType,
 		}
@@ -243,6 +309,20 @@ func GetGitHubAppRepos(c *gin.Context) {
 	installation, err := getUserGitHubInstallation(db, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub App is not installed for this user"})
+		return
+	}
+
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		repos, fetchErr := fetchControlServiceGitHubAppRepos(c.Request.Context(), db, userID, installation.InstallationID)
+		if fetchErr != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to fetch installation repos from control service: " + fetchErr.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"source":          "github_app",
+			"installation_id": installation.InstallationID,
+			"repos":           repos,
+		})
 		return
 	}
 
@@ -328,7 +408,7 @@ func BackupGitHubRepositories(c *gin.Context) {
 
 	knownRepos := make(map[string]GitHubRepo)
 	switch source {
-	case "oauth":
+	case "github_user":
 		repos, reposErr := fetchGitHubRepos(accessToken)
 		if reposErr == nil {
 			for _, repo := range repos {
@@ -462,19 +542,30 @@ func getUserGitHubInstallation(db *gorm.DB, userID uint) (*models.GitHubAppInsta
 }
 
 func resolveGitHubBackupToken(c *gin.Context, db *gorm.DB, userID uint, requestedSource string) (string, string, *int64, error) {
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		if token, source, installationID, brokerErr := resolveCentralizedGitHubBackupToken(c.Request.Context(), db, userID, requestedSource); brokerErr == nil {
+			return token, source, installationID, nil
+		} else if strings.TrimSpace(requestedSource) != "" {
+			return "", "", nil, brokerErr
+		}
+	}
+
 	source := strings.ToLower(strings.TrimSpace(requestedSource))
 	switch source {
-	case "", "oauth":
-		accessToken, err := getGitHubOAuthAccessTokenFromHeader(c)
+	case "", "oauth", "github_user", "user":
+		accessToken, _, err := getGitHubUserAccessTokenForUser(c.Request.Context(), db, userID)
 		if err == nil {
-			return accessToken, "oauth", nil, nil
+			return accessToken, "github_user", nil, nil
+		}
+		if source != "" {
+			return "", "", nil, err
 		}
 
 		accessToken, installationID, appErr := getGitHubAppAccessTokenForUser(c.Request.Context(), db, userID)
 		if appErr == nil {
 			return accessToken, "github_app", &installationID, nil
 		}
-		return "", "", nil, fmt.Errorf("no usable GitHub OAuth token and GitHub App fallback failed")
+		return "", "", nil, fmt.Errorf("no usable GitHub sign-in token and GitHub App fallback failed")
 	case "github_app", "app":
 		accessToken, installationID, err := getGitHubAppAccessTokenForUser(c.Request.Context(), db, userID)
 		if err != nil {
@@ -486,31 +577,44 @@ func resolveGitHubBackupToken(c *gin.Context, db *gorm.DB, userID uint, requeste
 	}
 }
 
-func getGitHubOAuthAccessTokenFromHeader(c *gin.Context) (string, error) {
-	authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
-	if authHeader == "" {
-		return "", errors.New("authorization header required")
-	}
+func resolveCentralizedGitHubBackupToken(ctx context.Context, db *gorm.DB, userID uint, requestedSource string) (string, string, *int64, error) {
+	source := strings.ToLower(strings.TrimSpace(requestedSource))
+	switch source {
+	case "", "oauth", "github_user", "user":
+		accessToken, err := fetchControlServiceGitHubUserAccessToken(ctx, db, userID)
+		if err == nil {
+			return accessToken.AccessToken, "github_user", nil, nil
+		}
+		if source != "" {
+			return "", "", nil, err
+		}
 
-	tokenString := authHeader
-	if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
-		tokenString = strings.TrimSpace(authHeader[7:])
-	}
-	if tokenString == "" {
-		return "", errors.New("invalid authorization header")
-	}
+		installation, installErr := getUserGitHubInstallation(db, userID)
+		if installErr != nil {
+			return "", "", nil, fmt.Errorf("no usable GitHub sign-in token and GitHub App fallback failed")
+		}
+		appToken, appErr := fetchControlServiceGitHubInstallationAccessToken(ctx, db, userID, installation.InstallationID)
+		if appErr != nil {
+			return "", "", nil, fmt.Errorf("no usable GitHub sign-in token and GitHub App fallback failed")
+		}
+		return appToken.AccessToken, "github_app", &installation.InstallationID, nil
+	case "github_app", "app":
+		installation, err := getUserGitHubInstallation(db, userID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", "", nil, errors.New("GitHub App not installed for this user")
+			}
+			return "", "", nil, err
+		}
 
-	claims, err := ValidateJWT(tokenString)
-	if err != nil {
-		return "", err
+		appToken, err := fetchControlServiceGitHubInstallationAccessToken(ctx, db, userID, installation.InstallationID)
+		if err != nil {
+			return "", "", nil, err
+		}
+		return appToken.AccessToken, "github_app", &installation.InstallationID, nil
+	default:
+		return "", "", nil, fmt.Errorf("unsupported source '%s'", requestedSource)
 	}
-
-	accessToken := strings.TrimSpace(claims.AccessToken)
-	if accessToken == "" {
-		return "", errors.New("github oauth token missing in jwt")
-	}
-
-	return accessToken, nil
 }
 
 func getGitHubAppAccessTokenForUser(ctx context.Context, db *gorm.DB, userID uint) (string, int64, error) {

@@ -125,9 +125,9 @@ function disableForms(disabled) {
 }
 
 function loadConfig(callback) {
-  browser.storage.sync.get(['trackeepApiBaseUrl', 'trackeepAuthToken'], (items) => {
+  browser.storage.sync.get(['trackeepApiBaseUrl', 'trackeepApiKey', 'trackeepAuthToken'], (items) => {
     const apiBaseUrl = (items.trackeepApiBaseUrl || '').trim();
-    const authToken = (items.trackeepAuthToken || '').trim();
+    const authToken = (items.trackeepApiKey || items.trackeepAuthToken || '').trim();
 
     trackeepConfig = { apiBaseUrl, authToken };
 
@@ -158,7 +158,7 @@ function detectTrackeepDomain(callback) {
     try {
       const url = new URL(tab.url);
       const isTrackeepDomain = url.hostname.includes('trackeep') || url.hostname === 'localhost';
-      if (isTrackeepDomain && url.protocol === 'https:') {
+      if (isTrackeepDomain && (url.protocol === 'https:' || url.protocol === 'http:')) {
         const candidate = `${url.origin}/api/v1`;
         browser.storage.sync.get(['trackeepApiBaseUrl'], (items) => {
           if (!items.trackeepApiBaseUrl) {
@@ -305,23 +305,30 @@ function addSuggestedTag(tag) {
 
 // Handle quick save
 function handleQuickSave() {
-  if (isQuickSaveMode && smartData) {
-    // Auto-fill with smart data and save immediately
-    if (smartData.suggestedTags && !bookmarkTagsInput.value) {
-      bookmarkTagsInput.value = smartData.suggestedTags.join(', ');
-    }
-    
-    // Auto-save after a short delay
+  // Auto-fill with smart data where available.
+  if (smartData && smartData.suggestedTags && !bookmarkTagsInput.value) {
+    bookmarkTagsInput.value = smartData.suggestedTags.join(', ');
+  }
+
+  const hasRequiredFields = bookmarkUrlInput.value.trim() && bookmarkTitleInput.value.trim();
+  if (!hasRequiredFields) {
+    showMessage('URL and title are required before quick save.', 'error');
+    return;
+  }
+
+  if (isQuickSaveMode) {
     setTimeout(() => {
-      if (bookmarkUrlInput.value && bookmarkTitleInput.value) {
-        saveBookmark(new Event('submit'));
-      }
-    }, 500);
+      saveBookmark();
+    }, 350);
+  } else {
+    saveBookmark();
   }
 }
 
 async function saveBookmark(event) {
-  event.preventDefault();
+  if (event && typeof event.preventDefault === 'function') {
+    event.preventDefault();
+  }
   hideMessage();
 
   const { apiBaseUrl, authToken } = trackeepConfig;
@@ -380,12 +387,7 @@ async function saveBookmark(event) {
       throw new Error(errorMessage);
     }
 
-    showMessage(`
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20,6 9,17 4,12"/>
-      </svg>
-      Bookmark saved successfully!
-    `, 'success');
+    showMessage('Bookmark saved successfully!', 'success');
     
     // Clear form after successful save
     setTimeout(() => {
@@ -403,7 +405,9 @@ async function saveBookmark(event) {
 }
 
 async function uploadFile(event) {
-  event.preventDefault();
+  if (event && typeof event.preventDefault === 'function') {
+    event.preventDefault();
+  }
   hideMessage();
 
   const { apiBaseUrl, authToken } = trackeepConfig;
@@ -452,12 +456,7 @@ async function uploadFile(event) {
       throw new Error(errorMessage);
     }
 
-    showMessage(`
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20,6 9,17 4,12"/>
-      </svg>
-      File uploaded successfully!
-    `, 'success');
+    showMessage('File uploaded successfully!', 'success');
     
     // Clear form after successful upload
     setTimeout(() => {

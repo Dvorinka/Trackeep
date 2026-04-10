@@ -6,7 +6,6 @@ WORKDIR /app
 # Accept build arguments for VITE environment variables
 ARG VITE_DEMO_MODE=false
 ARG VITE_API_URL=http://localhost:8080
-ARG VITE_OAUTH_SERVICE_URL=https://oauth.trackeep.org
 
 # Copy package files
 COPY frontend/package*.json ./frontend/
@@ -17,8 +16,7 @@ COPY frontend/ ./frontend/
 
 # Create a .env.production file with build arguments
 RUN cd frontend && echo "VITE_DEMO_MODE=${VITE_DEMO_MODE}" >> .env.production && \
-    echo "VITE_API_URL=${VITE_API_URL}" >> .env.production && \
-    echo "VITE_OAUTH_SERVICE_URL=${VITE_OAUTH_SERVICE_URL}" >> .env.production
+    echo "VITE_API_URL=${VITE_API_URL}" >> .env.production
 
 # Build the application (frontend only)
 RUN cd frontend && npm run build
@@ -28,6 +26,11 @@ FROM nginx:alpine
 
 # Copy built assets from builder stage
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+
+# Fallback branding assets from repo root for clean-clone builds
+COPY trackeep.svg /usr/share/nginx/html/trackeep.svg
+COPY trackeepfavi.png /usr/share/nginx/html/trackeepfavi.png
+COPY trackeepfavi_bg.png /usr/share/nginx/html/trackeepfavi_bg.png
 
 # Copy the entrypoint script
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh

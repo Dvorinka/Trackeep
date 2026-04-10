@@ -12,6 +12,8 @@
 <p align="center">
   <a href="#quick-start">Quick Start</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="#desktop-app-tauri-v2">Desktop App</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="#screenshots">Screenshots</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="#features">Features</a>
@@ -48,7 +50,7 @@ services:
   trackeep-frontend:
     image: 'ghcr.io/dvorinka/trackeep/frontend:latest'
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-80}:${FRONTEND_PORT:-80}"
       - "${HTTPS_PORT:-443}:443"
     environment:
       - NODE_ENV=production
@@ -170,7 +172,7 @@ Trackeep production deployment consists of **4 essential services**:
 
 #### **🎯 Frontend Service**
 - **Image**: `ghcr.io/dvorinka/trackeep/frontend:latest`
-- **Ports**: `${FRONTEND_PORT:-80}:80`, `${HTTPS_PORT:-443}:443`
+- **Ports**: `${FRONTEND_PORT:-80}:${FRONTEND_PORT:-80}`, `${HTTPS_PORT:-443}:443`
 - **Purpose**: Web interface and user experience
 - **Health**: nginx process check
 
@@ -220,7 +222,7 @@ AI services are now configured **only within the Trackeep application**. No envi
 
 ### Version Management
 
-Trackeep uses GitHub Docker images with the `:latest` tag. The application version is automatically managed through the Docker image tags and update checking is handled through the OAuth service. No manual version configuration is needed in the environment variables.
+Trackeep uses GitHub Docker images with the `:latest` tag. The application version is automatically managed through the Docker image tags. No manual version configuration is needed in the environment variables.
 
 ### Version Detection
 
@@ -237,6 +239,39 @@ curl http://localhost:8080/api/version
 ```
 
 All other variables have sensible defaults and can be configured as needed.
+
+## Desktop App (Tauri v2)
+
+Trackeep now includes a cross-platform desktop shell in [`desktop/`](./desktop/), powered by [Tauri v2](https://v2.tauri.app/).
+
+The desktop app opens each user's own self-hosted Trackeep instance URL, so everything stays connected to that instance:
+
+- Login/session handling
+- File upload/download
+- Realtime and API communication
+- Server-managed update behavior from your backend deployment
+- Native desktop integrations (sync folder, native file picker upload, quick sync actions)
+- Quick share actions with generated file share links copied to clipboard
+- Permission-aware token validation for desktop integrations
+- Cloud-drive ready workflows by selecting a OneDrive/Dropbox/Google Drive local folder as desktop sync source
+
+### Desktop development
+
+```bash
+cd desktop
+npm install
+npm run tauri:dev
+```
+
+### Desktop build (Linux / Windows / macOS)
+
+```bash
+cd desktop
+npm install
+npm run tauri:build
+```
+
+See [`desktop/README.md`](./desktop/README.md) for full setup details and prerequisites.
 
 ## Screenshots
 
@@ -314,7 +349,7 @@ Every feature you see is something I personally needed and use. Your feedback, b
 ### Advanced Features
 - **AI-Powered Recommendations**: Intelligent content suggestions and organization
 - **Integrated Messaging (V1)**: Discord-style conversations (self chat, DMs, groups, team channels, global channels), realtime updates, smart suggestions, deep-link references, encrypted password vault sharing, voice notes, and browser-local optional transcription/call signaling
-- **OAuth Integration**: Secure authentication with GitHub and other providers
+- **GitHub App Sign-In**: Secure authentication with GitHub App user tokens
 - **Mobile App**: Native React Native application for iOS and Android
 - **Email Ingestion**: Send/forward emails to automatically import content
 - **Content Extraction**: Automatically extract text from images or scanned documents
@@ -409,10 +444,7 @@ DISABLE_CHINESE_AI=true
   - Gin web framework for HTTP routing
   - GORM for database operations
   - JWT authentication
-  - OAuth2 integration
-- **OAuth Service (Go)** – Dedicated authentication service
-  - GitHub OAuth integration
-  - JWT token management
+  - GitHub App sign-in and installation integration
 - **Database** – PostgreSQL for production, SQLite for development
 
 ### Mobile Application

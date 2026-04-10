@@ -21,6 +21,20 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.youtube.com/*",
+        "*://youtube.com/*",
+        "*://m.youtube.com/*",
+        "*://youtu.be/*"
+      ],
+      "js": [
+        "youtube-content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "commands": {
     "quick-save": {
       "suggested_key": {

@@ -6,7 +6,7 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
 import { getFileTypeConfig, formatFileSize, getFileCategoryColor } from '@/utils/fileTypes';
 import { getApiV1BaseUrl } from '@/lib/api-url';
-import { startGitHubOAuth } from '@/lib/oauth';
+import { startGitHubSignIn } from '@/lib/oauth';
 import { isDemoMode } from '@/lib/demo-mode';
 import { getMockDocuments } from '@/lib/mockData';
 import {
@@ -78,6 +78,7 @@ interface GitHubAppInstallation {
 interface GitHubAppStatus {
   app_slug: string;
   install_enabled: boolean;
+  sign_in_configured: boolean;
   credentials_configured: boolean;
   installed: boolean;
   installation?: GitHubAppInstallation;
@@ -104,6 +105,7 @@ type FilesTab = 'files' | 'github-backups';
 const defaultGitHubAppStatus: GitHubAppStatus = {
   app_slug: '',
   install_enabled: false,
+  sign_in_configured: false,
   credentials_configured: false,
   installed: false,
 };
@@ -258,12 +260,12 @@ export const Files = () => {
         return;
       }
 
-      let oauthConnected = false;
+      let githubSignInConnected = false;
       const meResponse = await fetchWithAuth('/auth/me');
       if (meResponse.ok) {
         const meData = await meResponse.json();
-        oauthConnected = Boolean(meData?.user?.github_id);
-        setGitHubOAuthConnected(oauthConnected);
+        githubSignInConnected = Boolean(meData?.user?.github_id);
+        setGitHubOAuthConnected(githubSignInConnected);
         setGitHubUsername(typeof meData?.user?.username === 'string' ? meData.user.username : '');
       } else {
         setGitHubOAuthConnected(false);
@@ -276,6 +278,7 @@ export const Files = () => {
         setGitHubAppStatus({
           app_slug: appStatusData.app_slug || '',
           install_enabled: Boolean(appStatusData.install_enabled),
+          sign_in_configured: Boolean(appStatusData.sign_in_configured),
           credentials_configured: Boolean(appStatusData.credentials_configured),
           installed: Boolean(appStatusData.installed),
           installation: appStatusData.installation,
@@ -296,7 +299,7 @@ export const Files = () => {
       }
 
       let reposResponse: Response | null = null;
-      if (oauthConnected) {
+      if (githubSignInConnected) {
         reposResponse = await fetchWithAuth('/github/repos');
       } else if (gitHubAppStatus().installed && gitHubAppStatus().credentials_configured) {
         reposResponse = await fetchWithAuth('/github/app/repos');
@@ -352,7 +355,7 @@ export const Files = () => {
       setGitHubError('');
       setGitHubMessage('');
 
-      const source = gitHubOAuthConnected() ? 'oauth' : 'github_app';
+      const source = gitHubOAuthConnected() ? 'github_user' : 'github_app';
       const response = await fetchWithAuth('/github/backups', {
         method: 'POST',
         headers: {
@@ -506,11 +509,11 @@ export const Files = () => {
   const selectAllRepos = () => setSelectedRepos(gitHubRepos().map(repo => repo.full_name));
   const clearSelectedRepos = () => setSelectedRepos([]);
 
-  const formatSourceLabel = (source: string) => source === 'github_app' ? 'GitHub App' : 'OAuth';
+  const formatSourceLabel = (source: string) => source === 'github_app' ? 'GitHub App' : 'GitHub Sign-In';
 
   return (
     <div class="p-6 space-y-6">
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 class="text-3xl font-bold text-foreground">Files</h1>
           <p class="text-muted-foreground mt-1">
@@ -518,7 +521,12 @@ export const Files = () => {
           </p>
         </div>
         <Show when={activeTab() === 'files'}>
-          <Button onClick={() => setShowUploadModal(true)} haptic="impact">
+          <Button
+            onClick={() => {
+              setShowUploadModal(true);
+              haptics.impact();
+            }}
+          >
             <IconUpload class="size-4 mr-2" />
             Upload File
           </Button>
@@ -743,11 +751,10 @@ export const Files = () => {
 
       <Show when={activeTab() === 'github-backups'}>
         <div class="space-y-6">
-          <Card class="relative overflow-hidden p-6 border border-primary/25 bg-gradient-to-r from-primary/12 via-primary/5 to-transparent">
-            <div class="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-primary/15 blur-2xl" />
-            <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <Card class="p-6 border border-border bg-card">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div>
-                <p class="text-sm uppercase tracking-wide text-primary/80 font-semibold mb-2">Repository Storage</p>
+                <p class="text-sm uppercase tracking-wide text-muted-foreground font-semibold mb-2">Repository Storage</p>
                 <h2 class="text-2xl font-bold text-foreground mb-1">GitHub Backups</h2>
                 <p class="text-sm text-muted-foreground">
                   Select repositories and store mirrored backups locally for resilient archival.
@@ -763,7 +770,7 @@ export const Files = () => {
                       ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-500'
                       : 'border-border bg-muted text-muted-foreground'
                   }`}>
-                    OAuth: {gitHubOAuthConnected() ? 'Connected' : 'Disconnected'}
+                    GitHub Sign-In: {gitHubOAuthConnected() ? 'Connected' : 'Disconnected'}
                   </span>
                   <span class={`px-2.5 py-1 rounded-full border ${
                     gitHubAppStatus().installed
@@ -786,16 +793,26 @@ export const Files = () => {
                   <IconRefresh class="size-4 mr-2" />
                   Refresh
                 </Button>
-                <Button variant="outline" onClick={() => startGitHubOAuth()}>
+                <Button variant="outline" onClick={() => startGitHubSignIn()} disabled={!gitHubAppStatus().sign_in_configured}>
                   <IconBrandGithub class="size-4 mr-2" />
-                  Connect OAuth
+                  Connect GitHub Sign-In
                 </Button>
-                <Button onClick={() => handleInstallGitHubApp()} disabled={isGitHubActionLoading()}>
+                <Button onClick={() => handleInstallGitHubApp()} disabled={isGitHubActionLoading() || !gitHubOAuthConnected()}>
                   <IconGitFork class="size-4 mr-2" />
                   Install GitHub App
                 </Button>
               </div>
             </div>
+            <Show when={!gitHubAppStatus().sign_in_configured}>
+              <p class="text-xs text-amber-500 mt-3">
+                GitHub sign-in is not available from the unified Trackeep control service.
+              </p>
+            </Show>
+            <Show when={gitHubAppStatus().sign_in_configured && !gitHubOAuthConnected()}>
+              <p class="text-xs text-muted-foreground mt-3">
+                Sign in with GitHub first, then install the GitHub App to verify the installation against your account.
+              </p>
+            </Show>
           </Card>
 
           <Show when={gitHubMessage()}>
@@ -869,11 +886,10 @@ export const Files = () => {
                     </Button>
                   </div>
                 </div>
-
                 <Show when={gitHubRepos().length > 0} fallback={
                   <div class="rounded-xl border border-dashed border-border p-8 text-center">
                     <p class="text-sm text-muted-foreground">
-                      No repositories available. Connect OAuth or install/configure GitHub App access first.
+                      No repositories available. Connect GitHub sign-in or install/configure GitHub App access first.
                     </p>
                   </div>
                 }>

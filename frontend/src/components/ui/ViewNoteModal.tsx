@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { ModalPortal } from '@/components/ui/ModalPortal';
-import { For, Show, createEffect } from 'solid-js';
+import { Show } from 'solid-js';
+import { NoteContentRenderer } from '@/components/notes/NoteContentRenderer';
 import { IconX, IconEdit, IconPin, IconTrash, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
 
 interface Note {
@@ -36,34 +37,39 @@ interface ViewNoteModalProps {
 
 export const ViewNoteModal = (props: ViewNoteModalProps) => {
   console.log('ViewNoteModal render:', { isOpen: props.isOpen, note: props.note?.title });
-  
-  // Make the function available globally for checkbox onchange handlers
-  createEffect(() => {
-    (window as any).updateViewNoteContent = (checkbox: HTMLInputElement) => {
-      if (props.note && props.onUpdateNote) {
-        const lines = props.note.content.split('\n');
-        let checkboxCount = 0;
-        const checkboxElements = document.querySelectorAll('.note-content input[type="checkbox"]');
-        const checkboxIndex = Array.from(checkboxElements).indexOf(checkbox);
-        
-        const updatedLines = lines.map(line => {
-          const uncheckedMatch = line.match(/^- \[ \] (.*)$/);
-          const checkedMatch = line.match(/^- \[x\] (.*)$/);
-          
-          if (uncheckedMatch || checkedMatch) {
-            if (checkboxCount === checkboxIndex) {
-              const text = uncheckedMatch ? uncheckedMatch[1] : (checkedMatch ? checkedMatch[1] : '');
-              return checkbox.checked ? `- [x] ${text}` : `- [ ] ${text}`;
-            }
-            checkboxCount++;
-          }
+
+  const getNoteKind = () => {
+    if (props.note?.isHtml) return 'html' as const;
+    if (props.note?.isMarkdown) return 'markdown' as const;
+    return 'plain' as const;
+  };
+
+  const updateNoteCheckbox = (checkboxIndex: number, nextChecked: boolean) => {
+    if (!props.note || !props.onUpdateNote) return;
+
+    let taskCounter = 0;
+    const nextContent = props.note.content
+      .split('\n')
+      .map((line) => {
+        const uncheckedMatch = line.match(/^- \[ \] (.*)$/);
+        const checkedMatch = line.match(/^- \[(x|X)\] (.*)$/);
+        if (!uncheckedMatch && !checkedMatch) {
           return line;
-        });
-        
-        props.onUpdateNote(props.note.id, updatedLines.join('\n'));
-      }
-    };
-  });
+        }
+
+        const currentIndex = taskCounter;
+        taskCounter += 1;
+        if (currentIndex !== checkboxIndex) {
+          return line;
+        }
+
+        const label = uncheckedMatch?.[1] || checkedMatch?.[2] || '';
+        return nextChecked ? `- [x] ${label}` : `- [ ] ${label}`;
+      })
+      .join('\n');
+
+    props.onUpdateNote(props.note.id, nextContent);
+  };
   
   return (
     <ModalPortal>
@@ -185,52 +191,12 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
           )}
 
           {/* Note Content */}
-          <div class="prose prose-invert max-w-none note-content">
-            {props.note.isHtml ? (
-              <div 
-                class="text-[#fafafa] leading-relaxed"
-                innerHTML={props.note.content}
-              />
-            ) : props.note.isMarkdown ? (
-              <div class="text-[#fafafa] leading-relaxed">
-                {/* Enhanced Markdown rendering with image support */}
-                <For each={props.note.content
-                  .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mb-4">$1</h1>')
-                  .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mb-3">$1</h2>')
-                  .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold mb-2">$1</h3>')
-                  .replace(/^#### (.*$)/gim, '<h4 class="text-md font-bold mb-2">$1</h4>')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-                  .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                  .replace(/`(.*?)`/g, '<code class="bg-[#262626] px-1 py-0.5 rounded text-sm">$1</code>')
-                  .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre class="bg-[#262626] p-4 rounded mb-4 overflow-x-auto"><code class="text-sm">$2</code></pre>')
-                  .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
-                  .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" checked class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
-                  .replace(/\n\n/g, '</p><p class="mb-4">')
-                  .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
-                  .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-                  .replace(/> (.*$)/gim, '<blockquote class="border-l-4 border-[#444] pl-4 italic text-[#aaa] mb-4">$1</blockquote>')
-                  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-                  .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded mb-4" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" /><div style="display:none;" class="text-[#666] italic mb-4">Image: $1 ($2)</div>')
-                  .split('</p><p class="mb-4">')}>
-                  {(line) => (
-                    <div innerHTML={line.startsWith('<') ? line : `<p class="mb-4">${line}</p>`} />
-                  )}
-                </For>
-              </div>
-            ) : (
-              <div class="text-[#fafafa] whitespace-pre-wrap leading-relaxed">
-                {/* Auto-detect and render URLs and basic formatting */}
-                {props.note.content
-                  .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-                  .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                  .replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
-                  .replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 mb-2"><input type="checkbox" checked class="rounded" onclick="this.checked=!this.checked" onchange="updateViewNoteContent(this)"><span>$1</span></div>')
-                  .split('\n').map((line) => (
-                    <div innerHTML={line || '<br />'} />
-                  ))}
-              </div>
-            )}
+          <div class="max-w-none note-content">
+            <NoteContentRenderer
+              content={props.note.content}
+              kind={getNoteKind()}
+              onToggleTask={props.onUpdateNote ? updateNoteCheckbox : undefined}
+            />
           </div>
 
           {/* Metadata */}

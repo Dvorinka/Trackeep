@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -152,7 +153,7 @@ func GenerateEmbedding(c *gin.Context) {
 
 		if err := db.Create(&contentEmbedding).Error; err != nil {
 			// Log error but don't fail the request
-			fmt.Printf("Failed to store embedding: %v\n", err)
+			log.Printf("Failed to store embedding: %v", err)
 		}
 	}
 
@@ -459,7 +460,7 @@ func generateHighlights(text string, count int) []string {
 
 // reindexUserContent reindexes all content for a user
 func reindexUserContent(db *gorm.DB, userID uint) {
-	fmt.Printf("Starting reindexing for user %d\n", userID)
+	log.Printf("Starting reindexing for user %d", userID)
 
 	// Reindex bookmarks
 	var bookmarks []models.Bookmark
@@ -537,7 +538,7 @@ func reindexUserContent(db *gorm.DB, userID uint) {
 		upsertEmbedding(db, userID, "chat_message", message.ID, message.Body)
 	}
 
-	fmt.Printf("Reindexing completed for user %d\n", userID)
+	log.Printf("Reindexing completed for user %d", userID)
 }
 
 func upsertEmbedding(db *gorm.DB, userID uint, contentType string, contentID uint, text string) {

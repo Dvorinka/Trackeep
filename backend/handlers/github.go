@@ -1,39 +1,18 @@
 package handlers
 
 import (
-	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
 
 	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
 )
-
-// GitHub OAuth configuration
-var githubOAuthConfig *oauth2.Config
-
-func initGitHubOAuth() {
-	githubOAuthConfig = &oauth2.Config{
-		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-		ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("GITHUB_REDIRECT_URL"),
-		Scopes:       []string{"user:email", "repo"},
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://github.com/login/oauth/authorize",
-			TokenURL: "https://github.com/login/oauth/access_token",
-		},
-	}
-}
 
 // GitHubUser represents the GitHub user profile
 type GitHubUser struct {
@@ -65,69 +44,66 @@ type GitHubRepo struct {
 	DefaultBranch string `json:"default_branch"`
 }
 
-// GitHubLogin initiates the GitHub OAuth flow
+// GitHubLogin initiates the GitHub App user sign-in flow.
 func GitHubLogin(c *gin.Context) {
-	frontendRedirect := resolveFrontendRedirectURL(c.Request)
-	callbackURL := buildOAuthCallbackURL(c.Request, frontendRedirect)
-	if oauthServiceURL := getOAuthServiceURL(); oauthServiceURL != "" && callbackURL != "" {
-		redirectURL := fmt.Sprintf("%s/auth/github?redirect_uri=%s", oauthServiceURL, url.QueryEscape(callbackURL))
-		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+	storeControlServiceAuthFlowState(c, resolveFrontendRedirectURL(c.Request))
+
+	redirectURL, err := buildControlServiceGitHubStartURL(c.Request)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if githubOAuthConfig == nil {
-		initGitHubOAuth()
-	}
-
-	// Generate state parameter to prevent CSRF
-	state := generateRandomString(32)
-
-	// Store state in session or cookie (simplified here)
-	c.SetCookie("oauth_state", state, 3600, "/", "", false, true)
-
-	// Redirect to GitHub for authorization
-	authURL := githubOAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
-	c.Redirect(http.StatusTemporaryRedirect, authURL)
+	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
-// GitHubCallback handles the GitHub OAuth callback
+// GitHubCallback handles the GitHub App sign-in callback.
 func GitHubCallback(c *gin.Context) {
-	if githubOAuthConfig == nil {
-		initGitHubOAuth()
-	}
-
-	// Verify state parameter
-	storedState, err := c.Cookie("oauth_state")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "State not found"})
+	frontendRedirect := getGitHubFrontendRedirectFromCookie(c)
+	storedState, err := c.Cookie(gitHubAuthStateCookieName)
+	clearGitHubAuthFlowState(c)
+	if err != nil || strings.TrimSpace(storedState) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub sign-in state not found"})
 		return
 	}
 
-	state := c.Query("state")
-	if state != storedState {
+	if callbackError := strings.TrimSpace(c.Query("error")); callbackError != "" {
+		description := strings.TrimSpace(c.Query("error_description"))
+		if description == "" {
+			description = callbackError
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub sign-in failed: " + description})
+		return
+	}
+
+	if strings.TrimSpace(c.Query("state")) != storedState {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid state"})
 		return
 	}
 
-	// Clear the state cookie
-	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
-
-	// Exchange authorization code for access token
-	code := c.Query("code")
-	token, err := githubOAuthConfig.Exchange(context.Background(), code)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange token"})
+	callbackURL := buildGitHubUserCallbackURL(c.Request)
+	if callbackURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to determine GitHub callback URL"})
 		return
 	}
 
-	// Get user info from GitHub
-	user, err := getGitHubUser(token.AccessToken)
+	code := strings.TrimSpace(c.Query("code"))
+	tokenResponse, err := exchangeGitHubAuthorizationCode(c.Request.Context(), code, callbackURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange GitHub code: " + err.Error()})
+		return
+	}
+	if strings.TrimSpace(tokenResponse.RefreshToken) == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "GitHub did not return a refresh token. Enable user token expiration for the GitHub App."})
 		return
 	}
 
-	// Get or create user in database
+	user, err := getGitHubUser(tokenResponse.AccessToken)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to fetch GitHub user profile: " + err.Error()})
+		return
+	}
+
 	db := config.GetDB()
 	if db == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
@@ -145,14 +121,18 @@ func GitHubCallback(c *gin.Context) {
 		return
 	}
 
-	tokenString, err := GenerateJWTWithGitHubAccessToken(*existingUser, token.AccessToken)
+	if err := upsertGitHubUserAuth(db, existingUser.ID, user, tokenResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store GitHub session: " + err.Error()})
+		return
+	}
+
+	tokenString, err := GenerateJWT(*existingUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Redirect to frontend with token
-	redirectURL := buildFrontendCallbackRedirectURL("", tokenString)
+	redirectURL := buildFrontendCallbackRedirectURL(frontendRedirect, tokenString)
 	if redirectURL == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Frontend redirect URL not configured"})
 		return
@@ -163,13 +143,15 @@ func GitHubCallback(c *gin.Context) {
 // getGitHubUser fetches user information from GitHub API
 func getGitHubUser(accessToken string) (*GitHubUser, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
+	req, err := http.NewRequest("GET", strings.TrimRight(gitHubAPIBaseURL, "/")+"/user", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("User-Agent", "Trackeep")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -180,6 +162,9 @@ func getGitHubUser(accessToken string) (*GitHubUser, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("GitHub user API returned %d: %s", resp.StatusCode, truncateString(string(body), 220))
 	}
 
 	var user GitHubUser
@@ -187,103 +172,18 @@ func getGitHubUser(accessToken string) (*GitHubUser, error) {
 		return nil, err
 	}
 
-	// If email is not public, fetch user emails
-	if user.Email == "" {
-		email, err := getPrimaryEmail(accessToken)
-		if err == nil {
-			user.Email = email
-		}
+	email, err := getPrimaryEmail(accessToken)
+	if err != nil {
+		return nil, err
 	}
+	user.Email = email
 
 	return &user, nil
 }
 
 // getPrimaryEmail fetches the primary email for the user
 func getPrimaryEmail(accessToken string) (string, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var emails []struct {
-		Email    string `json:"email"`
-		Primary  bool   `json:"primary"`
-		Verified bool   `json:"verified"`
-	}
-
-	if err := json.Unmarshal(body, &emails); err != nil {
-		return "", err
-	}
-
-	for _, email := range emails {
-		if email.Primary && email.Verified {
-			return email.Email, nil
-		}
-	}
-
-	return "", fmt.Errorf("no primary verified email found")
-}
-
-// HandleOAuthCallback handles the callback from the centralized OAuth service
-func HandleOAuthCallback(c *gin.Context) {
-	// Get the token from the query parameters
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No token provided"})
-		return
-	}
-
-	validationResponse, err := validateCentralizedOAuthToken(c.Request.Context(), token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OAuth token"})
-		return
-	}
-
-	// Get database
-	db := config.GetDB()
-	if db == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
-		return
-	}
-	localUser, err := upsertCentralizedOAuthUser(db, validationResponse.User)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to synchronize user"})
-		return
-	}
-
-	claims, err := parseOAuthTokenClaimsUnverified(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OAuth token claims"})
-		return
-	}
-
-	trackeepTokenString, err := GenerateJWTWithGitHubAccessToken(*localUser, getAccessTokenFromOAuthClaims(claims))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
-	redirectURL := buildFrontendCallbackRedirectURL(c.Query("frontend_redirect"), trackeepTokenString)
-	if redirectURL == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Frontend redirect URL not configured"})
-		return
-	}
-	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+	return fetchGitHubPrimaryVerifiedEmail(accessToken)
 }
 
 // GetCurrentUser returns the current authenticated user with GitHub info
@@ -302,13 +202,24 @@ func GetCurrentUserWithGitHub(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": currentUser})
 }
 func GetGitHubRepos(c *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := getGitHubRequestUserID(c)
 
 	db := config.GetDB()
 	if db == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
 		return
 	}
+
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		repos, err := fetchControlServiceGitHubRepos(c.Request.Context(), db, userID)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to fetch repos from control service: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"repos": repos})
+		return
+	}
+
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -316,36 +227,18 @@ func GetGitHubRepos(c *gin.Context) {
 	}
 
 	if user.GitHubID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub not connected"})
-		return
+		if _, err := getGitHubUserAuthRecord(db, userID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub sign-in is not connected"})
+			return
+		}
 	}
 
-	// Get the JWT token from the request header
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No authorization header"})
-		return
-	}
-
-	// Extract token from "Bearer <token>"
-	tokenString := authHeader
-	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-		tokenString = authHeader[7:]
-	}
-
-	claims, err := ValidateJWT(tokenString)
+	githubAccessToken, _, err := getGitHubUserAccessTokenForUser(c.Request.Context(), db, userID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	githubAccessToken := strings.TrimSpace(claims.AccessToken)
-	if githubAccessToken == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "GitHub access token not found. Please reconnect GitHub."})
-		return
-	}
-
-	// Fetch repositories using the GitHub access token
 	repos, err := fetchGitHubRepos(githubAccessToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repos: " + err.Error()})
@@ -355,16 +248,32 @@ func GetGitHubRepos(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"repos": repos})
 }
 
+// GitHubContribution represents a day's contribution data
+type GitHubContribution struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+	Level int    `json:"level"` // 0-5 intensity level
+}
+
+// GitHubActivityResponse represents the response structure for GitHub activity
+type GitHubActivityResponse struct {
+	Contributions []GitHubContribution `json:"contributions"`
+	WeeklyData    []int                `json:"weekly_data"`
+	TotalCount    int                  `json:"total_count"`
+}
+
 // fetchGitHubRepos fetches repositories from GitHub API
 func fetchGitHubRepos(accessToken string) ([]GitHubRepo, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://api.github.com/user/repos?type=owner&sort=updated&per_page=100", nil)
+	req, err := http.NewRequest("GET", strings.TrimRight(gitHubAPIBaseURL, "/")+"/user/repos?type=owner&sort=updated&per_page=100", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("User-Agent", "Trackeep")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -376,6 +285,9 @@ func fetchGitHubRepos(accessToken string) ([]GitHubRepo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("GitHub repos API returned %d: %s", resp.StatusCode, truncateString(string(body), 220))
+	}
 
 	var repos []GitHubRepo
 	if err := json.Unmarshal(body, &repos); err != nil {
@@ -385,9 +297,139 @@ func fetchGitHubRepos(accessToken string) ([]GitHubRepo, error) {
 	return repos, nil
 }
 
-// generateRandomString generates a random string for state parameter
-func generateRandomString(length int) string {
-	bytes := make([]byte, length)
-	rand.Read(bytes)
-	return hex.EncodeToString(bytes)
+// fetchGitHubContributions fetches contribution data from GitHub API
+func fetchGitHubContributions(accessToken string) (*GitHubActivityResponse, error) {
+	client := &http.Client{}
+
+	// Fetch contribution data for the last year
+	req, err := http.NewRequest("GET", strings.TrimRight(gitHubAPIBaseURL, "/")+"/search/issues?q=author:@me+created:>=2025-03-13&per_page=100", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("User-Agent", "Trackeep")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("GitHub contributions API returned %d: %s", resp.StatusCode, truncateString(string(body), 220))
+	}
+
+	// Parse the response to get activity data
+	var issueResponse struct {
+		Items []struct {
+			CreatedAt string `json:"created_at"`
+		} `json:"items"`
+	}
+
+	if err := json.Unmarshal(body, &issueResponse); err != nil {
+		return nil, err
+	}
+
+	// Generate contribution data for the last year
+	contributions := make([]GitHubContribution, 0)
+	weeklyData := make([]int, 7)
+	today := time.Now()
+
+	// Initialize contribution map
+	contributionMap := make(map[string]int)
+
+	// Count contributions by date
+	for _, item := range issueResponse.Items {
+		date := item.CreatedAt[:10] // Extract date part
+		contributionMap[date]++
+	}
+
+	// Generate daily contribution data for the last year
+	for i := 364; i >= 0; i-- {
+		date := today.AddDate(0, 0, -i)
+		dateStr := date.Format("2006-01-02")
+		count := contributionMap[dateStr]
+
+		// Calculate level (0-5 intensity)
+		level := 0
+		if count > 0 {
+			if count <= 1 {
+				level = 1
+			} else if count <= 3 {
+				level = 2
+			} else if count <= 5 {
+				level = 3
+			} else if count <= 8 {
+				level = 4
+			} else {
+				level = 5
+			}
+		}
+
+		contributions = append(contributions, GitHubContribution{
+			Date:  dateStr,
+			Count: count,
+			Level: level,
+		})
+
+		// Calculate weekly data (last 7 days)
+		if i < 7 {
+			weeklyData[6-i] = count
+		}
+	}
+
+	totalCount := len(issueResponse.Items)
+
+	return &GitHubActivityResponse{
+		Contributions: contributions,
+		WeeklyData:    weeklyData,
+		TotalCount:    totalCount,
+	}, nil
+}
+
+// GetGitHubActivity fetches GitHub contribution activity
+func GetGitHubActivity(c *gin.Context) {
+	userID := getGitHubRequestUserID(c)
+
+	db := config.GetDB()
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
+		return
+	}
+
+	var githubAccessToken string
+	var err error
+
+	// Try to get access token from control service first
+	if _, err := getControlServiceSessionRecord(db, userID); err == nil {
+		// Use control service token if available
+		tokenPayload, err := fetchControlServiceGitHubUserAccessToken(c.Request.Context(), db, userID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get GitHub access token from control service: " + err.Error()})
+			return
+		}
+		githubAccessToken = tokenPayload.AccessToken
+	} else {
+		// Fall back to user auth token
+		githubAccessToken, _, err = getGitHubUserAccessTokenForUser(c.Request.Context(), db, userID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	activity, err := fetchGitHubContributions(githubAccessToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch GitHub activity: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, activity)
 }

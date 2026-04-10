@@ -86,7 +86,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+/public
 
 # Storybook build outputs
 .out
@@ -180,7 +180,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+/public
 
 # Storybook build outputs
 .out
@@ -258,6 +258,10 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Desktop app build artifacts
+desktop/dist/
+desktop/src-tauri/target/
 
 # Lock files (keep package-lock.json but ignore yarn.lock if using npm)
 # yarn.lock

@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capability for Trackeep Desktop windows","local":true,"windows":["setup","main"],"permissions":["core:default"]}}

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/trackeep/backend/config"
 	"gorm.io/gorm"
 )
 
@@ -17,7 +18,7 @@ type UserUpdateSettings struct {
 	User   User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
 	// OAuth Service Configuration
-	OAuthServiceURL string `json:"oauth_service_url" gorm:"default:https://oauth.trackeep.org"`
+	OAuthServiceURL string `json:"oauth_service_url" gorm:"default:https://hq.trackeep.org"`
 
 	// Update Configuration
 	AutoUpdateCheck     bool   `json:"auto_update_check" gorm:"default:false"`
@@ -34,7 +35,7 @@ func GetUserUpdateSettings(userID uint) (*UserUpdateSettings, error) {
 			// Create default settings
 			settings = UserUpdateSettings{
 				UserID:              userID,
-				OAuthServiceURL:     "https://oauth.trackeep.org",
+				OAuthServiceURL:     config.ControlServiceURL,
 				AutoUpdateCheck:     false,
 				UpdateCheckInterval: "24h",
 				PrereleaseUpdates:   false,
@@ -47,6 +48,14 @@ func GetUserUpdateSettings(userID uint) (*UserUpdateSettings, error) {
 		}
 		return nil, err
 	}
+
+	if settings.OAuthServiceURL != config.ControlServiceURL {
+		settings.OAuthServiceURL = config.ControlServiceURL
+		if err := DB.Model(&settings).Update("oauth_service_url", config.ControlServiceURL).Error; err != nil {
+			return nil, err
+		}
+	}
+
 	return &settings, nil
 }
 

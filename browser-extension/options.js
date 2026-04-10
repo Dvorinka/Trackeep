@@ -7,13 +7,14 @@ if (typeof browser === 'undefined' && typeof chrome !== 'undefined') {
 
 const apiBaseUrlInput = document.getElementById('trackeepApiUrl');
 const apiKeyInput = document.getElementById('trackeepApiKey');
+const youtubeAutoPromptInput = document.getElementById('youtubeAutoPrompt');
 const testConnectionBtn = document.getElementById('testConnectionBtn');
 const generateKeyBtn = document.getElementById('generateKeyBtn');
 const saveBtn = document.getElementById('saveBtn');
 const statusMessageEl = document.getElementById('statusMessage');
 const connectionStatusEl = document.getElementById('connectionStatus');
 const statusTitleEl = document.getElementById('statusTitle');
-const statusTextEl = document.getElementById('statusMessage');
+const statusTextEl = document.getElementById('connectionStatusMessage');
 const installWelcomeEl = document.getElementById('installWelcome');
 const mainOptionsEl = document.getElementById('mainOptions');
 
@@ -99,7 +100,13 @@ function detectAndPrefillApiBaseUrl(callback) {
 }
 
 function loadSettings() {
-  browser.storage.sync.get(['trackeepApiBaseUrl', 'trackeepApiKey', 'isFirstInstall'], (items) => {
+  browser.storage.sync.get([
+    'trackeepApiBaseUrl',
+    'trackeepApiKey',
+    'trackeepAuthToken',
+    'youtubeAutoPrompt',
+    'isFirstInstall'
+  ], (items) => {
     // Handle first-time install
     if (items.isFirstInstall) {
       installWelcomeEl.style.display = 'flex';
@@ -113,8 +120,13 @@ function loadSettings() {
     if (items.trackeepApiBaseUrl) {
       apiBaseUrlInput.value = items.trackeepApiBaseUrl;
     }
-    if (items.trackeepApiKey) {
-      apiKeyInput.value = items.trackeepApiKey;
+    if (items.trackeepApiKey || items.trackeepAuthToken) {
+      apiKeyInput.value = items.trackeepApiKey || items.trackeepAuthToken;
+    }
+    if (youtubeAutoPromptInput) {
+      youtubeAutoPromptInput.checked = typeof items.youtubeAutoPrompt === 'boolean'
+        ? items.youtubeAutoPrompt
+        : true;
     }
 
     // Auto-detect API URL if empty
@@ -126,20 +138,16 @@ function loadSettings() {
 
 function saveSettings() {
   const apiBaseUrl = apiBaseUrlInput.value.trim();
-  const apiKey = apiKeyInput.value.trim();
+  const token = apiKeyInput.value.trim();
+  const youtubeAutoPrompt = youtubeAutoPromptInput ? !!youtubeAutoPromptInput.checked : true;
   
   if (!apiBaseUrl) {
     showMessage('API base URL is required.', 'error');
     return;
   }
   
-  if (!apiKey) {
-    showMessage('API key is required.', 'error');
-    return;
-  }
-  
-  if (!apiKey.startsWith('tk_')) {
-    showMessage('API key should start with "tk_"', 'error');
+  if (!token) {
+    showMessage('API key or token is required.', 'error');
     return;
   }
   
@@ -148,7 +156,9 @@ function saveSettings() {
   
   browser.storage.sync.set({
     trackeepApiBaseUrl: apiBaseUrl,
-    trackeepApiKey: apiKey,
+    trackeepApiKey: token,
+    trackeepAuthToken: token,
+    youtubeAutoPrompt,
     isFirstInstall: false
   }, () => {
     setButtonLoading(saveBtn, false);
@@ -156,38 +166,55 @@ function saveSettings() {
   });
 }
 
+async function validateConnectionToken(apiBaseUrl, token) {
+  const base = apiBaseUrl.replace(/\/$/, '');
+  const isApiKey = token.startsWith('tk_');
+  const endpoint = isApiKey ? `${base}/browser-extension/validate` : `${base}/auth/me`;
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch (_) {
+    // Keep empty payload for non-JSON responses.
+  }
+
+  return { isApiKey, payload };
+}
+
 async function testConnection() {
   const apiBaseUrl = apiBaseUrlInput.value.trim();
-  const apiKey = apiKeyInput.value.trim();
+  const token = apiKeyInput.value.trim();
   
-  if (!apiBaseUrl || !apiKey) {
-    showConnectionStatus('Connection Failed', 'Please enter both URL and API key', 'error');
+  if (!apiBaseUrl || !token) {
+    showConnectionStatus('Connection Failed', 'Please enter both URL and token', 'error');
     return;
   }
   
   showConnectionStatus('Testing Connection', 'Connecting to your Trackeep instance...', 'info');
   
   try {
-    const base = apiBaseUrl.replace(/\/$/, '');
-    const response = await fetch(`${base}/auth/me`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      showConnectionStatus('Connection Successful', `Connected as ${data.username || 'user'}. API key is valid!`, 'success');
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        hideConnectionStatus();
-      }, 3000);
-    } else {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    const result = await validateConnectionToken(apiBaseUrl, token);
+    const identity = result.payload && result.payload.username ? result.payload.username : 'user';
+    showConnectionStatus(
+      'Connection Successful',
+      `Connected as ${identity}. ${result.isApiKey ? 'API key' : 'Token'} is valid.`,
+      'success'
+    );
+
+    setTimeout(() => {
+      hideConnectionStatus();
+    }, 3000);
   } catch (error) {
     showConnectionStatus('Connection Failed', `Error: ${error.message}`, 'error');
   }
@@ -290,40 +317,30 @@ document.addEventListener('DOMContentLoaded', () => {
 // Test connection from setup form
 async function testSetupConnection() {
   const apiBaseUrl = document.getElementById('setupApiUrl').value.trim();
-  const apiKey = document.getElementById('setupApiKey').value.trim();
+  const token = document.getElementById('setupApiKey').value.trim();
   
-  if (!apiBaseUrl || !apiKey) {
-    showSetupConnectionStatus('Connection Failed', 'Please enter both URL and API key', 'error');
+  if (!apiBaseUrl || !token) {
+    showSetupConnectionStatus('Connection Failed', 'Please enter both URL and token', 'error');
     return;
   }
   
   showSetupConnectionStatus('Testing Connection', 'Connecting to your Trackeep instance...', 'info');
   
   try {
-    const base = apiBaseUrl.replace(/\/$/, '');
-    const response = await fetch(`${base}/auth/me`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      showSetupConnectionStatus('Connection Successful', `Connected as ${data.username || 'user'}. API key is valid!`, 'success');
-      
-      // Copy values to main form
-      document.getElementById('trackeepApiUrl').value = apiBaseUrl;
-      document.getElementById('trackeepApiKey').value = apiKey;
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        hideSetupConnectionStatus();
-      }, 3000);
-    } else {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    const result = await validateConnectionToken(apiBaseUrl, token);
+    const identity = result.payload && result.payload.username ? result.payload.username : 'user';
+    showSetupConnectionStatus(
+      'Connection Successful',
+      `Connected as ${identity}. ${result.isApiKey ? 'API key' : 'Token'} is valid.`,
+      'success'
+    );
+
+    document.getElementById('trackeepApiUrl').value = apiBaseUrl;
+    document.getElementById('trackeepApiKey').value = token;
+
+    setTimeout(() => {
+      hideSetupConnectionStatus();
+    }, 3000);
   } catch (error) {
     showSetupConnectionStatus('Connection Failed', `Error: ${error.message}`, 'error');
   }
@@ -332,17 +349,19 @@ async function testSetupConnection() {
 // Complete setup
 function completeSetup() {
   const apiBaseUrl = document.getElementById('setupApiUrl').value.trim();
-  const apiKey = document.getElementById('setupApiKey').value.trim();
+  const token = document.getElementById('setupApiKey').value.trim();
   
-  if (!apiBaseUrl || !apiKey) {
-    showMessage('Please fill in both URL and API key', 'error');
+  if (!apiBaseUrl || !token) {
+    showMessage('Please fill in both URL and token', 'error');
     return;
   }
   
   // Save settings
   browser.storage.sync.set({
     trackeepApiBaseUrl: apiBaseUrl,
-    trackeepApiKey: apiKey,
+    trackeepApiKey: token,
+    trackeepAuthToken: token,
+    youtubeAutoPrompt: true,
     isFirstInstall: false
   }, () => {
     showMessage('Setup completed successfully!', 'success');
@@ -353,7 +372,7 @@ function completeSetup() {
     
     // Load settings in main form
     document.getElementById('trackeepApiUrl').value = apiBaseUrl;
-    document.getElementById('trackeepApiKey').value = apiKey;
+    document.getElementById('trackeepApiKey').value = token;
   });
 }
 

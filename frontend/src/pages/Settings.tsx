@@ -1,14 +1,34 @@
 import { createSignal, onMount, Show, For } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { useAuth } from '@/lib/auth';
 import { IconUser, IconLock, IconKey, IconBrain, IconMail, IconSend, IconShield, IconDownload } from '@tabler/icons-solidjs';
 import { TwoFactorAuth } from '@/components/TwoFactorAuth';
 import { Button } from '@/components/ui/Button';
 import { AIProviderIcon } from '@/components/AIProviderIcon';
 import { useHaptics } from '@/lib/haptics';
+import { getApiV1BaseUrl } from '@/lib/api-url';
+
+interface BrowserExtensionApiKey {
+  id: number;
+  name: string;
+  permissions: string[];
+  is_active: boolean;
+  last_used?: string;
+}
+
+interface BrowserExtensionClient {
+  id: number;
+  extension_id: string;
+  name: string;
+  is_active: boolean;
+  last_seen?: string;
+}
 
 export const Settings = () => {
   const { authState, updateProfile, changePassword } = useAuth();
+  const navigate = useNavigate();
   const haptics = useHaptics();
+  const apiBaseUrl = getApiV1BaseUrl();
   const [isLoading, setIsLoading] = createSignal(false);
   const [message, setMessage] = createSignal('');
   const [profileData, setProfileData] = createSignal({
@@ -128,6 +148,8 @@ export const Settings = () => {
   const [emailSettingsExpanded, setEmailSettingsExpanded] = createSignal(true);
   const [aiLoading, setAiLoading] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal('account');
+  const [browserExtensionApiKeys, setBrowserExtensionApiKeys] = createSignal<BrowserExtensionApiKey[]>([]);
+  const [browserExtensions, setBrowserExtensions] = createSignal<BrowserExtensionClient[]>([]);
 
   const tabs = [
     { id: 'account', name: 'Account', icon: IconUser },
@@ -168,6 +190,7 @@ export const Settings = () => {
     loadAISettings();
     loadAvailableAIProviders();
     loadSearchSettings();
+    loadBrowserExtensionAccess();
   });
 
 
@@ -232,6 +255,34 @@ export const Settings = () => {
       }
     } catch (error) {
       console.error('Failed to load search settings:', error);
+    }
+  };
+
+  const loadBrowserExtensionAccess = async () => {
+    try {
+      const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const [apiKeysResponse, extensionsResponse] = await Promise.all([
+        fetch(`${apiBaseUrl}/browser-extension/api-keys`, { headers }),
+        fetch(`${apiBaseUrl}/browser-extension/extensions`, { headers }),
+      ]);
+
+      if (apiKeysResponse.ok) {
+        const keys = await apiKeysResponse.json();
+        setBrowserExtensionApiKeys(Array.isArray(keys) ? keys : []);
+      }
+
+      if (extensionsResponse.ok) {
+        const extensions = await extensionsResponse.json();
+        setBrowserExtensions(Array.isArray(extensions) ? extensions : []);
+      }
+    } catch (error) {
+      console.error('Failed to load browser extension access:', error);
+      setBrowserExtensionApiKeys([]);
+      setBrowserExtensions([]);
     }
   };
 
@@ -1685,7 +1736,6 @@ export const Settings = () => {
         {/* Tools Tab */}
         <Show when={activeTab() === 'tools'}>
           <div class="space-y-6">
-            {/* Browser Extension Download */}
             <div class="border rounded-lg p-6">
               <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                 <IconDownload class="size-5" />
@@ -1693,13 +1743,72 @@ export const Settings = () => {
               </h2>
               <div class="space-y-4">
                 <p class="text-sm text-muted-foreground">
-                  Download the Trackeep browser extension for seamless bookmarking and productivity.
+                  The extension authenticates with a Trackeep browser-extension API key. Download the extension, then connect it with a key from your account.
                 </p>
-                
-                <div class="grid grid-cols-1 gap-4">
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div class="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <p class="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-1">Active API Keys</p>
+                    <p class="text-2xl font-semibold text-foreground">
+                      {browserExtensionApiKeys().filter((key) => key.is_active).length}
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1">
+                      {browserExtensionApiKeys()[0]?.name || 'No extension key created yet'}
+                    </p>
+                  </div>
+                  <div class="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <p class="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-1">Connected Extensions</p>
+                    <p class="text-2xl font-semibold text-foreground">
+                      {browserExtensions().filter((extension) => extension.is_active).length}
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1">
+                      {browserExtensions()[0]?.name || 'No extension connected yet'}
+                    </p>
+                  </div>
+                  <div class="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <p class="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-1">Last Activity</p>
+                    <p class="text-sm font-medium text-foreground">
+                      {browserExtensions()[0]?.last_seen
+                        ? new Date(browserExtensions()[0].last_seen as string).toLocaleString()
+                        : browserExtensionApiKeys()[0]?.last_used
+                          ? new Date(browserExtensionApiKeys()[0].last_used as string).toLocaleString()
+                          : 'No extension activity yet'}
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1">
+                      Paste an API key into the extension options after installation.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <h4 class="font-medium text-foreground mb-2">Connection flow</h4>
+                  <div class="space-y-2 text-sm text-muted-foreground">
+                    <div class="flex items-start gap-2">
+                      <span class="text-primary">1.</span>
+                      <span>Download and unpack the extension.</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-primary">2.</span>
+                      <span>Create or reuse a browser-extension API key in Trackeep.</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="text-primary">3.</span>
+                      <span>Paste that key into the extension settings to connect bookmarks, files, notes, and tasks.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => navigate('/app/browser-extension')}
+                    variant="default"
+                    class="flex items-center gap-2"
+                  >
+                    <IconKey class="size-4" />
+                    Manage API Keys
+                  </Button>
                   <Button
                     onClick={() => {
-                      // Create a download link for the extension zip
                       const link = document.createElement('a');
                       link.href = '/browser-extension';
                       link.download = 'browser-extension.zip';
@@ -1707,14 +1816,13 @@ export const Settings = () => {
                       link.click();
                       document.body.removeChild(link);
                     }}
-                    variant="default"
+                    variant="outline"
                     class="flex items-center gap-2"
                   >
                     <IconDownload class="size-4" />
                     Download Extension (ZIP)
                   </Button>
                 </div>
-                
                 <div class="bg-muted/30 rounded-lg p-4">
                   <h4 class="font-medium text-foreground mb-2">Installation Instructions:</h4>
                   <div class="space-y-2 text-sm text-muted-foreground">

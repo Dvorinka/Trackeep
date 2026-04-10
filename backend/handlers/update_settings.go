@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/trackeep/backend/config"
 	"github.com/trackeep/backend/models"
 )
 
@@ -49,7 +50,7 @@ func UpdateUpdateSettings(c *gin.Context) {
 
 	// Update model
 	updatedSettings := &models.UserUpdateSettings{
-		OAuthServiceURL:     newSettings.OAuthServiceURL,
+		OAuthServiceURL:     config.ControlServiceURL,
 		AutoUpdateCheck:     newSettings.AutoUpdateCheck,
 		UpdateCheckInterval: newSettings.UpdateCheckInterval,
 		PrereleaseUpdates:   newSettings.PrereleaseUpdates,
@@ -91,7 +92,7 @@ func GetUpdateSettingsForAPI(userID int) (UpdateSettings, error) {
 
 func getDefaultUpdateSettings() UpdateSettings {
 	return UpdateSettings{
-		OAuthServiceURL:     getEnvWithDefault("OAUTH_SERVICE_URL", "https://oauth.trackeep.org"),
+		OAuthServiceURL:     config.ControlServiceURL,
 		AutoUpdateCheck:     getBoolEnvWithDefault("AUTO_UPDATE_CHECK", false),
 		UpdateCheckInterval: getEnvWithDefault("UPDATE_CHECK_INTERVAL", "24h"),
 		PrereleaseUpdates:   getBoolEnvWithDefault("PRERELEASE_UPDATES", false),

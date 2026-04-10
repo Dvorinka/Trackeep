@@ -1,147 +1,66 @@
-# GitHub OAuth Integration Setup
+# Unified GitHub App Setup
 
-This document explains how to set up GitHub OAuth integration for Trackeep.
+Trackeep self-hosted instances now use the unified controller at `https://hq.trackeep.org` for:
 
-## 1. GitHub OAuth App Setup
+- GitHub sign-in
+- GitHub App installation
+- GitHub repo access used by backup flows
 
-1. Go to GitHub Settings → Developer settings → OAuth Apps
-2. Click "New OAuth App"
-3. Fill in the details:
-   - **Application name**: Trackeep
-   - **Homepage URL**: `http://localhost:5173`
-   - **Authorization callback URL**: `http://localhost:8080/api/v1/auth/github/callback`
-4. Click "Register application"
-5. Note down the **Client ID** and generate a **Client Secret**
+## Self-Hosted Trackeep Instance
 
-## 2. Environment Variables
+The self-hosted instance does not need any GitHub App credentials.
 
-Add these to your `.env` file:
+Required instance settings:
 
 ```bash
-# GitHub OAuth Configuration
-GITHUB_CLIENT_ID=your_github_client_id_here
-GITHUB_CLIENT_SECRET=your_github_client_secret_here
-GITHUB_REDIRECT_URL=http://localhost:8080/api/v1/auth/github/callback
-
-# Frontend URL for callback redirect
-FRONTEND_URL=http://localhost:5173
-```
-
-## 3. Database Migration
-
-The User model has been updated with GitHub OAuth fields:
-
-```go
-// GitHub OAuth fields
-GitHubID  int    `json:"github_id" gorm:"uniqueIndex"`
-AvatarURL string `json:"avatar_url"`
-Provider  string `json:"provider" gorm:"default:email"` // email, github
-```
-
-Run the application to auto-migrate the database schema.
-
-## 4. How It Works
-
-### OAuth Flow:
-
-1. **User clicks "Connect GitHub"** → Redirects to `/api/v1/auth/github`
-2. **GitHub Authorization** → User authorizes the application on GitHub
-3. **GitHub Callback** → GitHub redirects to `/api/v1/auth/github/callback` with authorization code
-4. **Token Exchange** → Backend exchanges code for access token
-5. **User Data Fetch** → Backend fetches user profile and repositories from GitHub API
-6. **User Creation/Update** → Creates new user or links GitHub account to existing user
-7. **JWT Generation** → Generates JWT token for the user
-8. **Frontend Redirect** → Redirects to `/auth/callback?token=jwt_token`
-9. **Token Storage** → Frontend stores token and redirects to dashboard
-
-### API Endpoints:
-
-- `GET /api/v1/auth/github` - Initiates GitHub OAuth flow
-- `GET /api/v1/auth/github/callback` - Handles GitHub OAuth callback
-- `GET /api/v1/github/repos` - Fetches user's GitHub repositories (protected)
-
-## 5. Features
-
-### Authentication:
-- Users can sign up/login with GitHub
-- Existing accounts can be linked to GitHub
-- Secure JWT token generation
-
-### GitHub Integration:
-- Fetch user's public repositories
-- Display repository statistics (stars, forks, watchers)
-- Language distribution analysis
-- Recent activity tracking
-- Real-time data synchronization
-
-### Security:
-- CSRF protection with state parameter
-- Secure token storage
-- OAuth 2.0 standard implementation
-- Rate limiting awareness
-
-## 6. Testing
-
-1. Start the backend server: `go run main.go`
-2. Start the frontend: `npm run dev`
-3. Navigate to `http://localhost:5173/app/github`
-4. Click "Connect GitHub"
-5. Authorize the application on GitHub
-6. You should be redirected back to the app with GitHub data
-
-## 7. Production Considerations
-
-For production deployment:
-
-1. Update the GitHub OAuth app with production URLs
-2. Use HTTPS for all callbacks
-3. Store secrets securely (environment variables, secret management)
-4. Implement proper error handling and logging
-5. Consider GitHub API rate limits
-6. Add webhook support for real-time updates
-
-## 8. Troubleshooting
-
-### Common Issues:
-
-1. **"Redirect URI mismatch"** - Check that the callback URL in GitHub matches exactly
-2. **"Invalid state"** - Clear browser cookies and try again
-3. **"Failed to get user info"** - Check GitHub API permissions and token validity
-4. **Database errors** - Ensure database is running and migrations are applied
-
-### Debug Mode:
-
-Enable debug logging by setting:
-```bash
-GIN_MODE=debug
-```
-
-This will provide detailed logs for troubleshooting OAuth flow issues.
-
-## 9. GitHub App Backup Setup (Optional)
-
-If you want users to install Trackeep on org/repositories and back up selected repos locally, configure a GitHub App in addition to OAuth:
-
-1. GitHub Settings → Developer settings → GitHub Apps → New GitHub App
-2. Configure:
-   - **App name**: `Trackeep`
-   - **Homepage URL**: your frontend URL
-   - **Setup URL**: `http://localhost:9000/api/v1/github/app/callback` (or your production backend URL)
-3. Add to `.env`:
-
-```bash
-GITHUB_APP_SLUG=trackeep
-GITHUB_APP_ID=123456
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+FRONTEND_URL=http://localhost:3000
+PUBLIC_API_URL=http://localhost:9000
 GITHUB_BACKUP_ROOT=./data/github-backups
 GITHUB_BACKUP_TIMEOUT=10m
 ```
 
-New API endpoints:
+Flow:
 
-- `GET /api/v1/github/app/status`
-- `GET /api/v1/github/app/install-url`
-- `GET /api/v1/github/app/callback`
-- `GET /api/v1/github/app/repos`
-- `GET /api/v1/github/backups`
-- `POST /api/v1/github/backups`
+1. `GET /api/v1/auth/github` redirects to `https://hq.trackeep.org/auth/github`
+2. The controller redirects back to `GET /api/v1/auth/control/callback?token=...`
+3. Trackeep validates that controller token against `https://hq.trackeep.org/api/v1/auth/control/callback`
+4. Trackeep creates its own local JWT and redirects to `/auth/callback?token=...`
+
+GitHub App installation:
+
+1. Trackeep creates a local install state
+2. Trackeep asks `https://hq.trackeep.org/api/v1/github/app/install-url` for a brokered install URL
+3. GitHub redirects to `https://hq.trackeep.org/auth/github/app/callback`
+4. The controller verifies the installation and redirects back to `GET /api/v1/github/app/callback`
+5. Trackeep stores the installation ID locally
+
+## Unified Controller (`Trackeep_OAUTH`)
+
+`Trackeep_OAUTH` owns the single shared GitHub App.
+
+GitHub App settings:
+
+- `Homepage URL`: your controller site URL
+- `User authorization callback URL`: `https://hq.trackeep.org/auth/github/callback`
+- `Setup URL`: `https://hq.trackeep.org/auth/github/app/callback`
+- `Expire user authorization tokens`: enabled
+- `Request user authorization (OAuth) during installation`: disabled
+
+Required controller environment:
+
+```bash
+GITHUB_APP_CLIENT_ID=your_github_app_client_id
+GITHUB_APP_CLIENT_SECRET=your_github_app_client_secret
+GITHUB_APP_SLUG=trackeep
+GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_REDIRECT_URL=https://hq.trackeep.org/auth/github/callback
+DEFAULT_CLIENT_URL=https://app.trackeep.org
+SERVICE_DOMAIN=https://hq.trackeep.org
+```
+
+Permissions:
+
+- Account: `Email addresses` -> `Read-only`
+- Repository: `Metadata` -> `Read-only`
+- Repository: `Contents` -> `Read-only`

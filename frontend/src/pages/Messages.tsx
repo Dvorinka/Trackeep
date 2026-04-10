@@ -157,6 +157,19 @@ const REFERENCE_TYPE_OPTIONS = [
 
 type TriStateFilter = 'any' | 'yes' | 'no';
 type CallStatus = 'idle' | 'starting' | 'calling' | 'in_call' | 'error';
+type SpotlightAlertTone = 'error' | 'warning' | 'info';
+
+interface SpotlightAlert {
+  tone: SpotlightAlertTone;
+  title: string;
+  message?: string;
+}
+
+interface MessagingAlertContent {
+  tone: SpotlightAlertTone;
+  title: string;
+  message: string;
+}
 
 export const Messages = () => {
   const haptics = useHaptics();
@@ -233,6 +246,7 @@ export const Messages = () => {
   const [aiShareLoadingSessions, setAiShareLoadingSessions] = createSignal(false);
   const [aiShareLoadingMessages, setAiShareLoadingMessages] = createSignal(false);
   const [composerAiReferences, setComposerAiReferences] = createSignal<ComposerAIReference[]>([]);
+  const [spotlightAlert, setSpotlightAlert] = createSignal<SpotlightAlert | null>(null);
 
   const getCurrentUserId = () => {
     const raw = localStorage.getItem('trackeep_user') || localStorage.getItem('user');
@@ -271,6 +285,7 @@ export const Messages = () => {
   let composerTextareaRef: HTMLTextAreaElement | null = null;
   let hiddenFileInputRef: HTMLInputElement | null = null;
   const sensitiveRevealTimers = new Map<number, number>();
+  let spotlightAlertTimer: number | null = null;
 
   const sortedConversations = () =>
     [...conversations()].sort((a, b) => {
@@ -299,6 +314,25 @@ export const Messages = () => {
     setActiveScreen('list');
   };
 
+  const showSpotlightAlert = (tone: SpotlightAlertTone, title: string, message?: string) => {
+    setSpotlightAlert({ tone, title, message });
+    if (spotlightAlertTimer) {
+      window.clearTimeout(spotlightAlertTimer);
+    }
+    spotlightAlertTimer = window.setTimeout(() => {
+      setSpotlightAlert(null);
+      spotlightAlertTimer = null;
+    }, 7000);
+  };
+
+  const dismissSpotlightAlert = () => {
+    if (spotlightAlertTimer) {
+      window.clearTimeout(spotlightAlertTimer);
+      spotlightAlertTimer = null;
+    }
+    setSpotlightAlert(null);
+  };
+
   const shouldUseSensitiveReveal = () => {
     const type = activeConversation()?.conversation.type;
     return type === 'dm' || type === 'self';
@@ -306,6 +340,104 @@ export const Messages = () => {
 
   const conversationNameById = (id: number) =>
     conversations().find((item) => item.conversation.id === id)?.conversation.name || 'Conversation';
+
+  const formatConversationPreview = (item: ConversationListItem) => {
+    const body = item.last_message?.body?.trim();
+    if (body) return body;
+    if (item.conversation.topic?.trim()) return item.conversation.topic.trim();
+
+    switch (item.conversation.type) {
+      case 'dm':
+        return 'Direct message';
+      case 'group':
+        return 'Group chat';
+      case 'team':
+        return 'Team channel';
+      case 'global':
+        return 'Workspace channel';
+      case 'self':
+        return 'Notes to self';
+      case 'password_vault':
+        return 'Password vault';
+      default:
+        return 'Conversation';
+    }
+  };
+
+  const formatConversationTime = (item: ConversationListItem) => {
+    const raw = item.conversation.last_message_at || item.last_message?.created_at || item.conversation.updated_at;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return '';
+
+    const now = new Date();
+    const sameDay = parsed.toDateString() === now.toDateString();
+    if (sameDay) {
+      return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (parsed.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+
+    return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const getConversationInitials = (item: ConversationListItem) => {
+    const label = (item.conversation.name || item.conversation.type || 'C').trim();
+    if (label.startsWith('#')) {
+      return '#';
+    }
+
+    const parts = label.split(/\s+/).filter(Boolean).slice(0, 2);
+    if (parts.length === 0) return 'C';
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+  };
+
+  const getConversationAvatarClass = (item: ConversationListItem) => {
+    switch (item.conversation.type) {
+      case 'dm':
+        return 'conversation-item-avatar-dm';
+      case 'group':
+        return 'conversation-item-avatar-group';
+      case 'team':
+        return 'conversation-item-avatar-team';
+      case 'global':
+        return 'conversation-item-avatar-global';
+      case 'self':
+        return 'conversation-item-avatar-self';
+      case 'password_vault':
+        return 'conversation-item-avatar-vault';
+      default:
+        return 'conversation-item-avatar-default';
+    }
+  };
+
+  const formatMessagingAlert = (error: unknown, fallbackTitle: string): MessagingAlertContent => {
+    const rawMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (/Failed to initialize messaging defaults/i.test(rawMessage)) {
+      return {
+        tone: 'error',
+        title: 'Messaging is not ready yet',
+        message: 'The backend could not provision messaging defaults. Reload after the migration fix is applied.',
+      };
+    }
+
+    if (/User not authenticated/i.test(rawMessage)) {
+      return {
+        tone: 'warning',
+        title: 'Session expired',
+        message: 'Sign in again to keep using messages.',
+      };
+    }
+
+    return {
+      tone: 'error',
+      title: fallbackTitle,
+      message: rawMessage,
+    };
+  };
 
   const normalizeReactionKey = (value: string): ReactionKey => {
     const raw = value.trim().toLowerCase();
@@ -568,6 +700,7 @@ export const Messages = () => {
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
       toast.warning('Browser notifications unavailable', 'This browser does not support notifications.');
+      showSpotlightAlert('warning', 'Browser notifications unavailable', 'This browser does not support notifications.');
       return;
     }
     if (Notification.permission === 'granted') {
@@ -579,6 +712,15 @@ export const Messages = () => {
     const enabled = permission === 'granted';
     setBrowserNotificationsEnabled(enabled);
     localStorage.setItem('messages_browser_notifications', enabled ? 'true' : 'false');
+    if (!enabled) {
+      showSpotlightAlert(
+        'warning',
+        permission === 'denied' ? 'Notifications blocked' : 'Permission dismissed',
+        permission === 'denied'
+          ? 'Browser notifications are blocked. Enable them in your browser settings if you want message alerts.'
+          : 'Notifications stay off until you allow them.'
+      );
+    }
   };
 
   const maybeNotify = (title: string, body: string) => {
@@ -1049,6 +1191,7 @@ export const Messages = () => {
       toast.info('Voice call', 'Call connected.');
     } catch (error) {
       setCallStatus('error');
+      showSpotlightAlert('error', 'Failed to answer call', error instanceof Error ? error.message : 'Unknown error');
       toast.error('Failed to answer call', error instanceof Error ? error.message : 'Unknown error');
     }
   };
@@ -1125,6 +1268,7 @@ export const Messages = () => {
       .map((member) => member.user_id)
       .filter((id) => id !== currentUserId());
     if (peers.length === 0) {
+      showSpotlightAlert('warning', 'No participants', 'Add at least one other user to call.');
       toast.warning('No participants', 'Add at least one other user to call.');
       return;
     }
@@ -1153,6 +1297,7 @@ export const Messages = () => {
     } catch (error) {
       setCallStatus('error');
       cleanupCallResources();
+      showSpotlightAlert('error', 'Failed to start call', error instanceof Error ? error.message : 'Unknown error');
       toast.error('Failed to start call', error instanceof Error ? error.message : 'Unknown error');
     }
   };
@@ -1181,9 +1326,16 @@ export const Messages = () => {
       if (nextConversations.length === 0) {
         setSelectedConversationId(null);
         setActiveScreen('list');
+      } else if (!selectedID) {
+        const firstConversationID = nextConversations[0].conversation.id;
+        setSelectedConversationId(firstConversationID);
+        if (window.innerWidth >= 768) {
+          setActiveScreen('conversation');
+        }
       }
     } catch (error) {
-      toast.error('Failed to load conversations', error instanceof Error ? error.message : 'Unknown error');
+      const alert = formatMessagingAlert(error, 'Failed to load conversations');
+      showSpotlightAlert(alert.tone, alert.title, alert.message);
     } finally {
       setLoadingConversations(false);
     }
@@ -1195,7 +1347,8 @@ export const Messages = () => {
       const data = await messagesApi.getMessages(conversationId, undefined, 50);
       setMessages(data.messages || []);
     } catch (error) {
-      toast.error('Failed to load messages', error instanceof Error ? error.message : 'Unknown error');
+      const alert = formatMessagingAlert(error, 'Failed to load messages');
+      showSpotlightAlert(alert.tone, alert.title, alert.message);
     } finally {
       setLoadingMessages(false);
     }
@@ -1906,6 +2059,10 @@ export const Messages = () => {
       window.clearTimeout(typingStopTimer);
       typingStopTimer = null;
     }
+    if (spotlightAlertTimer) {
+      window.clearTimeout(spotlightAlertTimer);
+      spotlightAlertTimer = null;
+    }
     for (const timer of Array.from(sensitiveRevealTimers.values())) {
       window.clearTimeout(timer);
     }
@@ -1948,9 +2105,73 @@ export const Messages = () => {
   onCleanup(() => clearInterval(wsWatcher));
 
   return (
-    <div class="mt-4 pb-32 max-w-7xl mx-auto">
-      <div class="bg-background rounded-lg border shadow-sm">
-        <div class={`messages-shell ${activeScreen() === 'conversation' ? 'messages-shell-conversation' : 'messages-shell-list'}`}>
+    <div class="h-full w-full flex flex-col bg-background">
+      <header class="border-b bg-card/95 backdrop-blur-sm z-10">
+        <div class="flex items-center justify-between gap-4 px-4 py-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveScreen((screen) => (screen === 'conversation' ? 'list' : selectedConversationId() ? 'conversation' : 'list'))}
+              class="md:hidden"
+            >
+              <IconMessageCircle class="size-4" />
+            </Button>
+            <div class="w-8 h-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
+              <IconMessageCircle class="size-5 text-primary" />
+            </div>
+            <div class="min-w-0">
+              <h1 class="font-semibold text-lg text-foreground">Messages</h1>
+              <p class="text-sm text-muted-foreground truncate">Direct messages, channels, calls, and AI references</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setSearchOpen(true)}>
+              <IconSearch class="size-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (browserNotificationsEnabled()) {
+                  setBrowserNotificationsEnabled(false);
+                  localStorage.setItem('messages_browser_notifications', 'false');
+                } else {
+                  requestNotificationPermission();
+                }
+              }}
+            >
+              <Show when={browserNotificationsEnabled()} fallback={<IconBellOff class="size-4" />}>
+                <IconBell class="size-4" />
+              </Show>
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateConversation(true)} class="hidden sm:inline-flex">
+              <IconPlus class="size-4 mr-1" />
+              New Chat
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <Show when={spotlightAlert()}>
+        {(alert) => (
+          <div class="messages-alert-wrap">
+            <div class={`messages-spotlight-alert messages-spotlight-${alert().tone}`}>
+              <div class="messages-spotlight-copy">
+                <p class="font-medium text-foreground">{alert().title}</p>
+                <Show when={alert().message}>
+                  <p class="text-sm text-muted-foreground mt-1">{alert().message}</p>
+                </Show>
+              </div>
+              <Button size="sm" variant="ghost" onClick={dismissSpotlightAlert}>
+                <IconX class="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </Show>
+
+      <div class={`messages-shell ${activeScreen() === 'conversation' ? 'messages-shell-conversation' : 'messages-shell-list'}`}>
       <aside class="messages-sidebar">
         <div class="messages-sidebar-header">
           <div class="messages-title-row">
@@ -2009,11 +2230,22 @@ export const Messages = () => {
                   }`}
                   onClick={() => openConversation(item.conversation.id)}
                 >
+                  <div class={`conversation-item-avatar ${getConversationAvatarClass(item)}`}>
+                    <span>{getConversationInitials(item)}</span>
+                  </div>
                   <div class="conversation-item-main">
-                    <p class="conversation-item-name">{item.conversation.name}</p>
-                    <p class="conversation-item-preview">
-                      {item.last_message?.body || item.conversation.topic || item.conversation.type}
-                    </p>
+                    <div class="conversation-item-heading">
+                      <p class="conversation-item-name">{item.conversation.name}</p>
+                      <Show when={formatConversationTime(item)}>
+                        <span class="conversation-item-time">{formatConversationTime(item)}</span>
+                      </Show>
+                    </div>
+                    <div class="conversation-item-footer">
+                      <p class="conversation-item-preview">{formatConversationPreview(item)}</p>
+                      <Show when={item.conversation.is_default}>
+                        <span class="conversation-item-badge">Default</span>
+                      </Show>
+                    </div>
                   </div>
                   <Show when={item.unread_count > 0}>
                     <span class="conversation-item-unread">{item.unread_count}</span>
@@ -2075,7 +2307,19 @@ export const Messages = () => {
           when={selectedConversationId()}
           fallback={
             <div class="messages-main-empty">
-              Select a conversation from the list.
+              <div class="messages-main-empty-card">
+                <div class="messages-main-empty-orb">
+                  <IconMessageCircle class="size-6 text-primary" />
+                </div>
+                <h3 class="messages-main-empty-title">Pick a conversation</h3>
+                <p class="messages-main-empty-copy">
+                  Jump into your self chat, browse workspace channels, or start a new direct message.
+                </p>
+                <Button onClick={() => setShowCreateConversation(true)}>
+                  <IconPlus class="size-4 mr-1" />
+                  New Chat
+                </Button>
+              </div>
             </div>
           }
         >
@@ -2574,6 +2818,7 @@ export const Messages = () => {
         </div>
         </Show>
       </section>
+      </div>
 
       <Show when={showCreateConversation()}>
         <div
@@ -2989,8 +3234,6 @@ export const Messages = () => {
         </div>
       </Show>
     </div>
-  </div>
-  </div>
   );
 };
 

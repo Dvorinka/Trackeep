@@ -1,13 +1,15 @@
 import { getApiV1BaseUrl } from '@/lib/api-url';
 
-export const getOAuthCallbackUrl = (): string => {
+export const getAuthCallbackUrl = (): string => {
   return new URL('/auth/callback', window.location.origin).toString();
 };
 
-export const startGitHubOAuth = (): void => {
+export const startGitHubSignIn = (): void => {
   const apiBase = getApiV1BaseUrl();
-  const frontendRedirect = getOAuthCallbackUrl();
+  const frontendRedirect = getAuthCallbackUrl();
 
   window.location.href =
     `${apiBase}/auth/github?frontend_redirect=${encodeURIComponent(frontendRedirect)}`;
 };
+
+export const startGitHubOAuth = startGitHubSignIn;

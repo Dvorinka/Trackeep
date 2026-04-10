@@ -33,18 +33,6 @@ type APIKeyResponse struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
-// BrowserExtensionAuth represents browser extension authentication
-type BrowserExtensionAuth struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	UserID      uint       `json:"user_id" gorm:"not null"`
-	ExtensionID string     `json:"extension_id" gorm:"not null"`
-	Name        string     `json:"name" gorm:"not null"`
-	IsActive    bool       `json:"is_active" gorm:"default:true"`
-	LastSeen    *time.Time `json:"last_seen,omitempty" gorm:"not null"`
-	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
-}
-
 // GenerateAPIKey creates a new API key for browser extension
 func GenerateAPIKey(c *gin.Context) {
 	user, exists := c.Get("user")
@@ -67,6 +55,7 @@ func GenerateAPIKey(c *gin.Context) {
 		"bookmarks:write": true,
 		"files:read":      true,
 		"files:write":     true,
+		"files:share":     true,
 		"notes:read":      true,
 		"notes:write":     true,
 		"tasks:read":      true,
@@ -91,12 +80,14 @@ func GenerateAPIKey(c *gin.Context) {
 	}
 
 	// Create API key record
+	now := time.Now()
 	apiKey := models.APIKey{
 		Name:        req.Name,
 		Key:         key,
 		UserID:      currentUser.ID,
 		Permissions: req.Permissions,
 		IsActive:    true,
+		LastUsed:    &now,
 		ExpiresAt:   expiresAt,
 	}
 
@@ -260,14 +251,14 @@ func RegisterBrowserExtension(c *gin.Context) {
 
 	// Check if extension already registered
 	db := config.GetDB()
-	var existingAuth BrowserExtensionAuth
+	var existingAuth models.BrowserExtension
 	if err := db.Where("user_id = ? AND extension_id = ?", currentUser.ID, req.ExtensionID).First(&existingAuth).Error; err == nil {
 		c.JSON(409, gin.H{"error": "Extension already registered"})
 		return
 	}
 
 	// Create new extension registration
-	extAuth := BrowserExtensionAuth{
+	extAuth := models.BrowserExtension{
 		UserID:      currentUser.ID,
 		ExtensionID: req.ExtensionID,
 		Name:        req.Name,
@@ -296,7 +287,7 @@ func GetBrowserExtensions(c *gin.Context) {
 
 	currentUser := user.(models.User)
 
-	var extensions []BrowserExtensionAuth
+	var extensions []models.BrowserExtension
 	db := config.GetDB()
 	if err := db.Where("user_id = ?", currentUser.ID).Order("created_at desc").Find(&extensions).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve extensions"})
@@ -318,7 +309,7 @@ func RevokeBrowserExtension(c *gin.Context) {
 	extensionID := c.Param("id")
 
 	db := config.GetDB()
-	var extAuth BrowserExtensionAuth
+	var extAuth models.BrowserExtension
 	if err := db.Where("extension_id = ? AND user_id = ?", extensionID, currentUser.ID).First(&extAuth).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Extension not found"})
 		return

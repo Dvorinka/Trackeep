@@ -35,6 +35,23 @@ interface Bookmark {
   screenshot_original?: string;
 }
 
+interface VideoBookmarkTag {
+  name: string;
+}
+
+interface VideoBookmark {
+  id: number;
+  video_id: string;
+  title: string;
+  description: string;
+  channel: string;
+  thumbnail: string;
+  url: string;
+  duration: string;
+  publishedAt: string;
+  tags: VideoBookmarkTag[];
+}
+
 export const Bookmarks = () => {
   const getBookmarkInitial = (title?: string) => {
     const safeTitle = typeof title === 'string' ? title.trim() : '';
@@ -91,7 +108,7 @@ export const Bookmarks = () => {
   };
 
   const [bookmarks, setBookmarks] = createSignal<Bookmark[]>([]);
-  const [videoBookmarks, setVideoBookmarks] = createSignal<any[]>([]);
+  const [videoBookmarks, setVideoBookmarks] = createSignal<VideoBookmark[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
   const [isLoadingVideos, setIsLoadingVideos] = createSignal(true);
   const [searchTerm, setSearchTerm] = createSignal('');
@@ -129,7 +146,7 @@ export const Bookmarks = () => {
 
       // Load video bookmarks
       try {
-        const videosResponse = await fetch(`${API_BASE_URL}/youtube/videos`, {
+        const videosResponse = await fetch(`${API_BASE_URL}/video-bookmarks`, {
           headers: {
             'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
           },
@@ -137,7 +154,8 @@ export const Bookmarks = () => {
         
         if (videosResponse.ok) {
           const videosData = await videosResponse.json();
-          setVideoBookmarks(Array.isArray(videosData) ? videosData : []);
+          const items = Array.isArray(videosData?.bookmarks) ? videosData.bookmarks : [];
+          setVideoBookmarks(items.map(adaptVideoBookmarkFromApi));
         } else {
           setVideoBookmarks([]);
         }
@@ -335,24 +353,34 @@ export const Bookmarks = () => {
 
   const handleVideoSubmit = async (video: any) => {
     try {
-      // Use the YouTube API to add video
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/youtube/video-details`, {
+      const response = await fetch(`${API_BASE_URL}/video-bookmarks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('trackeep_token') || localStorage.getItem('token') || ''}`
         },
-        body: JSON.stringify({ video_id: video.video_id })
+        body: JSON.stringify({
+          url: video.url,
+          description: video.description,
+          tags: Array.isArray(video.tags) ? video.tags.join(',') : '',
+          is_favorite: false,
+        })
       });
       
       if (response.ok) {
-        console.log('Video added:', video);
+        const data = await response.json();
+        const created = data?.bookmark ? adaptVideoBookmarkFromApi(data.bookmark) : null;
+        if (created) {
+          setVideoBookmarks(prev => [created, ...prev]);
+        }
       } else {
-        console.warn('Video save endpoint returned non-OK status');
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to save video bookmark');
       }
       setShowVideoModal(false);
     } catch (error) {
       console.error('Failed to add video:', error);
+      alert(error instanceof Error ? error.message : 'Failed to add video bookmark');
       setShowVideoModal(false);
     }
   };
@@ -693,7 +721,20 @@ export const Bookmarks = () => {
                       <DropdownMenuItem
                         onClick={() => {
                           if (confirm('Are you sure you want to delete this video bookmark?')) {
-                            setVideoBookmarks(prev => prev.filter(v => v.id !== video.id));
+                            fetch(`${API_BASE_URL}/video-bookmarks/${video.id}`, {
+                              method: 'DELETE',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('trackeep_token') || localStorage.getItem('token') || ''}`
+                              }
+                            }).then((response) => {
+                              if (!response.ok) {
+                                throw new Error('Failed to delete video bookmark');
+                              }
+                              setVideoBookmarks(prev => prev.filter(v => v.id !== video.id));
+                            }).catch((error) => {
+                              console.error('Failed to delete video bookmark:', error);
+                              alert(error instanceof Error ? error.message : 'Failed to delete video bookmark');
+                            });
                           }
                         }}
                         icon={IconTrash}
@@ -727,3 +768,23 @@ export const Bookmarks = () => {
     </div>
   );
 };
+  const adaptVideoBookmarkFromApi = (raw: any): VideoBookmark => {
+    const rawTags = typeof raw?.tags === 'string'
+      ? raw.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+      : Array.isArray(raw?.tags)
+        ? raw.tags.map((tag: any) => typeof tag === 'string' ? tag : tag?.name).filter(Boolean)
+        : [];
+
+    return {
+      id: raw.id,
+      video_id: raw.video_id,
+      title: raw.title || raw.url || 'Untitled video',
+      description: raw.description || '',
+      channel: raw.channel || 'Unknown channel',
+      thumbnail: raw.thumbnail || '',
+      url: raw.url,
+      duration: raw.duration || 'Unknown',
+      publishedAt: raw.published_at || raw.created_at || 'Unknown',
+      tags: rawTags.map((name: string) => ({ name })),
+    };
+  };

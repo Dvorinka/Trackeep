@@ -1,5 +1,8 @@
 # Trackeep GitHub Integration Implementation Complete ✅
 
+> Archived architecture note: this document describes the old centralized OAuth GitHub flow.
+> Current Trackeep GitHub sign-in uses the native GitHub App flow instead.
+
 ## Architecture Overview
 
 **Centralized OAuth Service** (`oauth.tdvorak.dev`) + **User-Hosted Trackeep** = Perfect separation of concerns

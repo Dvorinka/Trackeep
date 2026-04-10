@@ -35,8 +35,8 @@ The update system **requires** the OAuth service to be running:
 ### Required Environment Variables
 
 ```bash
-# OAuth Service (REQUIRED)
-OAUTH_SERVICE_URL=http://localhost:9090
+# Control service URL is hardwired in Trackeep
+# https://hq.trackeep.org
 JWT_SECRET=your-jwt-secret-key
 
 # Update Configuration
@@ -183,8 +183,7 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 ### After (OAuth Required)
 ```bash
-# Zero configuration - OAuth handles everything
-OAUTH_SERVICE_URL=http://localhost:9090
+# Zero configuration - Trackeep uses https://hq.trackeep.org
 JWT_SECRET=shared-secret
 ```
 

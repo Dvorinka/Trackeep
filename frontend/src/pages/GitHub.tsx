@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { GitHubActivity } from '@/components/ui/GitHubActivity';
 import { getApiV1BaseUrl } from '@/lib/api-url';
-import { startGitHubOAuth } from '@/lib/oauth';
+import { startGitHubSignIn } from '@/lib/oauth';
 import { 
   IconBrandGithub, 
   IconTrendingUp, 
@@ -43,6 +43,7 @@ interface GitHubAppInstallation {
 interface GitHubAppStatus {
   app_slug: string;
   install_enabled: boolean;
+  sign_in_configured: boolean;
   credentials_configured: boolean;
   installed: boolean;
   installation?: GitHubAppInstallation;
@@ -66,6 +67,16 @@ interface GitHubBackupResult {
   source: string;
   size_bytes?: number;
   error?: string;
+}
+
+interface GitHubActivityResponse {
+  contributions: Array<{
+    date: string;
+    count: number;
+    level: number;
+  }>;
+  weekly_data: number[];
+  total_count: number;
 }
 
 interface GitHubStats {
@@ -107,6 +118,7 @@ export const GitHub = () => {
   const [appStatus, setAppStatus] = createSignal<GitHubAppStatus>({
     app_slug: '',
     install_enabled: false,
+    sign_in_configured: false,
     credentials_configured: false,
     installed: false
   });
@@ -117,9 +129,37 @@ export const GitHub = () => {
   const [isInstallingApp, setIsInstallingApp] = createSignal(false);
   const [backupMessage, setBackupMessage] = createSignal('');
   const [backupError, setBackupError] = createSignal('');
+  const [selectedLanguage, setSelectedLanguage] = createSignal<string>('');
+  const [searchTerm, setSearchTerm] = createSignal<string>('');
 
   const weeklyTotal = () => weeklyActivity().reduce((a, b) => a + b, 0);
   const selectedCount = () => selectedRepos().length;
+
+  const filteredRepos = () => {
+    let repos = githubStats().repos;
+    
+    // Filter by language
+    if (selectedLanguage()) {
+      repos = repos.filter(repo => repo.language === selectedLanguage());
+    }
+    
+    // Filter by search term
+    if (searchTerm()) {
+      const term = searchTerm().toLowerCase();
+      repos = repos.filter(repo => 
+        repo.name.toLowerCase().includes(term) ||
+        repo.description?.toLowerCase().includes(term) ||
+        repo.language?.toLowerCase().includes(term)
+      );
+    }
+    
+    return repos;
+  };
+
+  const uniqueLanguages = () => {
+    const languages = new Set(githubStats().repos.map(repo => repo.language).filter(Boolean));
+    return Array.from(languages).sort();
+  };
 
   const getAuthToken = () => {
     return localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
@@ -231,6 +271,7 @@ export const GitHub = () => {
       setAppStatus({
         app_slug: data.app_slug || '',
         install_enabled: Boolean(data.install_enabled),
+        sign_in_configured: Boolean(data.sign_in_configured),
         credentials_configured: Boolean(data.credentials_configured),
         installed: Boolean(data.installed),
         installation: data.installation
@@ -293,6 +334,39 @@ export const GitHub = () => {
     }
   };
 
+  const fetchGitHubActivity = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/github/activity`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json() as GitHubActivityResponse;
+      setWeeklyActivity(data.weekly_data);
+      
+      // Update GitHubActivity component with real data
+      updateGitHubActivityComponent(data);
+    } catch (error) {
+      console.error('Failed to fetch GitHub activity:', error);
+    }
+  };
+
+  const updateGitHubActivityComponent = (data: GitHubActivityResponse) => {
+    // This will be used to update the GitHubActivity component
+    // For now, we'll store the data and let the component pick it up
+    const event = new CustomEvent('githubActivityData', { detail: data });
+    window.dispatchEvent(event);
+  };
+
   const fetchGitHubStats = async () => {
     const loaded = await fetchRepos('/github/repos');
     if (!loaded) {
@@ -316,6 +390,7 @@ export const GitHub = () => {
         setAppStatus({
           app_slug: '',
           install_enabled: false,
+          sign_in_configured: false,
           credentials_configured: false,
           installed: false
         });
@@ -341,17 +416,19 @@ export const GitHub = () => {
       }
 
       const userData = await response.json();
-      const hasOAuthConnection = Boolean(userData?.user?.github_id);
+      const hasGitHubSignIn = Boolean(userData?.user?.github_id);
       setUsername(typeof userData?.user?.username === 'string' ? userData.user.username : '');
-      setIsConnected(hasOAuthConnection);
+      setIsConnected(hasGitHubSignIn);
 
-      if (hasOAuthConnection) {
+      if (hasGitHubSignIn) {
         await fetchGitHubStats();
+        await fetchGitHubActivity();
         return;
       }
 
       if (appInfo?.installed && appInfo.credentials_configured) {
         await fetchGitHubAppRepos();
+        await fetchGitHubActivity();
         return;
       }
 
@@ -363,7 +440,7 @@ export const GitHub = () => {
   };
 
   const connectGitHub = () => {
-    startGitHubOAuth();
+    startGitHubSignIn();
   };
 
   const installGitHubApp = async () => {
@@ -427,7 +504,7 @@ export const GitHub = () => {
       setBackupMessage('');
       setBackupError('');
 
-      const source = appStatus().installed ? 'github_app' : 'oauth';
+      const source = appStatus().installed ? 'github_app' : 'github_user';
       const response = await fetch(`${API_BASE_URL}/github/backups`, {
         method: 'POST',
         headers: {
@@ -484,6 +561,38 @@ export const GitHub = () => {
     return 'hsl(var(--primary))';
   };
 
+  const getLanguageIcon = (language: string) => {
+    const iconMap: Record<string, string> = {
+      'Go': '🐹',
+      'TypeScript': '🔷',
+      'JavaScript': '🟨',
+      'CSS': '🎨',
+      'HTML': '🌐',
+      'Python': '🐍',
+      'Dart': '🎯',
+      'C++': '⚙️',
+      'MDX': '📝',
+      'Shell': '🐚',
+      'Rust': '🦀',
+      'Java': '☕',
+      'Ruby': '💎',
+      'PHP': '🐘',
+      'Swift': '🍎',
+      'Kotlin': '🎯',
+      'Vue': '💚',
+      'React': '⚛️',
+      'Angular': '🔺',
+      'Svelte': '🔥',
+      'Docker': '🐳',
+      'YAML': '📄',
+      'JSON': '📋',
+      'Markdown': '📝',
+      'SQL': '🗃️',
+      'GraphQL': '◈'
+    };
+    return iconMap[language] || '📄';
+  };
+
   return (
     <div class="p-6 space-y-6 overflow-x-hidden max-w-full">
       {/* Header */}
@@ -511,9 +620,9 @@ export const GitHub = () => {
             <Button onClick={() => {
               connectGitHub();
               haptics.impact();
-            }}>
+            }} disabled={!appStatus().sign_in_configured}>
               <IconBrandGithub class="size-4 mr-2" />
-              Connect GitHub
+              Connect GitHub Sign-In
             </Button>
           )}
         </div>
@@ -528,52 +637,51 @@ export const GitHub = () => {
             </div>
             <div>
               <p class="text-sm font-medium text-foreground">
-                {isConnected() ? `Connected via OAuth as @${username()}` : `Connected via GitHub App as @${username()}`}
+                {isConnected() ? `Connected via GitHub App sign-in as @${username()}` : `Connected via GitHub App installation as @${username()}`}
               </p>
               <p class="text-xs text-muted-foreground">
-                {isConnected() ? 'Syncing data from GitHub OAuth API' : 'Syncing data from GitHub App installation'}
+                {isConnected() ? 'Syncing user data with your GitHub App sign-in token' : 'Syncing repositories from the GitHub App installation'}
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      {/* GitHub App Status */}
-      <Card class="p-4">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p class="text-sm font-medium text-foreground">GitHub App Backup Access</p>
-            {appStatus().install_enabled ? (
+      {/* GitHub App Status - Only show if not installed */}
+      {!appStatus().installed && appStatus().install_enabled && (
+        <Card class="p-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium text-foreground">GitHub App Backup Access</p>
               <p class="text-xs text-muted-foreground mt-1">
-                {appStatus().installed
-                  ? `Installed${appStatus().installation?.account_login ? ` for ${appStatus().installation?.account_login}` : ''}`
-                  : 'Not installed yet'}
+                Not installed yet
               </p>
-            ) : (
-              <p class="text-xs text-muted-foreground mt-1">
-                GitHub App install is not configured on this server.
-              </p>
-            )}
-            {appStatus().install_enabled && !appStatus().credentials_configured && (
-              <p class="text-xs text-amber-500 mt-1">
-                App credentials are missing (`GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY`).
-              </p>
-            )}
+              {!appStatus().sign_in_configured && (
+                <p class="text-xs text-amber-500 mt-1">
+                  GitHub sign-in is not available from the unified Trackeep control service.
+                </p>
+              )}
+              {appStatus().install_enabled && !appStatus().credentials_configured && (
+                <p class="text-xs text-amber-500 mt-1">
+                  Unified GitHub App credentials are not configured on `hq.trackeep.org`.
+                </p>
+              )}
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => fetchGitHubAppStatus()}>
+                Refresh App Status
+              </Button>
+              <Button
+                size="sm"
+                disabled={!appStatus().install_enabled || isInstallingApp() || !isConnected()}
+                onClick={() => installGitHubApp()}
+              >
+                {isInstallingApp() ? 'Opening...' : 'Install GitHub App'}
+              </Button>
+            </div>
           </div>
-          <div class="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => fetchGitHubAppStatus()}>
-              Refresh App Status
-            </Button>
-            <Button
-              size="sm"
-              disabled={!appStatus().install_enabled || isInstallingApp()}
-              onClick={() => installGitHubApp()}
-            >
-              {isInstallingApp() ? 'Opening...' : (appStatus().installed ? 'Reinstall GitHub App' : 'Install GitHub App')}
-            </Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Stats Overview - 2-column layout with larger left column */}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -671,8 +779,9 @@ export const GitHub = () => {
           ) : (
             <div class="space-y-3">
               {githubStats().languages.map((language) => (
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                   <div class="flex items-center gap-3">
+                    <span class="text-lg">{getLanguageIcon(language.name)}</span>
                     <div 
                       class="w-3 h-3 rounded-full flex-shrink-0"
                       style={`background-color: ${language.color}`}
@@ -790,6 +899,45 @@ export const GitHub = () => {
           )}
         </div>
 
+        {/* Filters */}
+        {githubStats().repos.length > 0 && (
+          <div class="flex flex-col md:flex-row gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+            <div class="flex-1">
+              <input
+                type="text"
+                placeholder="Search repositories..."
+                class="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                value={searchTerm()}
+                onInput={(e) => setSearchTerm(e.currentTarget.value)}
+              />
+            </div>
+            <div class="flex gap-2">
+              <select
+                class="px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                value={selectedLanguage()}
+                onChange={(e) => setSelectedLanguage(e.currentTarget.value)}
+              >
+                <option value="">All Languages</option>
+                {uniqueLanguages().map(lang => (
+                  <option value={lang}>{lang}</option>
+                ))}
+              </select>
+              {(selectedLanguage() || searchTerm()) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedLanguage('');
+                    setSearchTerm('');
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {backupMessage() && (
           <p class="text-sm text-emerald-500 mb-3">{backupMessage()}</p>
         )}
@@ -819,23 +967,25 @@ export const GitHub = () => {
           <p class="text-sm text-muted-foreground">No repositories available yet.</p>
         ) : (
           <div class="space-y-4">
-            {githubStats().repos.map((repo) => (
-              <div class="border border-border rounded-lg p-4">
+            {filteredRepos().map((repo) => (
+              <div class="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
                 <div class="flex items-start gap-3">
                   <input
                     type="checkbox"
                     class="mt-1 h-4 w-4 rounded border-border accent-primary"
                     checked={selectedRepos().includes(repo.full_name)}
                     onChange={() => toggleRepoSelection(repo.full_name)}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-2">
-                      <h4 class="text-lg font-medium text-foreground">{repo.name}</h4>
+                      <h4 class="text-lg font-medium text-foreground group-hover:text-primary transition-colors">{repo.name}</h4>
                       {repo.language && (
                         <span 
-                          class="text-xs px-2 py-1 rounded-full"
+                          class="text-xs px-2 py-1 rounded-full flex items-center gap-1"
                           style={`background-color: ${getLanguageColor()}20; color: ${getLanguageColor()}`}
                         >
+                          <span>{getLanguageIcon(repo.language)}</span>
                           {repo.language}
                         </span>
                       )}
@@ -857,14 +1007,17 @@ export const GitHub = () => {
                       <span>Updated {formatDate(repo.updated_at)}</span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(repo.html_url, '_blank', 'noopener,noreferrer')}
-                    aria-label={`Open ${repo.full_name}`}
-                  >
-                    <IconExternalLink class="size-4" />
-                  </Button>
+                  <div class="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(repo.html_url, '_blank', 'noopener,noreferrer')}
+                      aria-label={`Open ${repo.full_name}`}
+                      class="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <IconExternalLink class="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

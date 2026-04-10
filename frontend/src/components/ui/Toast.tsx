@@ -25,26 +25,39 @@ const ToastItem = (props: ToastProps) => {
   const getIcon = () => {
     switch (props.toast.type) {
       case 'success':
-        return <IconCheck class="h-5 w-5 text-green-500" />;
+        return <IconCheck class="h-4 w-4 text-emerald-500" />;
       case 'error':
-        return <IconAlertTriangle class="h-5 w-5 text-destructive" />;
+        return <IconAlertTriangle class="h-4 w-4 text-destructive" />;
       case 'warning':
-        return <IconAlertTriangle class="h-5 w-5 text-warning" />;
+        return <IconAlertTriangle class="h-4 w-4 text-amber-500" />;
       case 'info':
-        return <IconInfoCircle class="h-5 w-5 text-primary" />;
+        return <IconInfoCircle class="h-4 w-4 text-primary" />;
     }
   };
 
-  const getBackgroundColor = () => {
+  const getToneClasses = () => {
     switch (props.toast.type) {
       case 'success':
-        return 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800';
+        return 'border-emerald-500/20 bg-emerald-500/8';
       case 'error':
-        return 'bg-destructive/10 border-destructive/20';
+        return 'border-destructive/25 bg-destructive/8';
       case 'warning':
-        return 'bg-warning/10 border-warning/20';
+        return 'border-amber-500/25 bg-amber-500/8';
       case 'info':
-        return 'bg-primary/10 border-primary/20';
+        return 'border-primary/25 bg-primary/8';
+    }
+  };
+
+  const getIconSurface = () => {
+    switch (props.toast.type) {
+      case 'success':
+        return 'bg-emerald-500/12 ring-1 ring-emerald-500/15';
+      case 'error':
+        return 'bg-destructive/12 ring-1 ring-destructive/15';
+      case 'warning':
+        return 'bg-amber-500/12 ring-1 ring-amber-500/15';
+      case 'info':
+        return 'bg-primary/12 ring-1 ring-primary/15';
     }
   };
 
@@ -57,34 +70,34 @@ const ToastItem = (props: ToastProps) => {
   return (
     <div
       class={`transform transition-all duration-300 ease-in-out ${
-        isVisible() ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        isVisible() ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-95 opacity-0'
       }`}
     >
       <div
-        class={`max-w-sm w-full ${getBackgroundColor()} border rounded-lg shadow-lg p-4 mb-4`}
+        class={`max-w-sm w-full rounded-2xl border px-4 py-3 shadow-2xl shadow-black/10 backdrop-blur-xl ${getToneClasses()}`}
         role="alert"
       >
-        <div class="flex items-start">
-          <div class="flex-shrink-0">
+        <div class="flex items-start gap-3">
+          <div class={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${getIconSurface()}`}>
             {getIcon()}
           </div>
-          <div class="ml-3 w-0 flex-1">
-            <p class="text-sm font-medium text-foreground">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-foreground">
               {props.toast.title}
             </p>
             {props.toast.message && (
-              <p class="mt-1 text-sm text-muted-foreground">
+              <p class="mt-1 text-sm leading-5 text-muted-foreground">
                 {props.toast.message}
               </p>
             )}
           </div>
-          <div class="ml-4 flex-shrink-0 flex">
+          <div class="flex shrink-0">
             <button
-              class="inline-flex text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               onClick={handleClose}
             >
               <span class="sr-only">Close</span>
-              <IconX class="h-5 w-5" />
+              <IconX class="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -128,9 +141,11 @@ export const ToastContainer = () => {
   };
 
   return (
-    <div class="fixed top-4 right-4 z-50 space-y-4">
+    <div class="pointer-events-none fixed left-1/2 top-4 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 flex-col gap-3 sm:left-auto sm:right-4 sm:top-4 sm:w-full sm:translate-x-0">
       {toasts().map(toast => (
-        <ToastItem toast={toast} onClose={handleClose} />
+        <div class="pointer-events-auto">
+          <ToastItem toast={toast} onClose={handleClose} />
+        </div>
       ))}
     </div>
   );

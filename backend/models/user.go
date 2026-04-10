@@ -19,8 +19,8 @@ type User struct {
 	FullName string `json:"full_name"`
 	Role     string `json:"role" gorm:"default:user"` // user, admin
 
-	// GitHub OAuth fields
-	GitHubID  int    `json:"github_id" gorm:"uniqueIndex"`
+	// GitHub sign-in fields
+	GitHubID  int    `json:"github_id" gorm:"column:github_id;uniqueIndex"`
 	AvatarURL string `json:"avatar_url"`
 	Provider  string `json:"provider" gorm:"default:email"` // email, github
 
