@@ -43,7 +43,7 @@ if [ -f ".env" ]; then
     pass "Environment file exists"
     
     # Check required variables
-    required_vars=("DB_PASSWORD" "DRAGONFLY_PASSWORD" "JWT_SECRET" "ENCRYPTION_KEY")
+    required_vars=("DB_PASSWORD" "JWT_SECRET" "ENCRYPTION_KEY")
     for var in "${required_vars[@]}"; do
         if grep -q "^${var}=" .env && ! grep -q "^${var}=$" .env && ! grep -q "^${var}=<" .env; then
             pass "$var is set"

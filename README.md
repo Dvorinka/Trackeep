@@ -42,12 +42,11 @@ docker run -d \
   -e DB_PASSWORD=your_password \
   -e DB_USER=trackeep \
   -e DB_NAME=trackeep \
-  -e DRAGONFLY_PASSWORD=your_dragonfly_password \
   -e JWT_SECRET=your_jwt_secret \
   ghcr.io/dvorinka/trackeep:latest
 ```
 
-**Note**: This requires external PostgreSQL and DragonflyDB services. For full deployment with included databases, use Docker Compose below.
+**Note**: This requires an external PostgreSQL database. For a complete deployment with the database included, use Docker Compose below.
 
 ### Production Deployment with Docker Compose
 
@@ -77,7 +76,6 @@ services:
       - BACKEND_PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DRAGONFLY_ADDR=dragonfly:6379
       - GIN_MODE=release
     volumes:
       - ./uploads:/app/uploads
@@ -86,8 +84,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      dragonfly:
-        condition: service_healthy
 
   postgres:
     image: postgres:15-alpine
@@ -95,8 +91,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-trackeep}
       POSTGRES_USER: ${DB_USER:-trackeep}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -107,31 +101,13 @@ services:
       retries: 5
       start_period: 30s
 
-  dragonfly:
-    image: ghcr.io/dragonflydb/dragonfly:latest
-    ports:
-      - "${DRAGONFLY_HOST_PORT:-6380}:6379"
-    volumes:
-      - dragonfly_data:/data
-    command: dragonfly --requirepass=${DRAGONFLY_PASSWORD} --proactor_threads=2
-    environment:
-      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${DRAGONFLY_PASSWORD} ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
 volumes:
   postgres_data:
-  dragonfly_data:
 ```
 
 ### Service Architecture
 
-Trackeep deployment consists of **3 services**:
+Trackeep deployment consists of **2 services**:
 
 #### **🎯 Trackeep Service (Unified)**
 - **Image**: Built from unified Dockerfile (frontend + backend in one)
@@ -142,17 +118,9 @@ Trackeep deployment consists of **3 services**:
 
 #### **🗄️ Database Service**
 - **Image**: `postgres:15-alpine`
-- **Ports**: `${DB_HOST_PORT:-5433}:5432`
 - **Purpose**: Data persistence and storage
 - **Health**: PostgreSQL readiness check
 - **Storage**: Persistent volume for data
-
-#### **🐉 DragonflyDB Service**
-- **Image**: `ghcr.io/dragonflydb/dragonfly:latest`
-- **Ports**: `${DRAGONFLY_HOST_PORT:-6380}:6379`
-- **Purpose**: In-memory caching and session storage
-- **Health**: Redis-cli ping check
-- **Storage**: Persistent volume for cache data
 
 ### Required Environment Variables
 
@@ -166,9 +134,6 @@ HOST_PORT=8080
 DB_PASSWORD=your_secure_password_here
 DB_USER=trackeep
 DB_NAME=trackeep
-
-# DragonflyDB Configuration
-DRAGONFLY_PASSWORD=your_dragonfly_password_here
 
 # JWT Secret (generate with: openssl rand -hex 32)
 JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
@@ -534,9 +499,6 @@ HOST_PORT=8080
 DB_PASSWORD=your_secure_password_here
 DB_USER=trackeep
 DB_NAME=trackeep
-
-# DragonflyDB Configuration
-DRAGONFLY_PASSWORD=your_dragonfly_password_here
 
 # JWT Configuration (generate with: openssl rand -hex 32)
 JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly

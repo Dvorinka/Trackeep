@@ -45,7 +45,6 @@ cp .env.example .env
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
 echo "DB_PASSWORD=$(openssl rand -base64 24)" >> .env
-echo "DRAGONFLY_PASSWORD=$(openssl rand -base64 24)" >> .env
 
 # Edit .env if needed
 nano .env
@@ -330,16 +329,6 @@ SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||
 FROM pg_tables
 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
-```
-
-### Cache Optimization
-
-```bash
-# Check DragonflyDB stats
-docker-compose -f docker-compose.prod.yml exec dragonfly redis-cli -a $DRAGONFLY_PASSWORD INFO
-
-# Clear cache if needed
-docker-compose -f docker-compose.prod.yml exec dragonfly redis-cli -a $DRAGONFLY_PASSWORD FLUSHALL
 ```
 
 ## Monitoring

@@ -8,7 +8,6 @@ This guide provides comprehensive instructions for deploying Trackeep to product
 ### System Requirements
 - Docker 24.0+ and Docker Compose 2.20+
 - PostgreSQL 15+
-- DragonflyDB (Redis-compatible cache)
 - 2GB+ RAM minimum (4GB+ recommended)
 - 20GB+ disk space
 
@@ -21,11 +20,6 @@ DB_USER=trackeep
 DB_PASSWORD=<strong-password>
 DB_NAME=trackeep
 DB_SSL_MODE=disable
-
-# DragonflyDB (Cache)
-DRAGONFLY_ADDR=dragonfly:6379
-DRAGONFLY_PASSWORD=<strong-password>
-DRAGONFLY_PORT=6379
 
 # Security
 JWT_SECRET=<generate-with-openssl-rand-base64-32>
@@ -248,19 +242,6 @@ sqlDB.SetMaxOpenConns(25)
 sqlDB.SetMaxIdleConns(10)
 sqlDB.SetConnMaxLifetime(time.Hour)
 sqlDB.SetConnMaxIdleTime(10 * time.Minute)
-```
-
-### DragonflyDB Configuration
-
-```yaml
-# docker-compose.prod.yml
-dragonfly:
-  command: >
-    dragonfly
-    --requirepass=${DRAGONFLY_PASSWORD}
-    --proactor_threads=4
-    --maxmemory=2gb
-    --maxmemory-policy=allkeys-lru
 ```
 
 ### Frontend Optimization

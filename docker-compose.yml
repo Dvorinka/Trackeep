@@ -1,14 +1,31 @@
 icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
 
 services:
+  trackeep:
+    image: ghcr.io/dvorinka/trackeep:latest
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - BACKEND_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - GIN_MODE=release
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/data
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: ${DB_NAME:-trackeep}
       POSTGRES_USER: ${DB_USER:-trackeep}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -19,47 +36,5 @@ services:
       retries: 5
       start_period: 30s
 
-  dragonfly:
-    image: ghcr.io/dragonflydb/dragonfly:latest
-    ports:
-      - "${DRAGONFLY_HOST_PORT:-6380}:6379"
-    volumes:
-      - dragonfly_data:/data
-    command: dragonfly --requirepass=${DRAGONFLY_PASSWORD} --proactor_threads=2
-    environment:
-      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${DRAGONFLY_PASSWORD} ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  trackeep:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "${HOST_PORT:-8080}:8080"
-    env_file:
-      - .env
-    environment:
-      - BACKEND_PORT=8080
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DRAGONFLY_ADDR=dragonfly:6379
-      - GIN_MODE=release
-    volumes:
-      - ./uploads:/app/uploads
-      - ./data:/data
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      dragonfly:
-        condition: service_healthy
-
 volumes:
   postgres_data:
-  dragonfly_data:

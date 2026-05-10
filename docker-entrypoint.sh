@@ -12,8 +12,6 @@ export DB_PORT=${DB_PORT:-5432}
 export DB_NAME=${DB_NAME:-trackeep}
 export DB_USER=${DB_USER:-trackeep}
 export DB_PASSWORD=${DB_PASSWORD}
-export DRAGONFLY_ADDR=${DRAGONFLY_ADDR:-dragonfly:6379}
-export DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
 export JWT_SECRET=${JWT_SECRET}
 export GIN_MODE=${GIN_MODE:-release}
 
