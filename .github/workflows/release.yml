@@ -37,27 +37,24 @@ jobs:
   build-and-push:
     needs: extract-version
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ matrix.service }}
+          images: ${{ env.REGISTRY }}
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
@@ -66,36 +63,30 @@ jobs:
             version=${{ needs.extract-version.outputs.version }}
             build-date=${{ github.event.head_commit.timestamp }}
             commit=${{ github.sha }}
-            service=${{ matrix.service }}
             prerelease=${{ needs.extract-version.outputs.is-prerelease }}
-            
-      - name: Build and push ${{ matrix.service }}
+
+      - name: Build and push unified image
         uses: docker/build-push-action@v5
         with:
-          context: |
-            backend=./backend
-            frontend=.
-          file: |
-            backend=./backend/Dockerfile
-            frontend=./frontend/Dockerfile
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
+
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ needs.extract-version.outputs.version }}
+          image: ${{ env.REGISTRY }}:${{ needs.extract-version.outputs.version }}
           format: spdx-json
-          output-file: ./sbom-${{ matrix.service }}.spdx.json
-          
+          output-file: ./sbom.spdx.json
+
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ matrix.service }}
-          path: ./sbom-${{ matrix.service }}.spdx.json
+          name: sbom
+          path: ./sbom.spdx.json
 
   create-github-release:
     needs: [extract-version, build-and-push]
@@ -107,80 +98,62 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag: v${{ needs.extract-version.outputs.version }}
           name: Trackeep v${{ needs.extract-version.outputs.version }}
           body: |
             ## 🚀 Trackeep v${{ needs.extract-version.outputs.version }}
-            
-            ### 🐳 Docker Images
-            - **Backend**: `ghcr.io/dvorinka/trackeep/backend:${{ needs.extract-version.outputs.version }}`
-            - **Frontend**: `ghcr.io/dvorinka/trackeep/frontend:${{ needs.extract-version.outputs.version }}`
-            - **Latest**: `ghcr.io/dvorinka/trackeep/backend:latest` and `ghcr.io/dvorinka/trackeep/frontend:latest`
-            
+
+            ### 🐳 Docker Image
+            - **Unified**: `ghcr.io/dvorinka/trackeep:${{ needs.extract-version.outputs.version }}`
+            - **Latest**: `ghcr.io/dvorinka/trackeep:latest`
+
             ### 📋 Changes
             ${{ github.event.head_commit.message }}
-            
+
             ### 🔧 Installation
             ```bash
-            # Set version
-            export APP_VERSION=${{ needs.extract-version.outputs.version }}
-            
-            # Deploy with production compose
-            docker compose -f docker-compose.prod.yml up -d
+            # Deploy with docker compose
+            docker compose up -d
             ```
-            
+
             ### ⚡ Auto-Updates
             The application includes a built-in update system that:
             - ✅ Automatically checks for updates every 24 hours
             - ✅ Shows update notifications in the left navigation
             - ✅ One-click installation from the UI
             - ✅ No authentication or setup required
-            
+
           draft: false
           prerelease: ${{ needs.extract-version.outputs.is-prerelease }}
-          files: |
-            sbom-backend.spdx.json
-            sbom-frontend.spdx.json
+          files: sbom.spdx.json
           generate_release_notes: true
 
-  update-docker-compose-prod:
+  update-version-files:
     needs: extract-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Update version in all files
         run: |
           VERSION="${{ needs.extract-version.outputs.version }}"
           echo "🏷️ Updating all version files to $VERSION"
-          
+
           # Update frontend package.json
           if [ -f "frontend/package.json" ]; then
             echo "📝 Updating frontend/package.json..."
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" frontend/package.json
             echo "✅ Frontend updated to $VERSION"
           fi
-          
+
           # Update backend go.mod
           if [ -f "backend/go.mod" ]; then
             echo "📝 Updating backend/go.mod..."
             sed -i "s/go [^\"]*\"/go $VERSION/" backend/go.mod
             echo "✅ Backend updated to $VERSION"
           fi
-          
-          # Update docker-compose files
-          if [ -f "docker-compose.yml" ]; then
-            sed -i "s/APP_VERSION=.*/APP_VERSION=$VERSION/" docker-compose.yml
-            echo "✅ docker-compose.yml updated"
-          fi
-          
-          if [ -f "docker-compose.prod.yml" ]; then
-            sed -i "s/APP_VERSION=.*/APP_VERSION=$VERSION/" docker-compose.prod.yml
-            echo "✅ docker-compose.prod.yml updated"
-          fi
-          
+
           echo "🎉 All version files updated to $VERSION"
-          
+
       - name: Commit updated version files
         run: |
           git config user.name "github-actions[bot]"

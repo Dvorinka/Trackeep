@@ -42,10 +42,10 @@ func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:            getEnvWithDefault("PORT", getEnvWithDefault("BACKEND_PORT", "8080")),
-			ReadTimeout:     getDurationEnv("READ_TIMEOUT", 15*time.Second),
-			WriteTimeout:    getDurationEnv("WRITE_TIMEOUT", 15*time.Second),
-			IdleTimeout:     getDurationEnv("IDLE_TIMEOUT", 60*time.Second),
-			ShutdownTimeout: getDurationEnv("SHUTDOWN_TIMEOUT", 30*time.Second),
+			ReadTimeout:     GetDurationEnv("READ_TIMEOUT", 15*time.Second),
+			WriteTimeout:    GetDurationEnv("WRITE_TIMEOUT", 15*time.Second),
+			IdleTimeout:     GetDurationEnv("IDLE_TIMEOUT", 60*time.Second),
+			ShutdownTimeout: GetDurationEnv("SHUTDOWN_TIMEOUT", 30*time.Second),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnvWithDefault("DB_HOST", "localhost"),
@@ -99,7 +99,7 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
+func GetDurationEnv(key string, defaultValue time.Duration) time.Duration {
 	value := os.Getenv(key)
 	if value == "" {
 		return defaultValue

@@ -33,6 +33,22 @@
 
 ## 🚀 Quick Start
 
+### One-Command Deployment (GHCR Image - Recommended for Casa OS)
+
+```bash
+docker run -d \
+  --name trackeep \
+  -p 8080:8080 \
+  -e DB_PASSWORD=your_password \
+  -e DB_USER=trackeep \
+  -e DB_NAME=trackeep \
+  -e DRAGONFLY_PASSWORD=your_dragonfly_password \
+  -e JWT_SECRET=your_jwt_secret \
+  ghcr.io/dvorinka/trackeep:latest
+```
+
+**Note**: This requires external PostgreSQL and DragonflyDB services. For full deployment with included databases, use Docker Compose below.
+
 ### Production Deployment with Docker Compose
 
 ```bash
@@ -40,96 +56,50 @@ git clone https://github.com/dvorinka/trackeep.git
 cd trackeep
 cp .env.example .env
 # Edit .env file with your configuration
-docker-compose up -d
+docker compose up -d
 ```
 
-The `docker-compose.prod.yml` file uses environment variables with sensible defaults:
+The setup uses a unified Docker image with frontend and backend in a single container.
+
+**Complete docker-compose.yml**:
 
 ```yaml
-services:
-  trackeep-frontend:
-    image: 'ghcr.io/dvorinka/trackeep/frontend:latest'
-    ports:
-      - "${FRONTEND_PORT:-80}:${FRONTEND_PORT:-80}"
-      - "${HTTPS_PORT:-443}:443"
-    environment:
-      - NODE_ENV=production
-      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
-      - FRONTEND_PORT=${FRONTEND_PORT:-80}
-      - BACKEND_PORT=${BACKEND_PORT:-8080}
-    depends_on:
-      - trackeep-backend
-    restart: unless-stopped
-    networks:
-      - trackeep-network
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep nginx > /dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
 
-  trackeep-backend:
-    image: 'ghcr.io/dvorinka/trackeep/backend:latest'
+services:
+  trackeep:
+    image: ghcr.io/dvorinka/trackeep:latest
     ports:
-      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+      - "${HOST_PORT:-8080}:8080"
+    env_file:
+      - .env
     environment:
-      - BACKEND_PORT=${BACKEND_PORT:-8080}
-      - FRONTEND_PORT=${FRONTEND_PORT:-80}
-      - GIN_MODE=${GIN_MODE:-release}
-      - DB_TYPE=${DB_TYPE:-postgres}
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USER=${DB_USER:-trackeep}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME:-trackeep}
-      - DB_SSL_MODE=${DB_SSL_MODE:-disable}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
-      - UPLOAD_DIR=${UPLOAD_DIR:-./uploads}
-      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
-      - 'CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}'
-      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
-      - AUTO_UPDATE_CHECK=${AUTO_UPDATE_CHECK:-false}
-      - UPDATE_CHECK_INTERVAL=${UPDATE_CHECK_INTERVAL:-24h}
-      - PRERELEASE_UPDATES=${PRERELEASE_UPDATES:-false}
-      - DRAGONFLY_ADDR=${DRAGONFLY_ADDR:-dragonfly:6379}
-      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
+      - BACKEND_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DRAGONFLY_ADDR=dragonfly:6379
+      - GIN_MODE=release
     volumes:
-      - './data:/data'
-      - './uploads:/app/uploads'
-      - './logs:/app/logs'
-      - '/var/run/docker.sock:/var/run/docker.sock'
+      - ./uploads:/app/uploads
+      - ./data:/data
     restart: unless-stopped
-    networks:
-      - trackeep-network
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - '--no-verbose'
-        - '--tries=1'
-        - '--spider'
-        - "http://localhost:${BACKEND_PORT:-8080}/health"
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
 
   postgres:
-    image: 'postgres:15-alpine'
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: ${DB_NAME:-trackeep}
       POSTGRES_USER: ${DB_USER:-trackeep}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
     volumes:
-      - 'postgres_data:/var/lib/postgres/data'
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - trackeep-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trackeep} -d ${DB_NAME:-trackeep}"]
       interval: 10s
@@ -139,17 +109,14 @@ services:
 
   dragonfly:
     image: ghcr.io/dragonflydb/dragonfly:latest
-    container_name: dragonfly
     ports:
-      - "${DRAGONFLY_PORT:-6379}:6379"
+      - "${DRAGONFLY_HOST_PORT:-6380}:6379"
     volumes:
       - dragonfly_data:/data
     command: dragonfly --requirepass=${DRAGONFLY_PASSWORD} --proactor_threads=2
     environment:
       - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD}
     restart: unless-stopped
-    networks:
-      - trackeep-network
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${DRAGONFLY_PASSWORD} ping"]
       interval: 10s
@@ -158,40 +125,31 @@ services:
       start_period: 30s
 
 volumes:
-  postgres_data: null
-  dragonfly_data: null
-
-networks:
-  trackeep-network:
-    driver: bridge
+  postgres_data:
+  dragonfly_data:
 ```
 
 ### Service Architecture
 
-Trackeep production deployment consists of **4 essential services**:
+Trackeep deployment consists of **3 services**:
 
-#### **🎯 Frontend Service**
-- **Image**: `ghcr.io/dvorinka/trackeep/frontend:latest`
-- **Ports**: `${FRONTEND_PORT:-80}:${FRONTEND_PORT:-80}`, `${HTTPS_PORT:-443}:443`
-- **Purpose**: Web interface and user experience
-- **Health**: nginx process check
-
-#### **🔧 Backend Service**
-- **Image**: `ghcr.io/dvorinka/trackeep/backend:latest`
-- **Ports**: `${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}`
-- **Purpose**: API server and business logic
+#### **🎯 Trackeep Service (Unified)**
+- **Image**: Built from unified Dockerfile (frontend + backend in one)
+- **Ports**: `${HOST_PORT:-8080}:8080`
+- **Purpose**: Web interface, API server, and business logic combined
 - **Health**: HTTP health check endpoint
+- **Auto-configuration**: Frontend automatically connects to backend via nginx proxy
 
 #### **🗄️ Database Service**
 - **Image**: `postgres:15-alpine`
-- **Ports**: `${DB_PORT:-5432}:5432`
+- **Ports**: `${DB_HOST_PORT:-5433}:5432`
 - **Purpose**: Data persistence and storage
 - **Health**: PostgreSQL readiness check
 - **Storage**: Persistent volume for data
 
 #### **🐉 DragonflyDB Service**
 - **Image**: `ghcr.io/dragonflydb/dragonfly:latest`
-- **Ports**: `${DRAGONFLY_PORT:-6379}:6379`
+- **Ports**: `${DRAGONFLY_HOST_PORT:-6380}:6379`
 - **Purpose**: In-memory caching and session storage
 - **Health**: Redis-cli ping check
 - **Storage**: Persistent volume for cache data
@@ -201,15 +159,22 @@ Trackeep production deployment consists of **4 essential services**:
 Create a `.env` file from the provided `.env.example` and configure these required variables:
 
 ```env
-# Database Configuration
-DB_PASSWORD=your_secure_password
+# Host port for the application (default: 8080)
+HOST_PORT=8080
 
-# Security Configuration
-JWT_SECRET=your_jwt_secret_key
+# Database Configuration
+DB_PASSWORD=your_secure_password_here
+DB_USER=trackeep
+DB_NAME=trackeep
 
 # DragonflyDB Configuration
-DRAGONFLY_PASSWORD=your_dragonfly_password
+DRAGONFLY_PASSWORD=your_dragonfly_password_here
+
+# JWT Secret (generate with: openssl rand -hex 32)
+JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
 ```
+
+**Note**: The frontend automatically connects to the backend via nginx proxy - no VITE_API_URL or additional configuration needed.
 
 ### AI Services Configuration
 
@@ -490,9 +455,9 @@ DISABLE_CHINESE_AI=true
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:${FRONTEND_PORT:-80}
-   - Backend API: http://localhost:${BACKEND_PORT:-8080}
-   - Health Check: http://localhost:${BACKEND_PORT:-8080}/health
+   - Application: http://localhost:${HOST_PORT:-8080}
+   - Health Check: http://localhost:${HOST_PORT:-8080}/health
+   - API: http://localhost:${HOST_PORT:-8080}/api/
 
 ### Demo Login
 - Email: `demo@trackeep.com`
@@ -516,8 +481,8 @@ trackeep/
 ├── scripts/              # Utility scripts
 ├── data/                 # Data storage directory
 ├── uploads/              # File upload directory
-├── docker-compose.yml    # Multi-service orchestration
-├── docker-compose.prod.yml # Production configuration
+├── docker-compose.yml    # Unified service orchestration
+├── Dockerfile             # Unified frontend + backend build
 ├── start.sh             # Startup script
 └── README.md
 ```
@@ -562,46 +527,22 @@ Additional documentation files:
 Key environment variables to configure:
 
 ```bash
-# Server Configuration
-FRONTEND_PORT=80
-BACKEND_PORT=8080
-VITE_API_URL=http://localhost:8080
-GIN_MODE=release
+# Host port for the application
+HOST_PORT=8080
 
 # Database Configuration
-DB_TYPE=postgres
-DB_HOST=postgres
-DB_PORT=5432
+DB_PASSWORD=your_secure_password_here
 DB_USER=trackeep
-DB_PASSWORD=your_password_here
 DB_NAME=trackeep
-DB_SSL_MODE=disable
 
 # DragonflyDB Configuration
-DRAGONFLY_ADDR=dragonfly:6379
-DRAGONFLY_PORT=6379
-DRAGONFLY_PASSWORD=your_dragonfly_password
+DRAGONFLY_PASSWORD=your_dragonfly_password_here
 
-# JWT Configuration
-# Generate a secure 64-character hex string using: openssl rand -hex 32
+# JWT Configuration (generate with: openssl rand -hex 32)
 JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
-JWT_EXPIRES_IN=24h
-
-# File Upload Configuration
-UPLOAD_DIR=./uploads
-MAX_FILE_SIZE=10485760
-
-# CORS Configuration
-CORS_ALLOWED_ORIGINS=*
-
-# Demo Mode Configuration
-VITE_DEMO_MODE=false
-
-# Auto Update Configuration
-AUTO_UPDATE_CHECK=false
-UPDATE_CHECK_INTERVAL=24h
-PRERELEASE_UPDATES=false
 ```
+
+**Note**: All other configuration has sensible defaults. The frontend automatically connects to the backend via nginx proxy - no additional API URL configuration needed.
 
 ## Contributing
 

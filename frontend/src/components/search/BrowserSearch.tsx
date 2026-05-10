@@ -43,8 +43,6 @@ export const BrowserSearch = () => {
     try {
       const isDemoMode = isDemo();
       
-      console.log(`[BrowserSearch] Demo mode: ${isDemoMode}`);
-      
       // Always use backend API for search to avoid CORS issues
       const API_BASE_URL = getApiBaseUrl();
       const token = localStorage.getItem('token') || 

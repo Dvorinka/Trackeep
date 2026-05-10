@@ -41,7 +41,11 @@ export const RemovedStuff = () => {
     // Load auto-remove settings from localStorage
     const savedSettings = localStorage.getItem('autoRemoveSettings');
     if (savedSettings) {
-      setAutoRemoveSettings(JSON.parse(savedSettings));
+      try {
+        setAutoRemoveSettings(JSON.parse(savedSettings));
+      } catch {
+        console.warn('Failed to parse autoRemoveSettings');
+      }
     }
 
     // Try to load from API first, then fallback to localStorage

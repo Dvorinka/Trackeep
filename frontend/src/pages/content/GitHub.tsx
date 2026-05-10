@@ -464,7 +464,12 @@ export const GitHub = () => {
         throw new Error(message);
       }
 
-      window.location.href = data.install_url as string;
+      const installUrl = data.install_url as string;
+      if (installUrl && (installUrl.startsWith('https://github.com/') || installUrl.startsWith('https://api.github.com/'))) {
+        window.location.href = installUrl;
+      } else {
+        throw new Error('Invalid install URL received');
+      }
     } catch (error) {
       console.error('Failed to start GitHub App installation:', error);
       setBackupError(error instanceof Error ? error.message : 'Failed to start GitHub App installation');

@@ -112,12 +112,10 @@ export const Notes = () => {
 
       // Check if we should use demo mode or real API
       if (isDemoMode() && !shouldUseRealBackend()) {
-        console.log('[Notes] Loading demo notes data');
         // Load mock notes data for demo mode
         const mockNotesData = getMockNotes();
         notesData = mockNotesData;
       } else {
-        console.log('[Notes] Loading notes from real API');
         // Load from real API
         const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token');
         const response = await fetch(`${API_BASE_URL}/notes`, {

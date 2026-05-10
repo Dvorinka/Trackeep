@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -68,25 +67,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// getDurationEnv parses duration from environment variable with fallback
-func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-
-	seconds, err := strconv.Atoi(value)
-	if err != nil {
-		duration, err := time.ParseDuration(value)
-		if err != nil {
-			return defaultValue
-		}
-		return duration
-	}
-
-	return time.Duration(seconds) * time.Second
-}
-
 // GenerateJWT creates a new JWT token for a user
 func GenerateJWT(user models.User) (string, error) {
 	return generateJWT(user)
@@ -103,7 +83,7 @@ func generateJWT(user models.User) (string, error) {
 		Username: user.Username,
 		GitHubID: user.GitHubID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(getDurationEnv("JWT_EXPIRES_IN", 24*time.Hour))),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.GetDurationEnv("JWT_EXPIRES_IN", 24*time.Hour))),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "trackeep",
 		},

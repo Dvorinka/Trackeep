@@ -514,7 +514,10 @@ export const Bookmarks = () => {
                               onError={(e) => {
                                 const img = e.currentTarget;
                                 img.style.display = 'none';
-                                img.parentElement!.innerHTML = `<span class="text-xs text-muted-foreground font-medium">${getBookmarkInitial(bookmark.title)}</span>`;
+                                const span = document.createElement('span');
+                                span.className = 'text-xs text-muted-foreground font-medium';
+                                span.textContent = getBookmarkInitial(bookmark.title);
+                                img.parentElement!.appendChild(span);
                               }}
                             />
                           ) : (
