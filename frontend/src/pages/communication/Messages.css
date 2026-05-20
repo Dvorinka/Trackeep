@@ -606,13 +606,16 @@
 
 @media (max-width: 767px) {
   .messages-shell {
-    display: block;
+    display: flex;
+    flex-direction: column;
   }
 
   .messages-sidebar,
   .messages-main {
     width: 100%;
     max-width: none;
+    height: 100%;
+    min-height: 0;
   }
 
   .messages-shell-list .messages-main {
@@ -621,6 +624,10 @@
 
   .messages-shell-conversation .messages-sidebar {
     display: none;
+  }
+
+  .messages-composer {
+    padding: 0.75rem;
   }
 }
 
@@ -830,9 +837,9 @@
 
 /* Responsive design */
 @media (max-width: 980px) {
-  .messages-sidebar,
-  .messages-main {
-    width: 100%;
+  .messages-sidebar {
+    width: 16rem;
+    min-width: 16rem;
     border-inline: none;
     border-radius: 0;
   }
@@ -848,11 +855,11 @@
   }
 
   .messages-composer-row {
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: repeat(3, auto) 1fr auto;
   }
 
   .messages-composer-row > button:last-child {
-    grid-column: 3;
+    grid-column: 5;
     justify-self: end;
   }
 

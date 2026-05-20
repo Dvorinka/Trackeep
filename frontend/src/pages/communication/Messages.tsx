@@ -1768,6 +1768,7 @@ export const Messages = () => {
     if (!selectedConversationId()) return;
     const body = inputText().trim();
     if (!body && selectedFiles().length === 0 && attachedLibraryFiles().length === 0 && composerAiReferences().length === 0) return;
+    if (sendingMessage()) return;
 
     try {
       const localFiles = [...selectedFiles()];
@@ -2751,6 +2752,7 @@ export const Messages = () => {
               }}
               disabled={
                 sendingMessage() ||
+                uploadProgress() !== null ||
                 (!inputText().trim() && selectedFiles().length === 0 && attachedLibraryFiles().length === 0 && composerAiReferences().length === 0)
               }
             >

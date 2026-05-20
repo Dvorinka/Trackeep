@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { IconUser, IconLock, IconKey, IconBrain, IconMail, IconSend, IconShield, IconDownload } from '@tabler/icons-solidjs';
 import { TwoFactorAuth } from '@/components/TwoFactorAuth';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { AIProviderIcon } from '@/components/AIProviderIcon';
 import { useHaptics } from '@/lib/haptics';
 import { getApiV1BaseUrl } from '@/lib/api-url';
@@ -412,7 +413,7 @@ export const Settings = () => {
 
       {/* Tab Navigation */}
       <div class="border-b border-border mb-6">
-        <nav class="flex space-x-1">
+        <nav class="flex space-x-1 overflow-x-auto scrollbar-hide">
           <For each={tabs}>
             {(tab) => (
               <button
@@ -420,7 +421,7 @@ export const Settings = () => {
                   setActiveTab(tab.id);
                   haptics.selection();
                 }}
-                class={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                class={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab() === tab.id
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -440,9 +441,11 @@ export const Settings = () => {
         <Show when={activeTab() === 'account'}>
           <div class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div class="border rounded-lg p-6">
+              <Card class="p-6">
                 <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <IconUser class="size-5" />
+                  <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+                    <IconUser class="size-4 text-primary" />
+                  </div>
                   Profile Settings
                 </h2>
                 <div class="space-y-4">
@@ -546,9 +549,9 @@ export const Settings = () => {
                     {isLoading() ? 'Updating...' : 'Update Profile'}
                   </button>
                 </div>
-              </div>
+              </Card>
 
-              <div class="border rounded-lg p-6">
+              <Card class="p-6">
                 <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                   <IconLock class="size-5" />
                   Change Password
@@ -611,7 +614,7 @@ export const Settings = () => {
                     {isLoading() ? 'Changing...' : 'Change Password'}
                   </button>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         </Show>

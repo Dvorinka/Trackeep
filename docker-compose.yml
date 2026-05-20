@@ -1,14 +1,13 @@
-icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
-
 services:
   trackeep:
-    image: ghcr.io/dvorinka/trackeep:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "${HOST_PORT:-8080}:8080"
     env_file:
       - .env
     environment:
-      - BACKEND_PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
       - GIN_MODE=release

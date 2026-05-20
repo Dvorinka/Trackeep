@@ -482,114 +482,122 @@ export const Bookmarks = () => {
             ))}
           </div>
         ) : (
-          <div class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredBookmarks().map((bookmark) => {
               const faviconUrl = getFaviconUrl(bookmark);
               const screenshotUrl = getScreenshotUrl(bookmark);
               return (
-                <Card class="p-6 hover:bg-accent transition-colors group">
-                  <div class="flex justify-between items-start gap-4">
-                    {/* Left side: preview image + favicon + title + URL + tags */}
-                    <div class="flex-1 min-w-0">
-                      {screenshotUrl && (
-                        <div class="mb-3 rounded-md overflow-hidden border border-border bg-muted/40">
-                          <img
-                            src={screenshotUrl}
-                            alt="Website preview"
-                            class="w-full h-32 sm:h-40 object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        </div>
+                <Card class="p-4 hover:bg-accent/50 transition-colors group flex flex-col h-full">
+                  {screenshotUrl && (
+                    <div class="mb-3 rounded-lg overflow-hidden border border-border/50 bg-muted/30 -mx-4 -mt-4">
+                      <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={screenshotUrl}
+                          alt="Website preview"
+                          class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </a>
+                    </div>
+                  )}
+                  <div class="flex items-start gap-3 mb-3">
+                    <div class="flex-shrink-0 w-9 h-9 bg-muted rounded-lg flex items-center justify-center overflow-hidden border border-border/50">
+                      {faviconUrl ? (
+                        <img
+                          src={faviconUrl}
+                          alt=""
+                          class="w-5 h-5 object-contain"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            img.style.display = 'none';
+                            const span = document.createElement('span');
+                            span.className = 'text-xs text-muted-foreground font-bold';
+                            span.textContent = getBookmarkInitial(bookmark.title);
+                            img.parentElement!.appendChild(span);
+                          }}
+                        />
+                      ) : (
+                        <span class="text-xs text-muted-foreground font-bold">
+                          {getBookmarkInitial(bookmark.title)}
+                        </span>
                       )}
-                      <div class="flex items-center gap-3 mb-2">
-                        <div class="flex-shrink-0 w-8 h-8 bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                          {faviconUrl ? (
-                            <img
-                              src={faviconUrl}
-                              alt=""
-                              class="w-6 h-6 object-contain"
-                              onError={(e) => {
-                                const img = e.currentTarget;
-                                img.style.display = 'none';
-                                const span = document.createElement('span');
-                                span.className = 'text-xs text-muted-foreground font-medium';
-                                span.textContent = getBookmarkInitial(bookmark.title);
-                                img.parentElement!.appendChild(span);
-                              }}
-                            />
-                          ) : (
-                            <span class="text-xs text-muted-foreground font-medium">
-                              {getBookmarkInitial(bookmark.title)}
-                            </span>
-                          )}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <h3 class="text-lg font-semibold text-foreground truncate">
-                            <a
-                              href={bookmark.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                            >
-                              {bookmark.title}
-                              <IconExternalLink class="size-5 ml-1.5 flex-shrink-0 text-current group-hover:text-white" />
-                            </a>
-                          </h3>
-                          <p class="text-muted-foreground text-sm truncate">{bookmark.url}</p>
-                        </div>
-                      </div>
-
-                    {bookmark.description && (
-                      <p class="text-foreground text-sm mb-3 line-clamp-2">{bookmark.description}</p>
-                    )}
-
-                    <div class="flex flex-wrap gap-2 mt-1">
-                      {(bookmark.tags || []).map((tag) => (
-                        <button
-                          onClick={() => handleTagClick(tag)}
-                          class={`px-2 py-1 text-xs rounded-md border transition-colors cursor-pointer
-                            ${selectedTag() === tag
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted/80 text-muted-foreground border-transparent group-hover:bg-accent group-hover:text-accent-foreground group-hover:border-border'
-                            }`}
-                          title={`Click to filter by ${tag}`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-sm font-semibold text-foreground leading-tight">
+                        <a
+                          href={bookmark.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-foreground hover:text-primary transition-colors"
                         >
-                          {tag}
-                        </button>
-                      ))}
+                          {bookmark.title}
+                        </a>
+                      </h3>
+                      <p class="text-muted-foreground text-xs truncate mt-0.5">{bookmark.url}</p>
                     </div>
                   </div>
 
-                  {/* Right side: optional date above important star + menu */}
-                  <div class="flex flex-col items-end gap-2 ml-2">
-                    {bookmark.created_at && !isNaN(new Date(bookmark.created_at).getTime()) && (
-                      <div class="text-muted-foreground text-xs">
-                        {new Date(bookmark.created_at).toLocaleDateString()}
-                      </div>
+                  {bookmark.description && (
+                    <p class="text-foreground/80 text-xs mb-3 line-clamp-2 flex-grow">{bookmark.description}</p>
+                  )}
+
+                  <div class="flex flex-wrap gap-1.5 mt-auto">
+                    {(bookmark.tags || []).slice(0, 4).map((tag) => (
+                      <button
+                        onClick={() => handleTagClick(tag)}
+                        class={`px-2 py-0.5 text-[10px] rounded-md border transition-colors cursor-pointer
+                          ${selectedTag() === tag
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted/60 text-muted-foreground border-transparent hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                        title={`Click to filter by ${tag}`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                    {(bookmark.tags || []).length > 4 && (
+                      <span class="px-2 py-0.5 text-[10px] text-muted-foreground">+{(bookmark.tags || []).length - 4}</span>
                     )}
-                    <div class="flex items-center gap-2">
+                  </div>
+
+                  <div class="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    {bookmark.created_at && !isNaN(new Date(bookmark.created_at).getTime()) ? (
+                      <span class="text-muted-foreground text-[10px]">
+                        {new Date(bookmark.created_at).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <div class="flex items-center gap-1">
                       <button
                         onClick={() => toggleImportant(bookmark.id)}
-                        class={`flex-shrink-0 p-1 rounded hover:bg-accent/50 transition-colors ${
-                          bookmark.isImportant ? 'order-first' : ''
-                        }`}
+                        class="p-1.5 rounded-md hover:bg-accent transition-colors"
                         title={bookmark.isImportant ? 'Remove from favorites' : 'Mark as favorite'}
                       >
                         <IconStar
-                          class={`size-4 ${
+                          class={`size-3.5 ${
                             bookmark.isImportant
                               ? 'text-primary fill-primary'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         />
                       </button>
+                      <a
+                        href={bookmark.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                        title="Open in new tab"
+                      >
+                        <IconExternalLink class="size-3.5" />
+                      </a>
                       <DropdownMenu
                         trigger={
-                          <button class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-inherit hover:bg-accent/50 hover:text-accent-foreground h-8 w-8">
-                            <IconDotsVertical class="size-4" />
+                          <button class="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                            <IconDotsVertical class="size-3.5" />
                           </button>
                         }
                       >
@@ -612,17 +620,18 @@ export const Bookmarks = () => {
                       </DropdownMenu>
                     </div>
                   </div>
-                  </div>
                 </Card>
               );
             })}
 
             {filteredBookmarks().length === 0 && (
-              <Card class="p-12 text-center">
-                <p class="text-muted-foreground">
-                  {searchTerm() ? 'No bookmarks found matching your search.' : 'No bookmarks yet. Add your first bookmark!'}
-                </p>
-              </Card>
+              <div class="col-span-full">
+                <Card class="p-12 text-center">
+                  <p class="text-muted-foreground">
+                    {searchTerm() ? 'No bookmarks found matching your search.' : 'No bookmarks yet. Add your first bookmark!'}
+                  </p>
+                </Card>
+              </div>
             )}
           </div>
         )}

@@ -328,22 +328,22 @@ export function Calendar() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'text-primary'
-      case 'high': return 'text-primary'
-      case 'medium': return 'text-primary'
-      case 'low': return 'text-primary'
-      default: return 'text-primary'
+      case 'urgent': return 'text-red-500'
+      case 'high': return 'text-orange-500'
+      case 'medium': return 'text-yellow-500'
+      case 'low': return 'text-green-500'
+      default: return 'text-muted-foreground'
     }
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'task': return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-      case 'meeting': return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-      case 'deadline': return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-      case 'reminder': return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-      case 'habit': return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-      default: return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+      case 'task': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+      case 'meeting': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+      case 'deadline': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+      case 'reminder': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+      case 'habit': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
     }
   }
 

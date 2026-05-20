@@ -15,7 +15,7 @@ import {
   IconClock,
   IconChecklist
 } from '@tabler/icons-solidjs';
-import { ColorSwitcher } from './ColorSwitcher';
+import { ColorSwitcher } from '@/pages/settings/ColorSwitcher';
 import { useHaptics } from '@/lib/haptics';
 
 interface ProjectStats {

@@ -1,8 +1,8 @@
 import { createSignal, createEffect, Show, For } from 'solid-js';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { toast } from '../components/ui/Toast';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { toast } from '@/components/ui/Toast';
 import { CheckCircle, AlertCircle, Shield, Key, Globe, Clock, Users, Settings } from 'lucide-solid';
 import { getApiV1BaseUrl } from '@/lib/api-url';
 
@@ -478,7 +478,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
                 <label class="block text-sm font-medium text-gray-700 mb-2">Key Name</label>
                 <Input
                   value={newKeyName()}
-                  onInput={(e) => setNewKeyName((e.target as HTMLInputElement).value)}
+                  onInput={(e: InputEvent) => setNewKeyName((e.target as HTMLInputElement).value)}
                   placeholder="e.g., Chrome Extension, Laptop Backup"
                   class="w-full"
                 />

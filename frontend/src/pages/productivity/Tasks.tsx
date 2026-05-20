@@ -1,7 +1,6 @@
 import { createSignal, onMount } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { TaskModal } from '@/components/ui/TaskModal';
 import { IconEdit, IconTrash } from '@tabler/icons-solidjs';
 import { getApiV1BaseUrl } from '@/lib/api-url';
@@ -25,11 +24,52 @@ export const Tasks = () => {
   const [showAddModal, setShowAddModal] = createSignal(false);
   const [showEditModal, setShowEditModal] = createSignal(false);
   const [editingTask, setEditingTask] = createSignal<Task | null>(null);
-  const [filter, setFilter] = createSignal<'all' | 'active' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = createSignal('');
   const [selectedPriority, setSelectedPriority] = createSignal('');
-  
+  const [draggedTaskId, setDraggedTaskId] = createSignal<number | null>(null);
+  const [dragOverColumn, setDragOverColumn] = createSignal<string | null>(null);
+  const [taskStatuses, setTaskStatuses] = createSignal<Record<number, 'todo' | 'inProgress' | 'done'>>({});
+
   const haptics = useHaptics();
+
+  const getTaskColumn = (task: Task) => {
+    if (task.completed) return 'done';
+    return taskStatuses()[task.id] || 'todo';
+  };
+
+  const setTaskColumn = async (taskId: number, column: 'todo' | 'inProgress' | 'done') => {
+    const task = tasks().find(t => t.id === taskId);
+    if (!task) return;
+
+    const shouldBeCompleted = column === 'done';
+
+    if (column === 'done') {
+      setTaskStatuses(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+    } else {
+      setTaskStatuses(prev => ({ ...prev, [taskId]: column }));
+    }
+
+    if (task.completed !== shouldBeCompleted) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+          },
+          body: JSON.stringify({ ...task, completed: shouldBeCompleted }),
+        });
+        if (response.ok) {
+          const updated = await response.json();
+          setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+        }
+      } catch (error) {
+        console.error('Failed to update task status:', error);
+      }
+    } else {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: shouldBeCompleted } : t));
+    }
+  };
 
   onMount(async () => {
     try {
@@ -51,29 +91,28 @@ export const Tasks = () => {
     }
   });
 
-  const filteredTasks = () => {
+  const searchedTasks = () => {
     const term = searchTerm().toLowerCase();
-    const filtered = tasks().filter(task => {
-      const matchesSearch = !term || 
+    return tasks().filter(task => {
+      const matchesSearch = !term ||
         task.title.toLowerCase().includes(term) ||
         (task.description && task.description.toLowerCase().includes(term));
-
       const matchesPriority = !selectedPriority() || task.priority === selectedPriority();
-      
-      const matchesFilter = 
-        (filter() === 'active' && !task.completed) ||
-        (filter() === 'completed' && task.completed) ||
-        filter() === 'all';
-      
-      return matchesSearch && matchesFilter && matchesPriority;
-    });
-    
-    return filtered.sort((a, b) => {
+      return matchesSearch && matchesPriority;
+    }).sort((a, b) => {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
-      if (a.completed !== b.completed) return a.completed ? 1 : -1;
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
   };
+
+  const columnTasks = (column: 'todo' | 'inProgress' | 'done') =>
+    searchedTasks().filter(t => getTaskColumn(t) === column);
+
+  const columnCounts = () => ({
+    todo: columnTasks('todo').length,
+    inProgress: columnTasks('inProgress').length,
+    done: columnTasks('done').length,
+  });
 
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
     try {
@@ -134,19 +173,6 @@ export const Tasks = () => {
     }
   };
 
-  const toggleTaskComplete = async (taskId: number) => {
-    try {
-      // TODO: Replace with actual API call
-      setTasks(prev => prev.map(task => 
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      ));
-      haptics.completion(); // Completion feedback for toggling task
-    } catch (error) {
-      haptics.error(); // Error feedback
-      console.error('Failed to update task:', error);
-    }
-  };
-
   const deleteTask = async (taskId: number) => {
     if (confirm('Are you sure you want to delete this task?')) {
       try {
@@ -185,20 +211,13 @@ export const Tasks = () => {
     }
   };
 
-  const taskStats = () => {
-    const total = tasks().length;
-    const completed = tasks().filter(t => t.completed).length;
-    const active = total - completed;
-    return { total, completed, active };
-  };
-
-  const hasSearchOrPriorityFilters = () =>
-    Boolean(searchTerm().trim()) || Boolean(selectedPriority());
-
   return (
     <div class="p-6 space-y-6">
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-[#fafafa]">Tasks</h1>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-foreground">Tasks</h1>
+          <p class="text-muted-foreground text-sm mt-1">{columnCounts().todo} todo · {columnCounts().inProgress} in progress · {columnCounts().done} done</p>
+        </div>
         <Button onClick={() => setShowAddModal(true)} haptic="impact">
           Add Task
         </Button>
@@ -221,137 +240,106 @@ export const Tasks = () => {
         isEdit={true}
       />
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card class="p-4 text-center">
-          <p class="text-2xl font-bold text-[#fafafa]">{taskStats().total}</p>
-          <p class="text-[#a3a3a3] text-sm">Total Tasks</p>
-        </Card>
-        <Card class="p-4 text-center">
-          <p class="text-2xl font-bold text-[#fafafa]">{taskStats().active}</p>
-          <p class="text-[#a3a3a3] text-sm">Active</p>
-        </Card>
-        <Card class="p-4 text-center">
-          <p class="text-2xl font-bold text-blue-400">{taskStats().completed}</p>
-          <p class="text-[#a3a3a3] text-sm">Completed</p>
-        </Card>
-      </div>
-
-      <SearchTagFilterBar
-        searchPlaceholder="Search tasks..."
-        searchValue={searchTerm()}
-        onSearchChange={(value) => setSearchTerm(value)}
-        tagOptions={['high', 'medium', 'low']}
-        selectedTag={selectedPriority()}
-        onTagChange={(value) => setSelectedPriority(value)}
-        onReset={() => {
-          setSearchTerm('');
-          setSelectedPriority('');
-        }}
-        allOptionLabel="All Priorities"
-      />
-
-      <div class="flex flex-wrap gap-2 -mt-3 mb-6">
-        {(['all', 'active', 'completed'] as const).map((filterOption) => (
-          <Button
-            variant={filter() === filterOption ? 'default' : 'outline'}
-            onClick={() => setFilter(filterOption)}
-            class="capitalize"
-            haptic="selection"
-          >
-            {filterOption}
-          </Button>
-        ))}
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input
+          type="text"
+          placeholder="Search tasks..."
+          value={searchTerm()}
+          onInput={(e) => setSearchTerm(e.currentTarget.value)}
+          class="flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <select
+          value={selectedPriority()}
+          onChange={(e) => setSelectedPriority(e.currentTarget.value)}
+          class="px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">All priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
       </div>
 
       {isLoading() ? (
-        <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[...Array(3)].map(() => (
-            <Card class="p-6">
-              <div class="animate-pulse">
-                <div class="h-6 bg-[#262626] rounded mb-2"></div>
-                <div class="h-4 bg-[#262626] rounded w-3/4"></div>
+            <Card class="p-4 h-48">
+              <div class="animate-pulse space-y-3">
+                <div class="h-5 bg-muted rounded w-1/2"></div>
+                <div class="h-20 bg-muted rounded"></div>
               </div>
             </Card>
           ))}
         </div>
       ) : (
-        <div class="space-y-4">
-          {filteredTasks().map((task) => (
-            <div 
-              class={`cursor-pointer transition-all ${task.completed ? 'opacity-60' : ''}`}
-              onClick={() => toggleTaskComplete(task.id)}
-            >
-              <Card class={`p-6 hover:bg-[#141415]`}>
-                <div class="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleTaskComplete(task.id);
-                    }}
-                    class="mt-1 w-4 h-4 text-[#39b9ff] bg-[#141415] border-[#262626] rounded focus:ring-[#39b9ff]"
-                  />
-                  <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                      <h3 class={`text-lg font-semibold text-[#fafafa] ${task.completed ? 'line-through' : ''}`}>
-                        {task.title}
-                      </h3>
-                      <div class="flex items-center space-x-2">
-                        <span class={`px-2 py-1 text-xs rounded-md ${getPriorityColor(task.priority)}`}>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          {([
+            { key: 'todo' as const, label: 'To Do', color: 'border-t-4 border-t-muted-foreground' },
+            { key: 'inProgress' as const, label: 'In Progress', color: 'border-t-4 border-t-primary' },
+            { key: 'done' as const, label: 'Done', color: 'border-t-4 border-t-emerald-500' },
+          ]).map((col) => {
+            const items = columnTasks(col.key);
+            const isDropTarget = dragOverColumn() === col.key;
+            return (
+              <div
+                class={`flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 min-h-[12rem] transition-all ${col.color} ${isDropTarget ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.key); }}
+                onDragLeave={() => setDragOverColumn(null)}
+                onDrop={(e) => { e.preventDefault(); setDragOverColumn(null); const id = draggedTaskId(); if (id !== null) setTaskColumn(id, col.key); setDraggedTaskId(null); }}
+              >
+                <div class="flex items-center justify-between">
+                  <h2 class="font-semibold text-foreground">{col.label}</h2>
+                  <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{items.length}</span>
+                </div>
+                <div class="flex flex-col gap-2">
+                  {items.map((task: Task) => (
+                    <div
+                      draggable={true}
+                      onDragStart={() => { setDraggedTaskId(task.id); haptics.impact(); }}
+                      onDragEnd={() => setDraggedTaskId(null)}
+                      class={`group bg-background border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/20 transition-all ${draggedTaskId() === task.id ? 'opacity-40' : ''}`}
+                    >
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="text-sm font-medium text-foreground leading-snug flex-1">{task.title}</h3>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={() => editTask(task)}
+                            class="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                          >
+                            <IconEdit class="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            class="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                          >
+                            <IconTrash class="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {task.description && (
+                        <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
+                      )}
+                      <div class="flex items-center gap-2 mt-2">
+                        <span class={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPriorityColor(task.priority)}`}>
                           {task.priority}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editTask(task);
-                          }}
-                          class="text-blue-400 hover:text-blue-300"
-                          haptic="impact"
-                        >
-                          <IconEdit class="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteTask(task.id);
-                          }}
-                          class="text-red-400 hover:text-red-300"
-                          haptic="warning"
-                        >
-                          <IconTrash class="w-4 h-4" />
-                        </Button>
+                        {task.dueDate && (
+                          <span class="text-[10px] text-muted-foreground">
+                            {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {task.description && (
-                      <p class="text-[#a3a3a3] text-sm mt-1">{task.description}</p>
-                    )}
-                    {task.dueDate && (
-                      <p class="text-[#a3a3a3] text-xs mt-2">
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
+                  ))}
+                  {items.length === 0 && (
+                    <div class="text-center py-8 text-xs text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                      Drop tasks here
+                    </div>
+                  )}
                 </div>
-              </Card>
-            </div>
-          ))}
-          
-          {filteredTasks().length === 0 && (
-            <Card class="p-12 text-center">
-              <p class="text-[#a3a3a3]">
-                {hasSearchOrPriorityFilters()
-                  ? 'No tasks found matching your search or filters.'
-                  : filter() === 'completed' ? 'No completed tasks yet.' : 
-                 filter() === 'active' ? 'No active tasks. Great job!' : 
-                 'No tasks yet. Add your first task!'}
-              </p>
-            </Card>
-          )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

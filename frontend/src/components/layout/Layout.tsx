@@ -182,10 +182,10 @@ export function Layout(props: LayoutProps) {
         {/* Main Content */}
         <div class="flex-1 min-h-0 flex flex-col">
           {/* Header */}
-          <Header title={props.title} onMenuClick={toggleSidebar} />
+          {!props.fullBleed && <Header title={props.title} onMenuClick={toggleSidebar} />}
           
           {/* Page Content */}
-          <main class="flex-1 overflow-auto max-w-screen">
+          <main class={`flex-1 ${props.fullBleed ? 'overflow-hidden' : 'overflow-auto w-full'}`}>
             <div class={props.fullBleed ? "h-full" : "p-2 max-w-7xl mx-auto"}>
               {resolved()}
             </div>

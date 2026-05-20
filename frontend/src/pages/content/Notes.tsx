@@ -5,7 +5,7 @@ import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { NoteModal } from '@/components/ui/NoteModal';
 import { ViewNoteModal } from '@/components/ui/ViewNoteModal';
 import { NoteContentRenderer } from '@/components/notes/NoteContentRenderer';
-import { IconPin, IconTrash, IconEdit, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
+import { IconPin, IconTrash, IconEdit, IconCopy } from '@tabler/icons-solidjs';
 import { getMockNotes } from '@/lib/mockData';
 import { isDemoMode, shouldUseRealBackend } from '@/lib/demo-mode';
 import { getApiV1BaseUrl } from '@/lib/api-url';
@@ -103,7 +103,6 @@ export const Notes = () => {
   const [editingNote, setEditingNote] = createSignal<Note | null>(null);
   const [viewingNote, setViewingNote] = createSignal<Note | null>(null);
   const [copiedContent, setCopiedContent] = createSignal(false);
-  const [expandedNotes, setExpandedNotes] = createSignal<Set<number>>(new Set());
 
   onMount(async () => {
     try {
@@ -400,18 +399,6 @@ export const Notes = () => {
     }
   };
 
-  const toggleNoteExpansion = (noteId: number) => {
-    setExpandedNotes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(noteId)) {
-        newSet.delete(noteId);
-      } else {
-        newSet.add(noteId);
-      }
-      return newSet;
-    });
-  };
-
   const exportNote = (note: Note) => {
     const content = note.isMarkdown ? `# ${note.title}\n\n${note.content}` : note.content;
     const blob = new Blob([content], { type: 'text/plain' });
@@ -527,21 +514,6 @@ export const Notes = () => {
         }}
       />
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card class="p-4">
-          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Total Notes</p>
-          <p class="text-xl font-semibold text-foreground">{filteredNotes().length}</p>
-        </Card>
-        <Card class="p-4">
-          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Pinned</p>
-          <p class="text-xl font-semibold text-foreground">{filteredNotes().filter((note) => note.pinned).length}</p>
-        </Card>
-        <Card class="p-4">
-          <p class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Tags</p>
-          <p class="text-xl font-semibold text-foreground">{allTags().length}</p>
-        </Card>
-      </div>
-
       <Show when={loadError()}>
         <Card class="border-destructive/30 bg-destructive/5 p-4">
           <p class="text-sm font-medium text-foreground">Notes could not be loaded</p>
@@ -555,170 +527,117 @@ export const Notes = () => {
         </div>
       </Show>
 
-      <Show when={isLoading()}>
-        <div class="space-y-4">
-          {[...Array(3)].map(() => (
-            <Card class="p-6">
-              <div class="animate-pulse">
-                <div class="h-6 bg-muted rounded mb-2"></div>
-                <div class="h-4 bg-muted rounded w-3/4"></div>
+      {isLoading() ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map(() => (
+            <Card class="p-5 h-40">
+              <div class="animate-pulse space-y-3">
+                <div class="h-5 bg-muted rounded w-2/3"></div>
+                <div class="h-3 bg-muted rounded w-full"></div>
+                <div class="h-3 bg-muted rounded w-4/5"></div>
               </div>
             </Card>
           ))}
         </div>
-      </Show>
-
-      <Show when={!isLoading()}>
-        <div class="space-y-4">
+      ) : (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <For each={filteredNotes()}>
             {(note) => (
-              <Card
-                data-note-id={note.id}
-                class={`p-6 cursor-pointer transition-colors hover:bg-accent/50 ${note.pinned ? 'border-l-4 border-l-primary' : ''}`}
+              <div
+                class={`group relative bg-card rounded-xl border border-border p-5 cursor-pointer hover:shadow-lg hover:border-primary/20 transition-all ${note.pinned ? 'ring-1 ring-primary/20' : ''}`}
                 onClick={() => viewNote(note)}
               >
-                <div class="flex justify-between items-start mb-3 gap-3">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <h3 class="text-lg font-semibold text-foreground truncate">{note.title}</h3>
-                    <Show when={note.pinned}>
-                      <IconPin class="size-4 text-primary" />
-                    </Show>
-                    <Show when={note.isMarkdown}>
-                      <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">MD</span>
-                    </Show>
-                    <Show when={note.isHtml}>
-                      <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded">HTML</span>
-                    </Show>
-                  </div>
-                  <div class="flex gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyNoteContent(note);
-                      }}
-                      class="text-muted-foreground hover:text-foreground p-1"
-                    >
-                      <IconCopy size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportNote(note);
-                      }}
-                      class="text-muted-foreground hover:text-foreground p-1"
-                    >
-                      <IconDownload size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEditNote(note);
-                      }}
-                      class="text-muted-foreground hover:text-foreground p-1"
-                    >
-                      <IconEdit size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePin(note.id);
-                      }}
-                      class="text-primary hover:text-primary/80 p-1"
-                      {...{ title: note.pinned ? 'Unpin note' : 'Pin note' }}
-                    >
-                      <IconPin size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNote(note.id);
-                      }}
-                      class="text-destructive hover:text-destructive/80 p-1"
-                    >
-                      <IconTrash size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                <div class="text-muted-foreground text-sm mb-3">
-                  <div class={expandedNotes().has(note.id) ? '' : 'max-h-72 overflow-hidden'}>
-                    <NoteContentRenderer
-                      content={note.content}
-                      kind={getNoteKind(note)}
-                      preview={!expandedNotes().has(note.id)}
-                      maxBlocks={4}
-                      onToggleTask={(taskIndex, nextChecked) => updateNoteCheckbox(note.id, taskIndex, nextChecked)}
-                    />
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleNoteExpansion(note.id);
-                    }}
-                    class="mt-2 text-xs text-primary hover:text-primary/80 font-medium cursor-pointer transition-colors"
-                  >
-                    {expandedNotes().has(note.id) ? 'Show less ←' : 'Show more →'}
-                  </button>
-                </div>
-
-                <Show when={note.attachments && note.attachments.length > 0}>
-                  <div class="mb-3">
-                    <div class="flex items-center gap-2 mb-2">
-                      <IconPaperclip class="size-4 text-muted-foreground" />
-                      <span class="text-xs text-muted-foreground">Attachments ({note.attachments?.length || 0})</span>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                      <For each={note.attachments || []}>
-                        {(attachment) => (
-                          <div class="flex items-center gap-2 px-2 py-1 bg-muted rounded-md text-xs">
-                            <span class="text-foreground">{attachment.name}</span>
-                            <span class="text-muted-foreground">({attachment.size})</span>
-                          </div>
-                        )}
-                      </For>
-                    </div>
+                <Show when={note.pinned}>
+                  <div class="absolute top-3 right-3">
+                    <IconPin class="size-3.5 text-primary" />
                   </div>
                 </Show>
 
-                <div class="flex flex-wrap gap-2 mb-3">
-                  <For each={note.tags}>
+                <h3 class={`text-base font-semibold text-foreground mb-2 pr-5 ${note.pinned ? 'text-primary' : ''}`}>
+                  {note.title}
+                </h3>
+
+                <div class="text-muted-foreground text-sm line-clamp-3 mb-4">
+                  <NoteContentRenderer
+                    content={note.content}
+                    kind={getNoteKind(note)}
+                    preview={true}
+                    maxBlocks={3}
+                    onToggleTask={(taskIndex, nextChecked) => updateNoteCheckbox(note.id, taskIndex, nextChecked)}
+                  />
+                </div>
+
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                  <For each={note.tags.slice(0, 4)}>
                     {(tag) => (
-                      <button
+                      <span
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleTag(tag);
                         }}
-                        class="px-2 py-1 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs rounded-md transition-colors cursor-pointer"
+                        class="px-2 py-0.5 bg-muted/60 text-muted-foreground text-[10px] rounded-full cursor-pointer hover:bg-muted hover:text-foreground transition-colors"
                       >
                         {tag}
-                      </button>
+                      </span>
                     )}
                   </For>
+                  <Show when={note.tags.length > 4}>
+                    <span class="px-2 py-0.5 text-muted-foreground text-[10px]">+{note.tags.length - 4}</span>
+                  </Show>
                 </div>
 
-                <p class="text-muted-foreground text-xs">
-                  Updated: {formatDisplayDate(note.updatedAt)}
-                </p>
-              </Card>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-muted-foreground">
+                    {formatDisplayDate(note.updatedAt)}
+                  </span>
+                  <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); copyNoteContent(note); }}
+                      class="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Copy"
+                    >
+                      <IconCopy class="size-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startEditNote(note); }}
+                      class="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Edit"
+                    >
+                      <IconEdit class="size-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); togglePin(note.id); }}
+                      class="p-1.5 rounded-md hover:bg-muted text-primary hover:text-primary/80"
+                      title={note.pinned ? 'Unpin' : 'Pin'}
+                    >
+                      <IconPin class="size-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                      class="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                      title="Delete"
+                    >
+                      <IconTrash class="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </For>
 
           <Show when={filteredNotes().length === 0}>
-            <Card class="p-12 text-center">
-              <p class="text-muted-foreground">
-                {searchTerm() || selectedTags().length > 0
-                  ? 'No notes found matching your search or filters.'
-                  : 'No notes yet. Add your first note!'}
-              </p>
-            </Card>
+            <div class="col-span-full">
+              <Card class="p-12 text-center">
+                <p class="text-muted-foreground">
+                  {searchTerm() || selectedTags().length > 0
+                    ? 'No notes found matching your search or filters.'
+                    : 'No notes yet. Add your first note!'}
+                </p>
+              </Card>
+            </div>
           </Show>
         </div>
-      </Show>
+      )}
 
       {/* Add Note Modal */}
       <NoteModal

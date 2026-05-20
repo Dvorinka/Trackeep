@@ -24,7 +24,7 @@
     "render:video:poster": "npm --workspace video run render:poster",
     "install:all": "npm install && cd frontend && npm install && cd ../mobile && npm install && cd ../desktop && npm install",
     "clean": "rm -rf dist node_modules frontend/node_modules mobile/node_modules desktop/node_modules backend/vendor desktop/dist desktop/src-tauri/target",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package || true"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

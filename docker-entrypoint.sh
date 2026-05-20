@@ -6,7 +6,7 @@
 set -e
 
 # Backend configuration
-export BACKEND_PORT=${BACKEND_PORT:-8080}
+export BACKEND_PORT=8081
 export DB_HOST=${DB_HOST:-postgres}
 export DB_PORT=${DB_PORT:-5432}
 export DB_NAME=${DB_NAME:-trackeep}
@@ -23,16 +23,13 @@ echo "Starting Trackeep backend on port ${BACKEND_PORT}..."
 # Wait for backend to be ready
 echo "Waiting for backend to be ready..."
 for i in $(seq 1 30); do
-    if wget --no-verbose --tries=1 --spider http://localhost:${BACKEND_PORT}/health 2>/dev/null; then
+    if wget --no-verbose --tries=1 --spider http://localhost:8081/health 2>/dev/null; then
         echo "Backend is ready!"
         break
     fi
     echo "Waiting... ($i/30)"
     sleep 2
 done
-
-# Update nginx config to proxy to localhost backend
-sed -i "s|http://trackeep-backend:8080/|http://localhost:${BACKEND_PORT}/|g" /etc/nginx/nginx.conf
 
 # Start nginx
 echo "Starting nginx..."

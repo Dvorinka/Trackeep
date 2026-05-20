@@ -9,7 +9,6 @@ import {
   FileText as FileTextIcon,
   Sparkles,
   ChevronDown,
-  Settings,
   Trash,
   User
 } from 'lucide-solid'
@@ -386,109 +385,8 @@ const Chat = () => {
   }
 
   return (
-    <div class="mt-4 pb-32 max-w-7xl mx-auto">
-      <div class="bg-background rounded-lg border shadow-sm">
-        {/* Header with Model Selection */}
-        <div class="p-6 border-b bg-card/95 backdrop-blur-sm">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-6">
-              <div class="flex items-center gap-3">
-              <div>
-                <h2 class="font-semibold text-lg">AI Assistant</h2>
-                <p class="text-sm text-muted-foreground">Your intelligent workspace companion</p>
-              </div>
-              </div>
-              
-              <div class="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                <button
-                  onClick={() => setActiveView('chat')}
-                  class={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeView() === 'chat' 
-                      ? 'bg-background shadow-sm' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Chat
-                </button>
-                <button
-                  onClick={() => setActiveView('ai-tools')}
-                  class={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeView() === 'ai-tools' 
-                      ? 'bg-background shadow-sm' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  AI Tools
-                </button>
-              </div>
-            </div>
-            
-            {/* Settings Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings())}
-              class="flex items-center gap-2 px-3 py-2 hover:bg-muted rounded-lg text-sm transition-colors"
-            >
-              <Settings class="h-4 w-4" />
-              Settings
-            </Button>
-            
-            {/* Enhanced AI Model Picker */}
-            <div class="relative">
-              <button
-                onClick={() => setShowModelPicker(!showModelPicker())}
-                class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-sm transition-colors"
-              >
-                <span>{getAIModels().find(m => m.id === selectedModel())?.name || 'Select Model'}</span>
-                <ChevronDown class={`h-4 w-4 transition-transform ${showModelPicker() ? 'rotate-180' : ''}`} />
-              </button>
-              
-              <Show when={showModelPicker()}>
-                <div class="absolute right-0 mt-2 w-80 bg-background border rounded-lg shadow-lg z-50 p-2 max-h-96 overflow-y-auto">
-                  <div class="p-2 border-b mb-2">
-                    <h4 class="text-sm font-semibold text-foreground">Select AI Model</h4>
-                    <p class="text-xs text-muted-foreground">Choose the best model for your needs</p>
-                  </div>
-                  <For each={getAIModels()}>
-                    {model => (
-                      <button
-                        onClick={() => {
-                          setSelectedModel(model.id)
-                          setShowModelPicker(false)
-                        }}
-                        class={`w-full text-left p-3 rounded-lg transition-colors ${
-                          selectedModel() === model.id 
-                            ? 'bg-primary/10 border border-primary/20' 
-                            : 'hover:bg-muted'
-                        }`}
-                      >
-                        <div class="flex items-center justify-between">
-                          <div class="flex-1">
-                            <div class="font-medium text-sm">{model.name}</div>
-                            <div class="text-xs text-muted-foreground mt-1">{model.description}</div>
-                            <div class="flex items-center gap-2 mt-2">
-                              <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                                {model.provider}
-                              </span>
-                              <span class="text-xs px-2 py-1 bg-muted text-muted-foreground rounded-full">
-                                {model.category}
-                              </span>
-                            </div>
-                          </div>
-                          {selectedModel() === model.id && (
-                            <div class="w-2 h-2 bg-primary rounded-full"></div>
-                          )}
-                        </div>
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </Show>
-            </div>
-          </div>
-        </div>
-
+    <div class="mt-4 pb-32 max-w-7xl mx-auto flex flex-col md:flex-row gap-4">
+      <div class="w-72 flex-shrink-0 bg-background rounded-lg border shadow-sm overflow-hidden flex flex-col">
           <Show when={showSettings()}>
             <div class="p-6 border-b bg-muted/30">
               <div class="flex items-center justify-between mb-4">
@@ -741,7 +639,7 @@ const Chat = () => {
         </div>
 
         {/* Chat Area */}
-        <div class="flex-1 flex flex-col min-w-0 ml-80">
+        <div class="flex-1 flex flex-col min-w-0 bg-background rounded-lg border shadow-sm overflow-hidden">
           <div class="hidden md:flex items-center justify-between p-6 border-b bg-card/95 backdrop-blur-sm">
             <div class="flex items-center gap-6">
               <div class="flex items-center gap-3">
@@ -811,9 +709,9 @@ const Chat = () => {
           </div>
 
           {/* Main Content Area */}
-        <div class="flex flex-col">
+        <div class="flex-1 flex flex-col min-h-0">
           <Show when={activeView() === 'chat'}>
-            <div class="flex-1 overflow-y-auto h-[calc(100vh-320px)]">
+            <div class="flex-1 overflow-y-auto min-h-0">
               <div class="space-y-6 max-w-5xl mx-auto p-6">
                 <For each={messages()}>
                   {message => (
@@ -1111,7 +1009,6 @@ const Chat = () => {
             </div>
           </Show>
         </div>
-        <div class="clear-both"></div>
       </div>
     </div>
   )

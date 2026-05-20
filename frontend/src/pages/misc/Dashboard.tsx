@@ -31,6 +31,7 @@ import {
 } from '@tabler/icons-solidjs';
 import { BrowserSearch } from '@/components/search/BrowserSearch';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
+import { Card } from '@/components/ui/Card';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
 import { ActivityFeed } from '@/components/ui/ActivityFeed';
 import { UploadModal } from '@/components/ui/UploadModal';
@@ -525,129 +526,105 @@ export const Dashboard = () => {
   return (
     <div class="p-6 mt-4 pb-32 max-w-5xl mx-auto">
       {/* Stats Overview */}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="border rounded-lg p-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Card class="p-4">
           <div class="flex items-center gap-3">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+            <div class="bg-muted flex items-center justify-center p-2.5 rounded-xl">
               <IconFileText class="size-5 text-primary" />
             </div>
             <div>
-              <p class="text-2xl font-light">{stats().totalDocuments}</p>
-              <p class="text-sm text-muted-foreground">Documents</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex items-center gap-3">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconBookmark class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-2xl font-light">{stats().totalBookmarks}</p>
-              <p class="text-sm text-muted-foreground">Bookmarks</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex items-center gap-3">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconChecklist class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-2xl font-light">{stats().totalTasks}</p>
-              <p class="text-sm text-muted-foreground">Tasks</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex items-center gap-3">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconNotebook class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-2xl font-light">{stats().totalNotes}</p>
-              <p class="text-sm text-muted-foreground">Notes</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Stats Row */}
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconVideo class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl font-bold text-foreground">{stats().totalVideos}</p>
-              <p class="text-xs text-muted-foreground font-medium">Videos</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconSchool class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl font-bold text-foreground">{stats().totalLearningPaths}</p>
-              <p class="text-xs text-muted-foreground font-medium">Learning</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconClock class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl font-bold text-foreground">{formatDuration(stats().totalTimeTracked)}</p>
-              <p class="text-xs text-muted-foreground font-medium">Time</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconTrendingUp class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl font-bold text-foreground">{stats().averageProductivity}%</p>
-              <p class="text-xs text-muted-foreground font-medium">Productivity</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconFolder class="size-5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl font-bold text-foreground">{stats().totalDocuments}</p>
+              <p class="text-2xl font-bold text-foreground">{stats().totalDocuments}</p>
               <p class="text-xs text-muted-foreground font-medium">Documents</p>
             </div>
           </div>
-        </div>
-        
-        <div class="border rounded-lg p-4">
-          <div class="flex flex-col items-center text-center gap-2">
-            <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
-              <IconActivity class="size-5 text-primary" />
+        </Card>
+
+        <Card class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2.5 rounded-xl">
+              <IconBookmark class="size-5 text-primary" />
             </div>
             <div>
-              <p class="text-xl font-bold text-foreground">{stats().totalNotes}</p>
+              <p class="text-2xl font-bold text-foreground">{stats().totalBookmarks}</p>
+              <p class="text-xs text-muted-foreground font-medium">Bookmarks</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2.5 rounded-xl">
+              <IconChecklist class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-foreground">{stats().totalTasks}</p>
+              <p class="text-xs text-muted-foreground font-medium">Tasks</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="bg-muted flex items-center justify-center p-2.5 rounded-xl">
+              <IconNotebook class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-foreground">{stats().totalNotes}</p>
               <p class="text-xs text-muted-foreground font-medium">Notes</p>
             </div>
           </div>
-        </div>
+        </Card>
+      </div>
+
+      {/* Secondary Stats */}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Card class="p-3">
+          <div class="flex items-center gap-2.5">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-xl">
+              <IconVideo class="size-4 text-primary" />
+            </div>
+            <div>
+              <p class="text-lg font-bold text-foreground">{stats().totalVideos}</p>
+              <p class="text-[10px] text-muted-foreground font-medium">Videos</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="p-3">
+          <div class="flex items-center gap-2.5">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-xl">
+              <IconSchool class="size-4 text-primary" />
+            </div>
+            <div>
+              <p class="text-lg font-bold text-foreground">{stats().totalLearningPaths}</p>
+              <p class="text-[10px] text-muted-foreground font-medium">Learning</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="p-3">
+          <div class="flex items-center gap-2.5">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-xl">
+              <IconClock class="size-4 text-primary" />
+            </div>
+            <div>
+              <p class="text-lg font-bold text-foreground">{formatDuration(stats().totalTimeTracked)}</p>
+              <p class="text-[10px] text-muted-foreground font-medium">Tracked</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="p-3">
+          <div class="flex items-center gap-2.5">
+            <div class="bg-muted flex items-center justify-center p-2 rounded-xl">
+              <IconTrendingUp class="size-4 text-primary" />
+            </div>
+            <div>
+              <p class="text-lg font-bold text-foreground">{stats().averageProductivity}%</p>
+              <p class="text-[10px] text-muted-foreground font-medium">Productivity</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Recent Achievements and Deadlines */}
