@@ -20,6 +20,10 @@ fi
 DB_USER=${DB_USER:-trackeep}
 DB_NAME=${DB_NAME:-trackeep}
 
+# Ensure PostgreSQL directories are owned by postgres (fixes volume permission issues)
+mkdir -p "$PGDATA" /run/postgresql /var/log/postgresql
+chown -R postgres:postgres "$PGDATA" /run/postgresql /var/log/postgresql
+
 # Initialize PostgreSQL if data directory is empty
 if [ ! -f "$PGDATA/PG_VERSION" ]; then
     echo "Initializing PostgreSQL database cluster..."
