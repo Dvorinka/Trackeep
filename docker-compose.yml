@@ -1,39 +1,31 @@
+icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
+
 services:
   trackeep:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/dvorinka/trackeep:latest
+    container_name: trackeep
     ports:
       - "${HOST_PORT:-8080}:8080"
-    env_file:
-      - .env
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - GIN_MODE=release
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_USER: ${DB_USER:-trackeep}
+      DB_NAME: ${DB_NAME:-trackeep}
+      JWT_SECRET: ${JWT_SECRET:-}
+      GIN_MODE: release
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
     volumes:
-      - ./uploads:/app/uploads
-      - ./data:/data
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME:-trackeep}
-      POSTGRES_USER: ${DB_USER:-trackeep}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - trackeep_postgres:/var/lib/postgresql/data
+      - trackeep_uploads:/app/uploads
+      - trackeep_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trackeep} -d ${DB_NAME:-trackeep}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
-  postgres_data:
+  trackeep_postgres:
+  trackeep_uploads:
+  trackeep_data:

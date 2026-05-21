@@ -20,8 +20,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 # Stage 3: Final unified image
 FROM alpine:latest
 
-# Install dependencies
-RUN apk --no-cache add ca-certificates tzdata nginx
+# Install dependencies including PostgreSQL
+RUN apk --no-cache add ca-certificates tzdata nginx postgresql postgresql-contrib
+
+# Create postgres user directories and fix permissions
+RUN mkdir -p /var/lib/postgresql/data /run/postgresql /var/log/postgresql && \
+    chown -R postgres:postgres /var/lib/postgresql /run/postgresql /var/log/postgresql
 
 # Copy backend binary and migrations
 COPY --from=backend-builder /app/backend/main /app/main
@@ -45,10 +49,10 @@ RUN mkdir -p /app/uploads /data /var/log/nginx
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Start script to run both backend and nginx
+# Start script to run PostgreSQL, backend and nginx
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

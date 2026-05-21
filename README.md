@@ -33,34 +33,23 @@
 
 ## 🚀 Quick Start
 
-### One-Command Deployment (GHCR Image - Recommended for Casa OS)
+### One-Command Deployment (Docker Run)
+
+PostgreSQL is bundled inside the image. Zero external dependencies.
 
 ```bash
 docker run -d \
   --name trackeep \
   -p 8080:8080 \
-  -e DB_PASSWORD=your_password \
-  -e DB_USER=trackeep \
-  -e DB_NAME=trackeep \
-  -e JWT_SECRET=your_jwt_secret \
+  -e DB_PASSWORD=your_secure_password \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -v trackeep_postgres:/var/lib/postgresql/data \
+  -v trackeep_uploads:/app/uploads \
+  -v trackeep_data:/data \
   ghcr.io/dvorinka/trackeep:latest
 ```
 
-**Note**: This requires an external PostgreSQL database. For a complete deployment with the database included, use Docker Compose below.
-
-### Production Deployment with Docker Compose
-
-```bash
-git clone https://github.com/dvorinka/trackeep.git
-cd trackeep
-cp .env.example .env
-# Edit .env file with your configuration
-docker compose up -d
-```
-
-The setup uses a unified Docker image with frontend and backend in a single container.
-
-**Complete docker-compose.yml**:
+### CasaOS / Docker Compose (Copy-Paste Ready)
 
 ```yaml
 icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
@@ -68,78 +57,47 @@ icon: https://github.com/Dvorinka/Trackeep/raw/main/trackeepfavi_bg.png
 services:
   trackeep:
     image: ghcr.io/dvorinka/trackeep:latest
+    container_name: trackeep
     ports:
       - "${HOST_PORT:-8080}:8080"
-    env_file:
-      - .env
     environment:
-      - BACKEND_PORT=8080
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - GIN_MODE=release
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_USER: ${DB_USER:-trackeep}
+      DB_NAME: ${DB_NAME:-trackeep}
+      JWT_SECRET: ${JWT_SECRET:-}
+      GIN_MODE: release
     volumes:
-      - ./uploads:/app/uploads
-      - ./data:/data
+      - trackeep_postgres:/var/lib/postgresql/data
+      - trackeep_uploads:/app/uploads
+      - trackeep_data:/data
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME:-trackeep}
-      POSTGRES_USER: ${DB_USER:-trackeep}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trackeep} -d ${DB_NAME:-trackeep}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
 volumes:
-  postgres_data:
+  trackeep_postgres:
+  trackeep_uploads:
+  trackeep_data:
 ```
 
-### Service Architecture
+**Why this is CasaOS-ready:**
+- **Single service** — PostgreSQL runs inside the same container
+- **No `BACKEND_PORT`** — internal backend runs on 8081, only port 8080 is exposed
+- **Named volumes** — CasaOS handles them automatically
+- **Optional env vars** — if `DB_PASSWORD` or `JWT_SECRET` are empty, the container auto-generates them
+- **Icon header** — CasaOS reads the `icon:` field for the app tile
 
-Trackeep deployment consists of **2 services**:
+### Optional Environment Variables
 
-#### **🎯 Trackeep Service (Unified)**
-- **Image**: Built from unified Dockerfile (frontend + backend in one)
-- **Ports**: `${HOST_PORT:-8080}:8080`
-- **Purpose**: Web interface, API server, and business logic combined
-- **Health**: HTTP health check endpoint
-- **Auto-configuration**: Frontend automatically connects to backend via nginx proxy
-
-#### **🗄️ Database Service**
-- **Image**: `postgres:15-alpine`
-- **Purpose**: Data persistence and storage
-- **Health**: PostgreSQL readiness check
-- **Storage**: Persistent volume for data
-
-### Required Environment Variables
-
-Create a `.env` file from the provided `.env.example` and configure these required variables:
+All variables have sensible defaults. Only override what you need:
 
 ```env
-# Host port for the application (default: 8080)
 HOST_PORT=8080
-
-# Database Configuration
-DB_PASSWORD=your_secure_password_here
+DB_PASSWORD=your_secure_password_here   # auto-generated if empty
 DB_USER=trackeep
 DB_NAME=trackeep
-
-# JWT Secret (generate with: openssl rand -hex 32)
-JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
+JWT_SECRET=your_jwt_secret_here         # auto-generated & persisted if empty
 ```
 
-**Note**: The frontend automatically connects to the backend via nginx proxy - no VITE_API_URL or additional configuration needed.
+**Note:** The frontend automatically connects to the backend via nginx proxy — no `VITE_API_URL` or additional configuration needed.
 
 ### AI Services Configuration
 
@@ -404,25 +362,15 @@ DISABLE_CHINESE_AI=true
    cd Trackeep
    ```
 
-2. **Configure environment**
+2. **Start the container**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Start all services**
-   ```bash
-   # Using the startup script
-   ./start.sh
-   
-   # Or manually with Docker Compose
    docker compose up -d
    ```
 
-4. **Access the application**
-   - Application: http://localhost:${HOST_PORT:-8080}
-   - Health Check: http://localhost:${HOST_PORT:-8080}/health
-   - API: http://localhost:${HOST_PORT:-8080}/api/
+3. **Access the application**
+   - Application: http://localhost:8080
+   - Health Check: http://localhost:8080/health
+   - API: http://localhost:8080/api/
 
 ### Demo Login
 - Email: `demo@trackeep.com`
@@ -489,22 +437,22 @@ Additional documentation files:
 
 ### Environment Variables
 
-Key environment variables to configure:
+Only override what you need — everything else auto-configures:
 
 ```bash
 # Host port for the application
 HOST_PORT=8080
 
-# Database Configuration
+# Database credentials (auto-generated if omitted)
 DB_PASSWORD=your_secure_password_here
 DB_USER=trackeep
 DB_NAME=trackeep
 
-# JWT Configuration (generate with: openssl rand -hex 32)
+# JWT Secret (auto-generated & persisted if omitted)
 JWT_SECRET=your_jwt_secret_here_64_hex_characters_long_exactly
 ```
 
-**Note**: All other configuration has sensible defaults. The frontend automatically connects to the backend via nginx proxy - no additional API URL configuration needed.
+**Note:** All other configuration has sensible defaults. The frontend automatically connects to the backend via nginx proxy — no additional API URL configuration needed.
 
 ## Contributing
 
