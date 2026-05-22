@@ -1,4 +1,5 @@
 import { createSignal, createEffect, onMount, For, Show } from 'solid-js'
+import { getApiOrigin } from '@/lib/api-url'
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { ModalPortal } from '@/components/ui/ModalPortal';
 import { 
@@ -149,9 +150,9 @@ export function Calendar() {
 
       // Fetch all calendar data in parallel
       const [upcomingRes, todayRes, deadlinesRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/calendar/upcoming`, { headers }),
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/calendar/today`, { headers }),
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/calendar/deadlines`, { headers })
+        fetch(`${getApiOrigin()}/api/v1/calendar/upcoming`, { headers }),
+        fetch(`${getApiOrigin()}/api/v1/calendar/today`, { headers }),
+        fetch(`${getApiOrigin()}/api/v1/calendar/deadlines`, { headers })
       ])
 
       if (upcomingRes.ok) {
@@ -247,7 +248,7 @@ export function Calendar() {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/calendar`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/calendar`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -304,7 +305,7 @@ export function Calendar() {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/calendar/${eventId}/toggle-complete`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/calendar/${eventId}/toggle-complete`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

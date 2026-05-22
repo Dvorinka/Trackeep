@@ -231,7 +231,6 @@ export const Bookmarks = () => {
 
   const handleAddBookmark = async (bookmarkData: any) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/bookmarks`, {
         method: 'POST',
         headers: {
@@ -271,7 +270,6 @@ export const Bookmarks = () => {
   const deleteBookmark = async (bookmarkId: number) => {
     if (confirm('Are you sure you want to delete this bookmark?')) {
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
         const response = await fetch(`${API_BASE_URL}/bookmarks/${bookmarkId}`, {
           method: 'DELETE',
           headers: {
@@ -322,7 +320,6 @@ export const Bookmarks = () => {
     if (!editingBookmark()) return;
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       const response = await fetch(`${API_BASE_URL}/bookmarks/${editingBookmark()!.id}`, {
         method: 'PUT',
         headers: {

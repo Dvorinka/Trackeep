@@ -49,6 +49,10 @@ interface ImportMeta {
 }
 
 interface Window {
+  ENV?: {
+    VITE_API_URL?: string;
+    VITE_DEMO_MODE?: string;
+  };
   importMetaEnv?: {
     VITE_API_URL?: string;
     VITE_DEMO_MODE?: string;

@@ -12,6 +12,7 @@ import {
   getMockStats
 } from './mockData';
 import { isDemoMode } from './demo-mode';
+import { getApiV1BaseUrl } from './api-url';
 
 // Demo mode API client that falls back to mock data
 export class DemoModeApiClient {
@@ -280,8 +281,8 @@ export class DemoModeApiClient {
   }
 }
 
-// Create demo mode API client
-const demoApi = new DemoModeApiClient(import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1');
+// Uses getApiV1BaseUrl so demo client respects runtime env injection.
+const demoApi = new DemoModeApiClient(getApiV1BaseUrl());
 
 // Export demo mode API functions that match the regular API
 export const demoBookmarksApi = {

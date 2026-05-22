@@ -13,6 +13,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useHaptics } from '@/lib/haptics';
+import { getApiOrigin } from '@/lib/api-url';
 
 interface AnalyticsData {
   period: {
@@ -183,7 +184,7 @@ export const Analytics = () => {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/analytics/dashboard?days=${selectedPeriod()}`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/analytics/dashboard?days=${selectedPeriod()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

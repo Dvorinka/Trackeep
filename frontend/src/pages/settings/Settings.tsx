@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AIProviderIcon } from '@/components/AIProviderIcon';
 import { useHaptics } from '@/lib/haptics';
-import { getApiV1BaseUrl } from '@/lib/api-url';
+import { getApiV1BaseUrl, getApiOrigin } from '@/lib/api-url';
 
 interface BrowserExtensionApiKey {
   id: number;
@@ -199,7 +199,7 @@ export const Settings = () => {
 
   const loadAISettings = async () => {
     try {
-      const endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/ai/settings`;
+      const endpoint = `${getApiOrigin()}/api/v1/auth/ai/settings`;
       
       const response = await fetch(endpoint, {
         headers: {
@@ -219,7 +219,7 @@ export const Settings = () => {
 
   const loadAvailableAIProviders = async () => {
     try {
-      const endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/ai/providers`;
+      const endpoint = `${getApiOrigin()}/api/v1/ai/providers`;
       
       const response = await fetch(endpoint, {
         headers: {
@@ -241,7 +241,7 @@ export const Settings = () => {
 
   const loadSearchSettings = async () => {
     try {
-      const endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/search/settings`;
+      const endpoint = `${getApiOrigin()}/api/v1/auth/search/settings`;
       
       const response = await fetch(endpoint, {
         headers: {
@@ -293,7 +293,7 @@ export const Settings = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/ai/settings`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/ai/settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -371,7 +371,7 @@ export const Settings = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/search/settings`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/search/settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1553,7 +1553,7 @@ export const Settings = () => {
                         // Save email settings
                         try {
                           const token = localStorage.getItem('token');
-                          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/email/settings`, {
+                          const response = await fetch(`${getApiOrigin()}/api/v1/auth/email/settings`, {
                             method: 'PUT',
                             headers: {
                               'Authorization': `Bearer ${token}`,
@@ -1582,7 +1582,7 @@ export const Settings = () => {
                         // Test email configuration
                         try {
                           const token = localStorage.getItem('token');
-                          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/email/test`, {
+                          const response = await fetch(`${getApiOrigin()}/api/v1/auth/email/test`, {
                             method: 'POST',
                             headers: {
                               'Authorization': `Bearer ${token}`,

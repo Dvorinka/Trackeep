@@ -140,7 +140,10 @@ export interface WsEvent {
   timestamp?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Switched from raw import.meta.env to getApiOrigin for runtime env support.
+import { getApiOrigin } from './api-url';
+
+const API_BASE_URL = getApiOrigin();
 
 function getToken() {
   return localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';

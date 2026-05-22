@@ -1,5 +1,6 @@
 import { createSignal, onMount, Show, For } from 'solid-js';
 import { Button } from './ui/Button';
+import { getApiOrigin } from '@/lib/api-url';
 
 interface TOTPSetupResponse {
   secret: string;
@@ -42,7 +43,7 @@ export function TwoFactorAuth() {
 
   const fetchTOTPStatus = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/status`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/status`, {
         headers: getAuthHeaders(),
       });
       
@@ -66,7 +67,7 @@ export function TwoFactorAuth() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/setup`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/setup`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -102,7 +103,7 @@ export function TwoFactorAuth() {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/verify`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/verify`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -135,7 +136,7 @@ export function TwoFactorAuth() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/enable`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/enable`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -171,7 +172,7 @@ export function TwoFactorAuth() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/disable`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/disable`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -206,7 +207,7 @@ export function TwoFactorAuth() {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/backup-codes/verify`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/backup-codes/verify`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -240,7 +241,7 @@ export function TwoFactorAuth() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/2fa/backup-codes/regenerate`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/2fa/backup-codes/regenerate`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({

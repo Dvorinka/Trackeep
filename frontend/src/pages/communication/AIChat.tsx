@@ -13,6 +13,7 @@ import {
 } from 'lucide-solid'
 import { AIProviderIcon } from '@/components/AIProviderIcon'
 import { useHaptics } from '@/lib/haptics'
+import { getApiOrigin } from '@/lib/api-url'
 
 interface AIModel {
   id: string
@@ -133,7 +134,7 @@ export const AIChat = () => {
 
   const callAIAPI = async (message: string, modelId: string): Promise<string> => {
     const token = localStorage.getItem('token')
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    const apiUrl = getApiOrigin()
     
     const response = await fetch(`${apiUrl}/api/v1/ai/chat`, {
       method: 'POST',

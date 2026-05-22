@@ -1,4 +1,5 @@
 import { createSignal, For, Show, onMount } from 'solid-js';
+import { getApiOrigin } from '@/lib/api-url';
 import { useSearchParams } from '@solidjs/router';
 import { 
   IconSearch, 
@@ -118,7 +119,7 @@ export const EnhancedSearch = () => {
       
       if (currentFilters.search_mode === 'semantic') {
         // Use semantic search API
-        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/semantic`, {
+        response = await fetch(`${getApiOrigin()}/api/v1/search/semantic`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -145,7 +146,7 @@ export const EnhancedSearch = () => {
         }
       } else {
         // Use enhanced full-text search API
-        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/enhanced`, {
+        response = await fetch(`${getApiOrigin()}/api/v1/search/enhanced`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

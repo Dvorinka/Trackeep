@@ -97,6 +97,18 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+# Runtime environment variable injection for frontend.
+# The frontend is built with placeholders; at container startup we replace
+# them so the same image works for any deployment target (Casa, local, etc.).
+HTML_FILE="/usr/share/nginx/html/index.html"
+if [ -f "$HTML_FILE" ]; then
+    VITE_API_URL=${VITE_API_URL:-}
+    VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
+    sed -i "s|VITE_API_URL_PLACEHOLDER|$VITE_API_URL|g" "$HTML_FILE"
+    sed -i "s|VITE_DEMO_MODE_PLACEHOLDER|$VITE_DEMO_MODE|g" "$HTML_FILE"
+    echo "Frontend env injected: VITE_API_URL='$VITE_API_URL', VITE_DEMO_MODE='$VITE_DEMO_MODE'"
+fi
+
 # Start nginx in foreground (keeps container alive)
 echo "Starting nginx on port 8080..."
 nginx -g "daemon off;"

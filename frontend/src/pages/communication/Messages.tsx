@@ -1,4 +1,5 @@
 import { createSignal, For, Show, onCleanup, onMount } from 'solid-js';
+import { getApiOrigin } from '@/lib/api-url';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from '@/components/ui/Toast';
@@ -973,7 +974,7 @@ export const Messages = () => {
             kind: 'voice_note',
             file_id: uploaded.id,
             title: uploaded.original_name || 'Voice note',
-            url: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/${uploaded.id}/download`,
+            url: `${getApiOrigin()}/api/v1/files/${uploaded.id}/download`,
           }];
 
           const transcript = `${voiceFinalTranscript} ${voiceInterimTranscript}`.trim();
@@ -1366,7 +1367,7 @@ export const Messages = () => {
   const loadMembers = async () => {
     const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/members?limit=200`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/members?limit=200`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return;
@@ -1385,7 +1386,7 @@ export const Messages = () => {
   const loadTeams = async () => {
     const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/teams?limit=200`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/teams?limit=200`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return;
@@ -1403,7 +1404,7 @@ export const Messages = () => {
   const loadAIProviders = async () => {
     const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/ai/providers`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/ai/providers`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return;
@@ -1424,7 +1425,7 @@ export const Messages = () => {
   const loadAISettings = async () => {
     const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/ai/settings`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/auth/ai/settings`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return;
@@ -1454,7 +1455,7 @@ export const Messages = () => {
     const token = localStorage.getItem('trackeep_token') || localStorage.getItem('token') || '';
     setAiShareLoadingSessions(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/chat/sessions`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
@@ -1486,7 +1487,7 @@ export const Messages = () => {
     if (aiShareMessagesBySession()[sessionId]) return;
     setAiShareLoadingMessages(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${sessionId}/messages`, {
+      const res = await fetch(`${getApiOrigin()}/api/v1/chat/sessions/${sessionId}/messages`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
@@ -1786,7 +1787,7 @@ export const Messages = () => {
           kind: uploaded.mime_type?.startsWith('image/') ? 'image' : 'file',
           file_id: uploaded.id,
           title: uploaded.original_name,
-          url: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/${uploaded.id}/download`,
+          url: `${getApiOrigin()}/api/v1/files/${uploaded.id}/download`,
         });
         setUploadProgress({ done: i + 1, total: localFiles.length });
       }
@@ -1796,7 +1797,7 @@ export const Messages = () => {
           kind: file.mime_type?.startsWith('image/') ? 'image' : 'file',
           file_id: file.id,
           title: file.original_name,
-          url: `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/files/${file.id}/download`,
+          url: `${getApiOrigin()}/api/v1/files/${file.id}/download`,
         });
       }
 

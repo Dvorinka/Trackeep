@@ -67,7 +67,10 @@ export const getSearchProvider = (): string => {
           import.meta.env.VITE_SERPER_API_KEY ? 'serper' : 'demo');
 };
 
-// Get API base URL
+// Delegates to getApiOrigin so all API URL resolution goes through the
+// centralized helper that supports runtime env injection.
+import { getApiOrigin } from './api-url';
+
 export const getApiBaseUrl = (): string => {
-  return import.meta.env.VITE_API_URL || 'http://localhost:8080';
+  return getApiOrigin();
 };

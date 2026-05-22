@@ -145,6 +145,11 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        # Optional repository variables (Settings > Secrets and variables > Actions > Variables).
+        # VITE_API_URL defaults to empty for same-origin relative URLs in unified deployments.
+        build-args: |
+          VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+          VITE_DEMO_MODE=${{ vars.VITE_DEMO_MODE || 'false' }}
 
   # deploy:
   #   name: Deploy to Production

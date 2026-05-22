@@ -1,4 +1,5 @@
 import { createEffect, createResource, createSignal, For, Show, onMount } from 'solid-js'
+import { getApiOrigin } from '@/lib/api-url'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -64,7 +65,7 @@ const Chat = () => {
   const loadAIProviders = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/ai/providers`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/ai/providers`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -83,7 +84,7 @@ const Chat = () => {
   const loadAISettings = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/auth/ai/settings`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/auth/ai/settings`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -175,7 +176,7 @@ const Chat = () => {
   const fetchSessions = async () => {
     try {
       const token = getToken()
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/chat/sessions`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -239,7 +240,7 @@ const Chat = () => {
   const loadSessionMessages = async (sessionId: string) => {
     try {
       const token = getToken()
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/chat/sessions/${sessionId}/messages`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -340,7 +341,7 @@ const Chat = () => {
         payload.session_id = currentSessionId()
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/send`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/chat/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -606,7 +607,7 @@ const Chat = () => {
                       e.stopPropagation()
                       try {
                         const token = getToken()
-                        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/chat/sessions/${session.id}`, {
+                        const response = await fetch(`${getApiOrigin()}/api/v1/chat/sessions/${session.id}`, {
                           method: 'DELETE',
                           headers: {
                             ...(token ? { Authorization: `Bearer ${token}` } : {}),

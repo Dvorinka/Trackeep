@@ -1,4 +1,5 @@
 import { createSignal, For, Show, onMount } from 'solid-js';
+import { getApiOrigin } from '@/lib/api-url';
 import { 
   IconBookmark, 
   IconSearch, 
@@ -61,7 +62,7 @@ export const SavedSearches = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/saved`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/search/saved`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -82,7 +83,7 @@ export const SavedSearches = () => {
   const loadTags = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/saved/tags`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/search/saved/tags`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -141,7 +142,7 @@ export const SavedSearches = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/saved/${id}`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/search/saved/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -160,7 +161,7 @@ export const SavedSearches = () => {
   const runSavedSearch = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/search/saved/${id}/run`, {
+      const response = await fetch(`${getApiOrigin()}/api/v1/search/saved/${id}/run`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

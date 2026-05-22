@@ -4,6 +4,14 @@
 # Stage 1: Build Frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
+
+# Accept build arguments for Vite environment variables.
+# If unset, the frontend falls back to same-origin relative URLs in production.
+ARG VITE_API_URL
+ARG VITE_DEMO_MODE=false
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
+
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
