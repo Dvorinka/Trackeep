@@ -215,7 +215,6 @@ func main() {
 	goalsHabitsHandler := handlers.NewGoalsHabitsHandler(config.GetDB())
 	socialHandler := handlers.NewSocialHandler(config.GetDB())
 	teamsHandler := handlers.NewTeamsHandler(config.GetDB())
-	aiRecommendationHandler := handlers.NewAIRecommendationHandler(config.GetDB())
 	marketplaceHandler := handlers.NewMarketplaceHandler(config.GetDB())
 	communityHandler := handlers.NewCommunityHandler(config.GetDB())
 	performanceHandler := handlers.NewPerformanceHandler(config.GetDB())
@@ -256,8 +255,6 @@ func main() {
 			github.GET("/activity", handlers.GetGitHubActivity)
 		}
 
-		v1.POST("/youtube-search-test", handlers.YouTubeSearchTest)
-
 		// Protected auth routes (with demo mode protection)
 		authProtected := v1.Group("/auth")
 		authProtected.Use(handlers.AuthMiddleware())
@@ -280,25 +277,13 @@ func main() {
 			authProtected.POST("/decrypt/content", handlers.DecryptNoteContent)
 			authProtected.GET("/encryption/status", handlers.GetEncryptionStatus)
 
-			// AI Settings routes
-			authProtected.GET("/ai/settings", handlers.GetAISettings)
-			authProtected.PUT("/ai/settings", handlers.UpdateAISettings)
-			authProtected.POST("/ai/test-connection", handlers.TestAIConnection)
-
-			// Search Settings routes
-			authProtected.GET("/search/settings", handlers.GetSearchSettings)
-			authProtected.PUT("/search/settings", handlers.UpdateSearchSettings)
-
 			// Update Settings routes
 			authProtected.GET("/update/settings", handlers.GetUpdateSettings)
 			authProtected.PUT("/update/settings", handlers.UpdateUpdateSettings)
 		}
 
-		// Test AI settings without auth
-		v1.GET("/test-ai-settings", handlers.GetAISettings)
 
-		// Test search and update settings without auth (for demo mode)
-		v1.GET("/test-search-settings", handlers.GetTestSearchSettings)
+		// Test update settings without auth (for demo mode)
 		v1.GET("/test-update-settings", handlers.GetTestUpdateSettings)
 
 		// Dashboard routes (protected)
@@ -435,46 +420,6 @@ func main() {
 			notes.GET("/:id/encrypted", handlers.GetEncryptedNote)
 		}
 
-		// Chat routes (protected)
-		chat := v1.Group("/chat")
-		chat.Use(handlers.AuthMiddleware())
-		{
-			chat.POST("/send", handlers.SendMessage)
-			chat.GET("/sessions", handlers.GetSessions)
-			chat.GET("/sessions/:id/messages", handlers.GetSessionMessages)
-			chat.DELETE("/sessions/:id", handlers.DeleteSession)
-		}
-
-		// Messaging routes (Discord-like user communication)
-		messages := v1.Group("/messages")
-		messages.Use(handlers.AuthMiddleware())
-		{
-			messages.GET("/conversations", handlers.GetConversations)
-			messages.POST("/conversations", handlers.CreateConversation)
-			messages.GET("/conversations/:id", handlers.GetConversation)
-			messages.PATCH("/conversations/:id", handlers.UpdateConversation)
-			messages.POST("/conversations/:id/members", handlers.AddConversationMember)
-			messages.DELETE("/conversations/:id/members/:userId", handlers.RemoveConversationMember)
-			messages.GET("/conversations/:id/messages", handlers.GetConversationMessages)
-			messages.POST("/conversations/:id/messages", handlers.CreateConversationMessage)
-			messages.PATCH("/messages/:id", handlers.UpdateMessage)
-			messages.DELETE("/messages/:id", handlers.DeleteMessage)
-			messages.POST("/messages/:id/reactions", handlers.AddMessageReaction)
-			messages.DELETE("/messages/:id/reactions/:emoji", handlers.RemoveMessageReaction)
-			messages.POST("/messages/search", handlers.SearchMessages)
-			messages.GET("/messages/:id/suggestions", handlers.GetMessageSuggestions)
-			messages.POST("/messages/:id/suggestions/:suggestionId/accept", handlers.AcceptMessageSuggestion)
-			messages.POST("/messages/:id/suggestions/:suggestionId/dismiss", handlers.DismissMessageSuggestion)
-			messages.POST("/messages/:id/reveal-sensitive", handlers.RevealSensitiveMessage)
-			messages.GET("/ws", handlers.MessagesWebSocket)
-
-			messages.GET("/password-vault/items", handlers.GetPasswordVaultItems)
-			messages.POST("/password-vault/items", handlers.CreatePasswordVaultItem)
-			messages.POST("/password-vault/items/:id/share", handlers.SharePasswordVaultItem)
-			messages.POST("/password-vault/items/:id/reveal", handlers.RevealPasswordVaultItem)
-			messages.POST("/password-vault/items/:id/unshare", handlers.UnsharePasswordVaultItem)
-		}
-
 		// Member routes (protected)
 		members := v1.Group("/members")
 		members.Use(handlers.AuthMiddleware())
@@ -515,37 +460,6 @@ func main() {
 			videoBookmarks.POST("/:id/toggle-favorite", videoBookmarkHandler.ToggleFavorite)
 		}
 
-		// Search routes (protected)
-		search := v1.Group("/search")
-		search.Use(handlers.AuthMiddleware())
-		{
-			search.POST("/web", handlers.SearchWeb)
-			search.POST("/news", handlers.SearchNews)
-			search.GET("/suggestions", handlers.GetSearchSuggestions)
-
-			// Enhanced search features
-			search.POST("/enhanced", handlers.EnhancedSearch)
-			search.POST("/save", handlers.SaveSearch)
-			search.GET("/analytics", handlers.GetSearchAnalytics)
-
-			// Saved searches management
-			savedSearches := search.Group("/saved")
-			{
-				savedSearches.POST("", handlers.CreateSavedSearch)
-				savedSearches.GET("", handlers.GetUserSavedSearches)
-				savedSearches.GET("/:id", handlers.GetSavedSearch)
-				savedSearches.PUT("/:id", handlers.UpdateSavedSearch)
-				savedSearches.DELETE("/:id", handlers.DeleteSavedSearch)
-				savedSearches.POST("/:id/run", handlers.RunSavedSearch)
-				savedSearches.GET("/tags", handlers.GetSavedSearchTags)
-			}
-
-			// Semantic search features
-			search.POST("/semantic", handlers.SemanticSearch)
-			search.POST("/embeddings/generate", handlers.GenerateEmbedding)
-			search.POST("/reindex", handlers.ReindexContent)
-		}
-
 		// Time tracking routes (protected)
 		timeEntries := v1.Group("/time-entries")
 		timeEntries.Use(handlers.AuthMiddleware())
@@ -573,30 +487,6 @@ func main() {
 			calendar.GET("/today", calendarHandler.GetTodayEvents)
 			calendar.GET("/deadlines", calendarHandler.GetDeadlines)
 			calendar.PUT("/:id/toggle-complete", calendarHandler.ToggleEventCompletion)
-		}
-
-		// AI Features routes (protected)
-		ai := v1.Group("/ai")
-		ai.Use(handlers.AuthMiddleware())
-		{
-			// AI providers
-			ai.GET("/providers", handlers.GetAIProviders)
-
-			// Content summarization
-			ai.POST("/summarize", handlers.SummarizeContent)
-			ai.GET("/summaries", handlers.GetAISummaries)
-
-			// Task suggestions
-			ai.POST("/tasks/suggest", handlers.GetTaskSuggestions)
-			ai.GET("/tasks/suggestions", handlers.GetTaskSuggestionsList)
-			ai.POST("/tasks/suggestions/:id/accept", handlers.AcceptTaskSuggestion)
-			ai.POST("/tasks/suggestions/:id/dismiss", handlers.DismissTaskSuggestion)
-
-			// Tag suggestions
-			ai.POST("/tags/suggest", handlers.GenerateTagSuggestions)
-
-			// Content generation
-			ai.POST("/content/generate", handlers.GenerateContent)
 		}
 
 		// Integration routes (protected)
@@ -740,19 +630,6 @@ func main() {
 			// Team activity and stats
 			teams.GET("/:id/activity", teamsHandler.GetTeamActivity)
 			teams.GET("/:id/stats", teamsHandler.GetTeamStats)
-		}
-
-		// AI Recommendations routes (protected)
-		recommendations := v1.Group("/recommendations")
-		recommendations.Use(handlers.AuthMiddleware())
-		{
-			recommendations.GET("", aiRecommendationHandler.GetRecommendations)
-			recommendations.GET("/stats", aiRecommendationHandler.GetRecommendationStats)
-			recommendations.PUT("/preferences", aiRecommendationHandler.UpdatePreferences)
-			recommendations.GET("/history", aiRecommendationHandler.GetRecommendationHistory)
-			recommendations.GET("/insights", aiRecommendationHandler.GetInsights)
-			recommendations.POST("/:id/interaction", aiRecommendationHandler.RecordInteraction)
-			recommendations.DELETE("/:id", aiRecommendationHandler.DeleteRecommendation)
 		}
 
 		// Marketplace routes (protected)

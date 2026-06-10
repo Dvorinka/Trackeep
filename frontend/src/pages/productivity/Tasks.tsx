@@ -2,6 +2,7 @@ import { createSignal, onMount } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TaskModal } from '@/components/ui/TaskModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { IconEdit, IconTrash } from '@tabler/icons-solidjs';
 import { getApiV1BaseUrl } from '@/lib/api-url';
 import { useHaptics } from '@/lib/haptics';
@@ -28,6 +29,9 @@ export const Tasks = () => {
   const [selectedPriority, setSelectedPriority] = createSignal('');
   const [draggedTaskId, setDraggedTaskId] = createSignal<number | null>(null);
   const [dragOverColumn, setDragOverColumn] = createSignal<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [taskToDelete, setTaskToDelete] = createSignal<number | null>(null);
+  const [modalError, setModalError] = createSignal('');
   const [taskStatuses, setTaskStatuses] = createSignal<Record<number, 'todo' | 'inProgress' | 'done'>>({});
 
   const haptics = useHaptics();
@@ -174,26 +178,34 @@ export const Tasks = () => {
   };
 
   const deleteTask = async (taskId: number) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
-          },
-        });
+    setTaskToDelete(taskId);
+    setShowDeleteModal(true);
+  };
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete task');
-        }
+  const confirmDeleteTask = async () => {
+    const taskId = taskToDelete();
+    if (!taskId) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+        },
+      });
 
-        setTasks(prev => prev.filter(task => task.id !== taskId));
-        haptics.delete(); // Delete feedback
-      } catch (error) {
-        haptics.error(); // Error feedback
-        alert(error instanceof Error ? error.message : 'Failed to delete task');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete task');
       }
+
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+      haptics.delete(); // Delete feedback
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
+    } catch (error) {
+      haptics.error(); // Error feedback
+      setModalError(error instanceof Error ? error.message : 'Failed to delete task');
     }
   };
 
@@ -342,6 +354,20 @@ export const Tasks = () => {
           })}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteModal()}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setTaskToDelete(null);
+          setModalError('');
+        }}
+        onConfirm={confirmDeleteTask}
+        title="Delete Task"
+        message={modalError() || 'Are you sure you want to delete this task? This action cannot be undone.'}
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

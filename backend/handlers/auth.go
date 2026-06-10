@@ -392,7 +392,7 @@ func Register(c *gin.Context) {
 	}
 
 	// Provision messaging defaults (self chat, password vault, global channels).
-	_ = ensureMessagingDefaults(db, user.ID)
+
 
 	// Generate JWT token
 	token, err := GenerateJWT(user)

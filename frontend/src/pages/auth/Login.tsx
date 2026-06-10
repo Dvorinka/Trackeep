@@ -138,6 +138,8 @@ export const Login = () => {
           fullName: formData().fullName,
         };
         await register(registerPayload);
+        navigate('/app/workspace-setup', { replace: true });
+        return;
       }
       navigate(getSafeNextPath(), { replace: true });
     } catch (err) {

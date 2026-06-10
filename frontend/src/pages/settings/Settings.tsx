@@ -1,11 +1,10 @@
 import { createSignal, onMount, Show, For } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { useAuth } from '@/lib/auth';
-import { IconUser, IconLock, IconKey, IconBrain, IconMail, IconSend, IconShield, IconDownload } from '@tabler/icons-solidjs';
+import { IconUser, IconLock, IconKey, IconMail, IconSend, IconShield, IconDownload, IconClock } from '@tabler/icons-solidjs';
 import { TwoFactorAuth } from '@/components/TwoFactorAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { AIProviderIcon } from '@/components/AIProviderIcon';
 import { useHaptics } from '@/lib/haptics';
 import { getApiV1BaseUrl, getApiOrigin } from '@/lib/api-url';
 
@@ -34,8 +33,7 @@ export const Settings = () => {
   const [message, setMessage] = createSignal('');
   const [profileData, setProfileData] = createSignal({
     fullName: '',
-    theme: 'dark',
-    showBrowserSearch: true
+    theme: 'dark'
   });
   const [customColors, setCustomColors] = createSignal({
     primary: '#5ab9ff',
@@ -112,15 +110,7 @@ export const Settings = () => {
     newPassword: '',
     confirmPassword: ''
   });
-  const [aiSettings, setAISettings] = createSignal({
-    mistral: { enabled: false, api_key: '', model: 'mistral-small-latest', model_thinking: 'mistral-large-latest' },
-    grok: { enabled: false, api_key: '', base_url: 'https://api.x.ai/v1', model: 'grok-4-1-fast-non-reasoning-latest', model_thinking: 'grok-4-1-fast-reasoning-latest' },
-    deepseek: { enabled: false, api_key: '', base_url: 'https://api.deepseek.com', model: 'deepseek-chat', model_thinking: 'deepseek-reasoner' },
-    ollama: { enabled: false, base_url: 'http://localhost:11434', model: 'llama3.1', model_thinking: 'llama3.1' },
-    longcat: { enabled: false, api_key: '', base_url: 'https://api.longcat.chat', openai_endpoint: 'https://api.longcat.chat/openai', anthropic_endpoint: 'https://api.longcat.chat/anthropic', model: 'LongCat-Flash-Chat', model_thinking: 'LongCat-Flash-Thinking', model_thinking_upgraded: 'LongCat-Flash-Thinking-2601', format: 'openai' },
-    openrouter: { enabled: false, api_key: '', base_url: 'https://openrouter.ai/api', model: 'openrouter/auto', model_thinking: 'openrouter/auto' }
-  });
-  const [availableAIProviders, setAvailableAIProviders] = createSignal<string[]>([]);
+
   const [emailSettings, setEmailSettings] = createSignal({
     smtp_enabled: false,
     smtp_host: '',
@@ -136,18 +126,7 @@ export const Settings = () => {
     oauth_client_secret: '',
     oauth_redirect_uri: ''
   });
-  const [searchSettings, setSearchSettings] = createSignal({
-    brave_api_key: '',
-    brave_search_base_url: 'https://api.search.brave.com/res/v1/web/search',
-    serper_api_key: '',
-    serper_base_url: 'https://google.serper.dev/search',
-    search_api_provider: 'brave',
-    search_results_limit: 10,
-    search_cache_ttl: 300,
-    search_rate_limit: 100
-  });
   const [emailSettingsExpanded, setEmailSettingsExpanded] = createSignal(true);
-  const [aiLoading, setAiLoading] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal('account');
   const [browserExtensionApiKeys, setBrowserExtensionApiKeys] = createSignal<BrowserExtensionApiKey[]>([]);
   const [browserExtensions, setBrowserExtensions] = createSignal<BrowserExtensionClient[]>([]);
@@ -155,18 +134,21 @@ export const Settings = () => {
   const tabs = [
     { id: 'account', name: 'Account', icon: IconUser },
     { id: 'security', name: 'Security', icon: IconShield },
-    { id: 'ai', name: 'AI & Integration', icon: IconBrain },
     { id: 'communication', name: 'Communication', icon: IconMail },
-    { id: 'search', name: 'Search API', icon: IconBrain },
-    { id: 'tools', name: 'Tools', icon: IconDownload }
+    { id: 'tools', name: 'Tools', icon: IconDownload },
+    { id: 'solidtime', name: 'Solidtime', icon: IconClock }
   ];
+
+  const [solidtimeSettings, setSolidtimeSettings] = createSignal({
+    apiKey: localStorage.getItem('solidtime_api_key') || '',
+    orgId: localStorage.getItem('solidtime_org_id') || ''
+  });
 
   onMount(() => {
     if (authState.user) {
       setProfileData({
         fullName: authState.user.full_name,
-        theme: authState.user.theme || 'dark',
-        showBrowserSearch: localStorage.getItem('showBrowserSearch') !== 'false'
+        theme: authState.user.theme || 'dark'
       });
     }
     
@@ -188,76 +170,11 @@ export const Settings = () => {
       }
     }
     
-    loadAISettings();
-    loadAvailableAIProviders();
-    loadSearchSettings();
     loadBrowserExtensionAccess();
   });
 
 
 
-
-  const loadAISettings = async () => {
-    try {
-      const endpoint = `${getApiOrigin()}/api/v1/auth/ai/settings`;
-      
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAISettings(data);
-      }
-    } catch (error) {
-      console.error('Failed to load AI settings:', error);
-    }
-  };
-
-  const loadAvailableAIProviders = async () => {
-    try {
-      const endpoint = `${getApiOrigin()}/api/v1/ai/providers`;
-      
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const providers = (data.providers || []) as { id: string }[];
-        setAvailableAIProviders(providers.map((p) => p.id));
-      }
-    } catch (error) {
-      console.error('Failed to load available AI providers:', error);
-      setAvailableAIProviders(['mistral', 'grok', 'deepseek', 'ollama', 'longcat', 'openrouter']);
-    }
-  };
-
-  const loadSearchSettings = async () => {
-    try {
-      const endpoint = `${getApiOrigin()}/api/v1/auth/search/settings`;
-      
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSearchSettings(data);
-      }
-    } catch (error) {
-      console.error('Failed to load search settings:', error);
-    }
-  };
 
   const loadBrowserExtensionAccess = async () => {
     try {
@@ -287,35 +204,6 @@ export const Settings = () => {
     }
   };
 
-  const handleUpdateAISettings = async () => {
-    setAiLoading(true);
-    setMessage('');
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${getApiOrigin()}/api/v1/auth/ai/settings`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(aiSettings())
-      });
-
-      if (response.ok) {
-        setMessage('AI settings updated successfully!');
-        await loadAISettings(); // Reload to get masked keys
-      } else {
-        const error = await response.json();
-        setMessage(error.error || 'Failed to update AI settings');
-      }
-    } catch (error) {
-      setMessage('Failed to update AI settings');
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   const handleUpdateProfile = async () => {
     setIsLoading(true);
     setMessage('');
@@ -325,9 +213,6 @@ export const Settings = () => {
         fullName: profileData().fullName,
         theme: profileData().theme
       });
-      
-      // Save browser search setting to localStorage
-      localStorage.setItem('showBrowserSearch', profileData().showBrowserSearch.toString());
       
       setMessage('Profile updated successfully!');
       haptics.success();
@@ -360,35 +245,6 @@ export const Settings = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to change password');
       haptics.error();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateSearchSettings = async () => {
-    setIsLoading(true);
-    setMessage('');
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${getApiOrigin()}/api/v1/auth/search/settings`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(searchSettings())
-      });
-
-      if (response.ok) {
-        setMessage('Search settings updated successfully!');
-        await loadSearchSettings();
-      } else {
-        const error = await response.json();
-        setMessage(error.error || 'Failed to update search settings');
-      }
-    } catch (error) {
-      setMessage('Failed to update search settings');
     } finally {
       setIsLoading(false);
     }
@@ -633,792 +489,6 @@ export const Settings = () => {
           </div>
         </Show>
 
-        {/* AI & Integration Tab */}
-        <Show when={activeTab() === 'ai'}>
-          <div class="space-y-6">
-            {/* AI Settings Section */}
-            <div class="border rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                <IconBrain class="size-5" />
-                AI Settings
-              </h2>
-
-              {/* AI Settings Summary */}
-              <div class="mb-4 p-3 bg-muted/30 rounded-lg">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-muted-foreground">
-                    {(() => {
-                      const settings = aiSettings() || {};
-                      const providers = availableAIProviders();
-                      const enabledCount = Object.values(settings).filter((provider: any) => provider && provider.enabled).length;
-                      const totalAvailable = providers.length || Object.keys(settings).length;
-                      return `Active Providers: ${enabledCount} / ${totalAvailable}`;
-                    })()}
-                  </span>
-                  <span class="text-xs text-muted-foreground">
-                    {(() => {
-                      const settings = aiSettings() || {};
-                      const enabledCount = Object.values(settings).filter((provider: any) => provider && provider.enabled).length;
-                      const totalAvailable = availableAIProviders().length || Object.keys(settings).length;
-
-                      if (totalAvailable === 0) {
-                        return 'No AI providers are available on the server. Check backend AI configuration.';
-                      }
-
-                      if (enabledCount === 0) {
-                        return 'Providers are available but none are enabled. Enable at least one provider below.';
-                      }
-
-                      return `AI is ready. ${enabledCount} provider${enabledCount > 1 ? 's' : ''} enabled.`;
-                    })()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Quick Setup Section */}
-              <div class="border rounded-lg p-4 bg-primary/5 mb-6">
-                <h3 class="text-lg font-medium text-foreground mb-3">Quick Setup</h3>
-                <p class="text-sm text-muted-foreground mb-4">
-                  Configure the most commonly used AI providers quickly:
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <Button
-                    variant={aiSettings().mistral.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        mistral: { ...settings.mistral, enabled: !settings.mistral.enabled }
-                      });
-                      haptics.selection();
-                    }}
-                    class="justify-start"
-                  >
-                    <AIProviderIcon 
-                      providerId="mistral" 
-                      size="0.75rem"
-                      white={aiSettings().mistral.enabled}
-                    />
-                    Mistral AI
-                  </Button>
-                  <Button
-                    variant={aiSettings().longcat.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        longcat: { ...settings.longcat, enabled: !settings.longcat.enabled }
-                      });
-                    }}
-                    class="flex items-center gap-2"
-                  >
-                    <AIProviderIcon 
-                      providerId="longcat" 
-                      size="0.75rem"
-                      white={aiSettings().longcat.enabled}
-                    />
-                    LongCat AI
-                  </Button>
-                  <Button
-                    variant={aiSettings().grok.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        grok: { ...settings.grok, enabled: !settings.grok.enabled }
-                      });
-                    }}
-                    class="flex items-center gap-2"
-                  >
-                    <AIProviderIcon 
-                      providerId="grok" 
-                      size="0.75rem"
-                      white={aiSettings().grok.enabled}
-                    />
-                    Grok AI
-                  </Button>
-                  <Button
-                    variant={aiSettings().deepseek.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        deepseek: { ...settings.deepseek, enabled: !settings.deepseek.enabled }
-                      });
-                    }}
-                    class="flex items-center gap-2"
-                  >
-                    <AIProviderIcon 
-                      providerId="deepseek" 
-                      size="0.75rem"
-                      white={aiSettings().deepseek.enabled}
-                    />
-                    DeepSeek AI
-                  </Button>
-                  <Button
-                    variant={aiSettings().ollama.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        ollama: { ...settings.ollama, enabled: !settings.ollama.enabled }
-                      });
-                    }}
-                    class="flex items-center gap-2"
-                  >
-                    <AIProviderIcon 
-                      providerId="ollama" 
-                      size="0.75rem"
-                      white={aiSettings().ollama.enabled}
-                    />
-                    Ollama (Local)
-                  </Button>
-                  <Button
-                    variant={aiSettings().openrouter.enabled ? "default" : "outline"}
-                    onClick={() => {
-                      const settings = aiSettings();
-                      setAISettings({
-                        ...settings,
-                        openrouter: { ...settings.openrouter, enabled: !settings.openrouter.enabled }
-                      });
-                    }}
-                    class="flex items-center gap-2"
-                  >
-                    <AIProviderIcon 
-                      providerId="openrouter" 
-                      size="0.75rem"
-                      white={aiSettings().openrouter.enabled}
-                    />
-                    OpenRouter
-                  </Button>
-                </div>
-              </div>
-
-              {/* Detailed Configuration */}
-              <div class="space-y-6">
-                <h4 class="text-md font-medium text-foreground">Detailed Configuration</h4>
-                
-                {/* Mistral Settings */}
-                <Show when={aiSettings().mistral.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      Mistral AI
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().mistral.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              mistral: { ...settings.mistral, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable Mistral AI</label>
-                      </div>
-
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">API Key *</label>
-                        <div class="relative">
-                          <input
-                            type="password"
-                            value={aiSettings().mistral.api_key}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                mistral: { ...settings.mistral, api_key: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="Enter Mistral API key"
-                            required
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                          >
-                            <IconKey class="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().mistral.model}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                mistral: { ...settings.mistral, model: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="mistral-small-latest"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().mistral.model_thinking}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                mistral: { ...settings.mistral, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="mistral-large-latest"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* LongCat Settings */}
-                <Show when={aiSettings().longcat.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
-                      LongCat AI
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().longcat.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              longcat: { ...settings.longcat, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable LongCat AI</label>
-                      </div>
-
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                        <div class="relative">
-                          <input
-                            type="password"
-                            value={aiSettings().longcat.api_key}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                longcat: { ...settings.longcat, api_key: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="Enter LongCat API key"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                          >
-                            <IconKey class="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">Base URL</label>
-                        <input
-                          type="text"
-                          value={aiSettings().longcat.base_url}
-                          onInput={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              longcat: { ...settings.longcat, base_url: e.currentTarget.value }
-                            });
-                          }}
-                          placeholder="https://api.longcat.chat"
-                          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                        />
-                      </div>
-
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Default Model</label>
-                          <select
-                            value={aiSettings().longcat.model}
-                            onChange={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                longcat: { ...settings.longcat, model: e.currentTarget.value }
-                              });
-                            }}
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          >
-                            <option value="LongCat-Flash-Chat">LongCat Flash Chat</option>
-                            <option value="LongCat-Flash-Thinking">LongCat Flash Thinking</option>
-                            <option value="LongCat-Flash-Thinking-2601">LongCat Flash Thinking 2601</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <select
-                            value={aiSettings().longcat.model_thinking}
-                            onChange={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                longcat: { ...settings.longcat, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          >
-                            <option value="LongCat-Flash-Thinking">LongCat Flash Thinking</option>
-                            <option value="LongCat-Flash-Thinking-2601">LongCat Flash Thinking 2601</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* Grok Settings */}
-                <Show when={aiSettings().grok.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                      Grok AI
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().grok.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              grok: { ...settings.grok, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable Grok AI</label>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                        <div class="relative">
-                          <input
-                            type="password"
-                            value={aiSettings().grok.api_key}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                grok: { ...settings.grok, api_key: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="Enter Grok API key"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                          >
-                            <IconKey class="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">Base URL</label>
-                        <input
-                          type="text"
-                          value={aiSettings().grok.base_url}
-                          onInput={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              grok: { ...settings.grok, base_url: e.currentTarget.value }
-                            });
-                          }}
-                          placeholder="https://api.x.ai/v1"
-                          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                        />
-                      </div>
-                      
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().grok.model}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                grok: { ...settings.grok, model: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="grok-4-1-fast-non-reasoning-latest"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().grok.model_thinking}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                grok: { ...settings.grok, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="grok-4-1-fast-reasoning-latest"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* DeepSeek Settings */}
-                <Show when={aiSettings().deepseek.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                      DeepSeek AI
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().deepseek.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              deepseek: { ...settings.deepseek, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable DeepSeek AI</label>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                        <div class="relative">
-                          <input
-                            type="password"
-                            value={aiSettings().deepseek.api_key}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                deepseek: { ...settings.deepseek, api_key: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="Enter DeepSeek API key"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                          >
-                            <IconKey class="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">Base URL</label>
-                        <input
-                          type="text"
-                          value={aiSettings().deepseek.base_url}
-                          onInput={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              deepseek: { ...settings.deepseek, base_url: e.currentTarget.value }
-                            });
-                          }}
-                          placeholder="https://api.deepseek.com"
-                          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                        />
-                      </div>
-                      
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().deepseek.model}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                deepseek: { ...settings.deepseek, model: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="deepseek-chat"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().deepseek.model_thinking}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                deepseek: { ...settings.deepseek, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="deepseek-reasoner"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* Ollama Settings */}
-                <Show when={aiSettings().ollama.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                      Ollama (Local AI)
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().ollama.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              ollama: { ...settings.ollama, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable Ollama</label>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">Base URL</label>
-                        <input
-                          type="text"
-                          value={aiSettings().ollama.base_url}
-                          onInput={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              ollama: { ...settings.ollama, base_url: e.currentTarget.value }
-                            });
-                          }}
-                          placeholder="http://localhost:11434"
-                          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                        />
-                      </div>
-                      
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().ollama.model}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                ollama: { ...settings.ollama, model: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="llama3.1"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().ollama.model_thinking}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                ollama: { ...settings.ollama, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="llama3.1"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* OpenRouter Settings */}
-                <Show when={aiSettings().openrouter.enabled}>
-                  <div class="border rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <span class="w-2 h-2 bg-sky-500 rounded-full"></span>
-                      OpenRouter
-                    </h3>
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={aiSettings().openrouter.enabled}
-                          onChange={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              openrouter: { ...settings.openrouter, enabled: e.currentTarget.checked }
-                            });
-                          }}
-                          class="rounded border-input"
-                        />
-                        <label class="text-sm font-medium text-foreground">Enable OpenRouter</label>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
-                        <div class="relative">
-                          <input
-                            type="password"
-                            value={aiSettings().openrouter.api_key}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                openrouter: { ...settings.openrouter, api_key: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="Enter OpenRouter API key"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                          >
-                            <IconKey class="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label class="block text-sm font-medium text-muted-foreground mb-1">Base URL</label>
-                        <input
-                          type="text"
-                          value={aiSettings().openrouter.base_url}
-                          onInput={(e) => {
-                            const settings = aiSettings();
-                            setAISettings({
-                              ...settings,
-                              openrouter: { ...settings.openrouter, base_url: e.currentTarget.value }
-                            });
-                          }}
-                          placeholder="https://openrouter.ai/api"
-                          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                        />
-                      </div>
-                      
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().openrouter.model}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                openrouter: { ...settings.openrouter, model: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="openrouter/auto"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label class="block text-sm font-medium text-muted-foreground mb-1">Thinking Model</label>
-                          <input
-                            type="text"
-                            value={aiSettings().openrouter.model_thinking}
-                            onInput={(e) => {
-                              const settings = aiSettings();
-                              setAISettings({
-                                ...settings,
-                                openrouter: { ...settings.openrouter, model_thinking: e.currentTarget.value }
-                              });
-                            }}
-                            placeholder="openrouter/auto"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-              </div>
-
-              <div class="flex gap-3 pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={handleUpdateAISettings}
-                  disabled={aiLoading()}
-                  class="inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-auto items-center gap-2 py-2 px-4"
-                >
-                  {aiLoading() ? 'Saving...' : 'Save AI Model Settings'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Test AI configuration
-                    const enabledProviders = Object.entries(aiSettings()).filter(([_, config]) => config.enabled);
-                    if (enabledProviders.length > 0) {
-                      alert(`AI configuration test successful! (${enabledProviders.length} providers enabled)`);
-                    } else {
-                      alert('No AI providers enabled. Please enable at least one provider.');
-                    }
-                  }}
-                  class="inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow hover:bg-secondary/90 h-auto items-center gap-2 py-2 px-4"
-                >
-                  Test AI Configuration
-                </button>
-              </div>
-            </div>
-          </div>
-        </Show>
-
         {/* Communication Tab */}
         <Show when={activeTab() === 'communication'}>
           <div class="space-y-6">
@@ -1612,130 +682,6 @@ export const Settings = () => {
           </div>
         </Show>
 
-        {/* Search API Tab */}
-        <Show when={activeTab() === 'search'}>
-          <div class="space-y-6">
-            <div class="border rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                <IconBrain class="size-5" />
-                Browser Search API Configuration
-              </h2>
-              <div class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-muted-foreground mb-2">
-                    Search API Provider
-                  </label>
-                  <select
-                    value={searchSettings().search_api_provider}
-                    onChange={(e) => setSearchSettings(prev => ({ ...prev, search_api_provider: e.target.value }))}
-                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                  >
-                    <option value="brave">Brave Search API</option>
-                    <option value="serper">Serper (Google) API</option>
-                  </select>
-                </div>
-
-                <Show when={searchSettings().search_api_provider === 'brave'}>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="block text-sm font-medium text-muted-foreground mb-2">Brave API Key *</label>
-                      <input
-                        type="password"
-                        value={searchSettings().brave_api_key}
-                        onInput={(e) => setSearchSettings(prev => ({ ...prev, brave_api_key: e.currentTarget.value }))}
-                        placeholder="Enter Brave API key"
-                        required
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-muted-foreground mb-2">Brave Search Base URL</label>
-                      <input
-                        type="url"
-                        value={searchSettings().brave_search_base_url}
-                        onInput={(e) => setSearchSettings(prev => ({ ...prev, brave_search_base_url: e.currentTarget.value }))}
-                        placeholder="https://api.search.brave.com/res/v1/web/search"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                      />
-                    </div>
-                  </div>
-                </Show>
-
-                <Show when={searchSettings().search_api_provider === 'serper'}>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="block text-sm font-medium text-muted-foreground mb-2">Serper API Key *</label>
-                      <input
-                        type="password"
-                        value={searchSettings().serper_api_key}
-                        onInput={(e) => setSearchSettings(prev => ({ ...prev, serper_api_key: e.currentTarget.value }))}
-                        placeholder="Enter Serper API key"
-                        required
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-muted-foreground mb-2">Serper Base URL</label>
-                      <input
-                        type="url"
-                        value={searchSettings().serper_base_url}
-                        onInput={(e) => setSearchSettings(prev => ({ ...prev, serper_base_url: e.currentTarget.value }))}
-                        placeholder="https://google.serper.dev/search"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                      />
-                    </div>
-                  </div>
-                </Show>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label class="block text-sm font-medium text-muted-foreground mb-2">Results Limit</label>
-                    <input
-                      type="number"
-                      value={searchSettings().search_results_limit}
-                      onInput={(e) => setSearchSettings(prev => ({ ...prev, search_results_limit: parseInt(e.currentTarget.value) || 10 }))}
-                      min="1"
-                      max="50"
-                      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-muted-foreground mb-2">Cache TTL (seconds)</label>
-                    <input
-                      type="number"
-                      value={searchSettings().search_cache_ttl}
-                      onInput={(e) => setSearchSettings(prev => ({ ...prev, search_cache_ttl: parseInt(e.currentTarget.value) || 300 }))}
-                      min="0"
-                      max="3600"
-                      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-muted-foreground mb-2">Rate Limit</label>
-                    <input
-                      type="number"
-                      value={searchSettings().search_rate_limit}
-                      onInput={(e) => setSearchSettings(prev => ({ ...prev, search_rate_limit: parseInt(e.currentTarget.value) || 100 }))}
-                      min="1"
-                      max="1000"
-                      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleUpdateSearchSettings}
-                  disabled={isLoading()}
-                  class="inline-flex justify-center rounded-md text-sm font-medium transition-shadow focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-auto items-center gap-2 py-2 px-4"
-                >
-                  {isLoading() ? 'Saving...' : 'Save Search Settings'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Show>
-
         {/* Tools Tab */}
         <Show when={activeTab() === 'tools'}>
           <div class="space-y-6">
@@ -1852,6 +798,101 @@ export const Settings = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </Show>
+
+        <Show when={activeTab() === 'solidtime'}>
+          <div class="space-y-6">
+            <Card class="p-6">
+              <h2 class="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                <div class="bg-muted flex items-center justify-center p-2 rounded-lg">
+                  <IconClock class="size-4 text-primary" />
+                </div>
+                Solidtime Integration
+              </h2>
+              <p class="text-sm text-muted-foreground mb-6">
+                Configure your solidtime.io API credentials to enable time tracking integration.
+              </p>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-muted-foreground mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={solidtimeSettings().apiKey}
+                    onInput={(e) => setSolidtimeSettings(prev => ({ ...prev, apiKey: e.currentTarget.value }))}
+                    placeholder="Enter your solidtime API key"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <p class="text-xs text-muted-foreground mt-1">
+                    Get your API key from solidtime.io Profile Settings
+                  </p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-muted-foreground mb-1">Organization ID</label>
+                  <input
+                    type="text"
+                    value={solidtimeSettings().orgId}
+                    onInput={(e) => setSolidtimeSettings(prev => ({ ...prev, orgId: e.currentTarget.value }))}
+                    placeholder="Enter your organization ID"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-ring"
+                  />
+                  <p class="text-xs text-muted-foreground mt-1">
+                    Find your organization ID in your solidtime.io dashboard URL
+                  </p>
+                </div>
+
+                <div class="flex gap-3">
+                  <Button
+                    onClick={() => {
+                      localStorage.setItem('solidtime_api_key', solidtimeSettings().apiKey);
+                      localStorage.setItem('solidtime_org_id', solidtimeSettings().orgId);
+                      setMessage('Solidtime credentials saved successfully!');
+                      haptics.success();
+                    }}
+                    class="flex items-center gap-2"
+                  >
+                    <IconKey class="size-4" />
+                    Save Credentials
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      localStorage.removeItem('solidtime_api_key');
+                      localStorage.removeItem('solidtime_org_id');
+                      setSolidtimeSettings({ apiKey: '', orgId: '' });
+                      setMessage('Solidtime credentials cleared');
+                      haptics.selection();
+                    }}
+                    variant="outline"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+
+              <div class="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <h4 class="font-medium text-foreground mb-2">How to get your credentials</h4>
+                <div class="space-y-2 text-sm text-muted-foreground">
+                  <div class="flex items-start gap-2">
+                    <span class="text-primary">1.</span>
+                    <span>Log in to your solidtime.io account</span>
+                  </div>
+                  <div class="flex items-start gap-2">
+                    <span class="text-primary">2.</span>
+                    <span>Go to Profile Settings → API Tokens</span>
+                  </div>
+                  <div class="flex items-start gap-2">
+                    <span class="text-primary">3.</span>
+                    <span>Create a new API token and copy it</span>
+                  </div>
+                  <div class="flex items-start gap-2">
+                    <span class="text-primary">4.</span>
+                    <span>Your organization ID is in the dashboard URL: /organizations/{'{id}'}/...</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
         </Show>
       </div>

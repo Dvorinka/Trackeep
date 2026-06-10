@@ -81,13 +81,16 @@ export const ColorSwitcherDropdown = () => {
     root.style.setProperty('--primary', hslColor);
     root.style.setProperty('--colors-primary', hslColor);
     
-    // Ensure background stays theme-appropriate
     if (isDark) {
       root.style.setProperty('--background', '0 0% 10%');
       root.style.setProperty('--colors-background', '0 0% 10%');
+      root.style.setProperty('--foreground', '0 0% 98%');
+      root.style.setProperty('--colors-foreground', '0 0% 98%');
     } else {
       root.style.setProperty('--background', '0 0% 100%');
       root.style.setProperty('--colors-background', '0 0% 100%');
+      root.style.setProperty('--foreground', '0 0% 3.9%');
+      root.style.setProperty('--colors-foreground', '0 0% 3.9%');
     }
     
     if (closeDropdown) {

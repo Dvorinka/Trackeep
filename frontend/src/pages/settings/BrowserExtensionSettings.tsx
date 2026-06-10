@@ -2,6 +2,7 @@ import { createSignal, createEffect, Show, For } from 'solid-js';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { toast } from '@/components/ui/Toast';
 import { CheckCircle, AlertCircle, Shield, Key, Globe, Clock, Users, Settings } from 'lucide-solid';
 import { getApiV1BaseUrl } from '@/lib/api-url';
@@ -55,12 +56,19 @@ const BrowserExtensionSettings = () => {
     'files:write'
   ]);
   const [activeTab, setActiveTab] = createSignal<'overview' | 'api-keys' | 'extensions' | 'examples'>('api-keys');
+  const [showConfirmModal, setShowConfirmModal] = createSignal(false);
+  const [confirmModalConfig, setConfirmModalConfig] = createSignal({
+    title: 'Confirm Action',
+    message: 'Are you sure?',
+    onConfirm: () => {}
+  });
+  const [confirmTarget, setConfirmTarget] = createSignal<{type: 'key' | 'extension', id: number | string} | null>(null);
 
   const quickStartGuides: QuickStartGuide[] = [
     {
       title: 'Generate API Key',
       description: 'Create a secure API key for your browser extension',
-      icon: <Key class="w-5 h-5 text-blue-600" />,
+      icon: <Key class="w-5 h-5 text-primary" />,
       steps: [
         'Go to Settings → Browser Extension',
         'Click "Generate New Key"',
@@ -71,7 +79,7 @@ const BrowserExtensionSettings = () => {
     {
       title: 'Configure Extension',
       description: 'Set up your browser extension with the API key',
-      icon: <Settings class="w-5 h-5 text-green-600" />,
+      icon: <Settings class="w-5 h-5 text-primary" />,
       steps: [
         'Install the Trackeep browser extension',
         'Open extension options',
@@ -83,7 +91,7 @@ const BrowserExtensionSettings = () => {
     {
       title: 'Security Best Practices',
       description: 'Keep your API keys secure and monitor usage',
-      icon: <Shield class="w-5 h-5 text-purple-600" />,
+      icon: <Shield class="w-5 h-5 text-primary" />,
       steps: [
         'Use unique names for each key',
         'Set expiration dates for temporary access',
@@ -258,12 +266,20 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
   };
 
   const revokeAPIKey = async (keyId: number) => {
-    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
-      return;
-    }
+    setConfirmTarget({type: 'key', id: keyId});
+    setConfirmModalConfig({
+      title: 'Revoke API Key',
+      message: 'Are you sure you want to revoke this API key? This action cannot be undone.',
+      onConfirm: confirmRevokeAPIKey
+    });
+    setShowConfirmModal(true);
+  };
 
+  const confirmRevokeAPIKey = async () => {
+    const target = confirmTarget();
+    if (!target || target.type !== 'key') return;
     try {
-      const response = await fetch(`${apiBaseUrl}/browser-extension/api-keys/${keyId}`, {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/api-keys/${target.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -279,16 +295,27 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
       }
     } catch (error) {
       toast.error('Error revoking API key');
+    } finally {
+      setShowConfirmModal(false);
+      setConfirmTarget(null);
     }
   };
 
   const revokeExtension = async (extensionId: string) => {
-    if (!confirm('Are you sure you want to revoke this extension? This action cannot be undone.')) {
-      return;
-    }
+    setConfirmTarget({type: 'extension', id: extensionId});
+    setConfirmModalConfig({
+      title: 'Revoke Extension',
+      message: 'Are you sure you want to revoke this extension? This action cannot be undone.',
+      onConfirm: confirmRevokeExtension
+    });
+    setShowConfirmModal(true);
+  };
 
+  const confirmRevokeExtension = async () => {
+    const target = confirmTarget();
+    if (!target || target.type !== 'extension') return;
     try {
-      const response = await fetch(`${apiBaseUrl}/browser-extension/extensions/${extensionId}`, {
+      const response = await fetch(`${apiBaseUrl}/browser-extension/extensions/${target.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -304,6 +331,9 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
       }
     } catch (error) {
       toast.error('Error revoking extension');
+    } finally {
+      setShowConfirmModal(false);
+      setConfirmTarget(null);
     }
   };
 
@@ -324,55 +354,55 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
   return (
     <div class="p-6">
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Browser Extension Settings</h1>
-        <p class="text-gray-600">Manage API keys and browser extensions for secure access to your Trackeep account.</p>
+        <h1 class="text-2xl font-bold text-foreground mb-2">Browser Extension Settings</h1>
+        <p class="text-muted-foreground">Manage API keys and browser extensions for secure access to your Trackeep account.</p>
       </div>
 
       {/* Tab Navigation */}
-      <div class="border-b border-gray-200 mb-6">
+      <div class="border-b border-border mb-6">
         <nav class="flex space-x-8">
           <button
-            class={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab() === 'overview' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            class={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab() === 'overview'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
             onClick={() => setActiveTab('overview')}
           >
-            <Globe class="w-4 h-4 mr-2" />
+            <Globe class="w-4 h-4" />
             Overview
           </button>
           <button
-            class={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab() === 'api-keys' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            class={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab() === 'api-keys'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
             onClick={() => setActiveTab('api-keys')}
           >
-            <Key class="w-4 h-4 mr-2" />
+            <Key class="w-4 h-4" />
             API Keys
           </button>
           <button
-            class={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab() === 'extensions' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            class={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab() === 'extensions'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
             onClick={() => setActiveTab('extensions')}
           >
-            <Users class="w-4 h-4 mr-2" />
+            <Users class="w-4 h-4" />
             Extensions
           </button>
           <button
-            class={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab() === 'examples' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            class={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab() === 'examples'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
             onClick={() => setActiveTab('examples')}
           >
-            <Shield class="w-4 h-4 mr-2" />
+            <Shield class="w-4 h-4" />
             Examples
           </button>
         </nav>
@@ -385,18 +415,18 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
             {guide => (
               <Card class="p-6">
                 <div class="text-center mb-4">
-                  <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-3">
+                  <div class="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mb-3">
                     {guide.icon}
                   </div>
-                  <h3 class="text-lg font-semibold text-gray-900">{guide.title}</h3>
-                  <p class="text-gray-600 text-sm mb-4">{guide.description}</p>
+                  <h3 class="text-lg font-semibold text-foreground">{guide.title}</h3>
+                  <p class="text-muted-foreground text-sm mb-4">{guide.description}</p>
                 </div>
                 <div class="space-y-2">
                   <For each={guide.steps}>
                     {step => (
                       <div class="flex items-center space-x-2">
                         <CheckCircle class="w-4 h-4 text-green-500 flex-shrink-0" />
-                        <span class="text-sm text-gray-700">{step}</span>
+                        <span class="text-sm text-foreground">{step}</span>
                       </div>
                     )}
                   </For>
@@ -408,8 +438,8 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <AlertCircle class="w-5 h-5 text-orange-500 mr-2" />
+            <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <AlertCircle class="w-5 h-5 text-orange-500" />
               Security Status
             </h3>
             <div class="space-y-3">
@@ -417,42 +447,42 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
                   <div class="font-medium text-green-700">API Keys Secure</div>
-                  <div class="text-sm text-gray-600">All keys using secure API key authentication</div>
+                  <div class="text-sm text-muted-foreground">All keys using secure API key authentication</div>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
                 <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
                   <div class="font-medium text-green-700">Extensions Registered</div>
-                  <div class="text-sm text-gray-600">{extensions().length} active extensions</div>
+                  <div class="text-sm text-muted-foreground">{extensions().length} active extensions</div>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
                 <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
                 <div>
                   <div class="font-medium text-yellow-700">Quick Setup Available</div>
-                  <div class="text-sm text-gray-600">Get started in under 5 minutes</div>
+                  <div class="text-sm text-muted-foreground">Get started in under 5 minutes</div>
                 </div>
               </div>
             </div>
           </Card>
 
           <Card class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock class="w-5 h-5 text-blue-500 mr-2" />
+            <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Clock class="w-5 h-5 text-primary" />
               Recent Activity
             </h3>
             <div class="space-y-2">
-              <div class="text-sm text-gray-600">
-                <div class="font-medium text-gray-900">Last API key created:</div>
+              <div class="text-sm text-muted-foreground">
+                <div class="font-medium text-foreground">Last API key created:</div>
                 <div>{apiKeys().length > 0 ? new Date(apiKeys()[0].created_at).toLocaleDateString() : 'No keys created yet'}</div>
               </div>
-              <div class="text-sm text-gray-600">
-                <div class="font-medium text-gray-900">Total API keys:</div>
+              <div class="text-sm text-muted-foreground">
+                <div class="font-medium text-foreground">Total API keys:</div>
                 <div>{apiKeys().length} active, {apiKeys().filter(k => !k.is_active).length} revoked</div>
               </div>
-              <div class="text-sm text-gray-600">
-                <div class="font-medium text-gray-900">Extensions active:</div>
+              <div class="text-sm text-muted-foreground">
+                <div class="font-medium text-foreground">Extensions active:</div>
                 <div>{extensions().length} connected</div>
               </div>
             </div>
@@ -464,18 +494,18 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
       <Show when={activeTab() === 'api-keys'}>
         <Card class="mb-6">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">API Keys</h2>
-            <Button onClick={() => setShowCreateKey(true)} class="btn-primary">
+            <h2 class="text-xl font-semibold text-foreground">API Keys</h2>
+            <Button onClick={() => setShowCreateKey(true)}>
               Generate New Key
             </Button>
           </div>
 
           <Show when={showCreateKey()}>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <h3 class="text-lg font-medium mb-4">Create New API Key</h3>
+            <div class="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4">
+              <h3 class="text-lg font-medium text-foreground mb-4">Create New API Key</h3>
               
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Key Name</label>
+                <label class="block text-sm font-medium text-foreground mb-2">Key Name</label>
                 <Input
                   value={newKeyName()}
                   onInput={(e: InputEvent) => setNewKeyName((e.target as HTMLInputElement).value)}
@@ -485,7 +515,7 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
               </div>
 
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+                <label class="block text-sm font-medium text-foreground mb-2">Permissions</label>
                 <div class="space-y-2">
                   <For each={availablePermissions}>
                     {permission => (
@@ -494,11 +524,11 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
                           type="checkbox"
                           checked={newKeyPermissions().includes(permission.id)}
                           onChange={() => togglePermission(permission.id)}
-                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          class="rounded border-input text-primary focus:ring-primary"
                         />
                         <div>
-                          <span class="font-medium">{permission.label}</span>
-                          <span class="text-sm text-gray-500">{permission.description}</span>
+                          <span class="font-medium text-foreground">{permission.label}</span>
+                          <span class="text-sm text-muted-foreground">{permission.description}</span>
                         </div>
                       </label>
                     )}
@@ -508,15 +538,14 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
 
               <div class="flex space-x-2">
                 <Button
+                  variant="outline"
                   onClick={() => setShowCreateKey(false)}
-                  class="btn-secondary"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={createAPIKey}
                   disabled={loading()}
-                  class="btn-primary"
                 >
                   {loading() ? 'Creating...' : 'Create Key'}
                 </Button>
@@ -527,24 +556,24 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
           <div class="space-y-3">
             <For each={apiKeys()}>
               {key => (
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <div class="bg-card border border-border rounded-lg p-4">
                   <div class="flex justify-between items-start">
                     <div class="flex-1">
-                      <h3 class="text-lg font-medium">{key.name}</h3>
-                      <div class="text-sm text-gray-500 mb-2">
+                      <h3 class="text-lg font-medium text-foreground">{key.name}</h3>
+                      <div class="text-sm text-muted-foreground mb-2">
                         Created: {new Date(key.created_at).toLocaleDateString()}
                       </div>
                       <div class="flex flex-wrap gap-1">
                         <For each={key.permissions}>
                           {permission => (
-                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            <span class="inline-block bg-primary/10 text-primary text-xs px-2 py-1 rounded">
                               {permission}
                             </span>
                           )}
                         </For>
                       </div>
                       {key.expires_at && (
-                        <div class="text-sm text-orange-600">
+                        <div class="text-sm text-orange-500">
                           Expires: {new Date(key.expires_at).toLocaleDateString()}
                         </div>
                       )}
@@ -556,8 +585,8 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
                         {key.is_active ? 'Active' : 'Revoked'}
                       </span>
                       <Button
+                        variant="outline"
                         onClick={() => revokeAPIKey(key.id)}
-                        class="btn-secondary btn-sm"
                         disabled={!key.is_active}
                       >
                         Revoke
@@ -572,51 +601,53 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
       </Show>
 
       {/* Browser Extensions Section */}
-      <Card>
-        <div class="mb-4">
-          <h2 class="text-xl font-semibold">Registered Extensions</h2>
-          <p class="text-sm text-gray-600">Manage browser extensions that have access to your account.</p>
-        </div>
+      <Show when={activeTab() === 'extensions'}>
+        <Card>
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold text-foreground">Registered Extensions</h2>
+            <p class="text-sm text-muted-foreground">Manage browser extensions that have access to your account.</p>
+          </div>
 
-        <div class="space-y-3">
-          <For each={extensions()}>
-            {extension => (
-              <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <h3 class="text-lg font-medium">{extension.name}</h3>
-                    <div class="text-sm text-gray-500 mb-2">
-                      Extension ID: {extension.extension_id}
-                    </div>
-                    <div class="text-sm text-gray-500 mb-2">
-                      Registered: {new Date(extension.created_at).toLocaleDateString()}
-                    </div>
-                    {extension.last_seen && (
-                      <div class="text-sm text-gray-500">
-                        Last seen: {new Date(extension.last_seen).toLocaleDateString()}
+          <div class="space-y-3">
+            <For each={extensions()}>
+              {extension => (
+                <div class="bg-card border border-border rounded-lg p-4">
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <h3 class="text-lg font-medium text-foreground">{extension.name}</h3>
+                      <div class="text-sm text-muted-foreground mb-2">
+                        Extension ID: {extension.extension_id}
                       </div>
-                    )}
-                  </div>
-                  <div class="flex space-x-2">
-                    <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      extension.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {extension.is_active ? 'Active' : 'Revoked'}
-                    </span>
-                    <Button
-                      onClick={() => revokeExtension(extension.extension_id)}
-                      class="btn-secondary btn-sm"
-                      disabled={!extension.is_active}
-                    >
-                      Revoke
-                    </Button>
+                      <div class="text-sm text-muted-foreground mb-2">
+                        Registered: {new Date(extension.created_at).toLocaleDateString()}
+                      </div>
+                      {extension.last_seen && (
+                        <div class="text-sm text-muted-foreground">
+                          Last seen: {new Date(extension.last_seen).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                    <div class="flex space-x-2">
+                      <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        extension.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {extension.is_active ? 'Active' : 'Revoked'}
+                      </span>
+                      <Button
+                        variant="outline"
+                        onClick={() => revokeExtension(extension.extension_id)}
+                        disabled={!extension.is_active}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </For>
-        </div>
-      </Card>
+              )}
+            </For>
+          </div>
+        </Card>
+      </Show>
 
       {/* Examples Tab */}
       <Show when={activeTab() === 'examples'}>
@@ -625,34 +656,33 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
             {example => (
               <Card class="p-6">
                 <div class="mb-4">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-2 flex items-center">
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                      <span class="text-blue-600 font-mono text-xs font-bold">{example.language.toUpperCase()}</span>
+                  <h3 class="text-lg font-semibold text-foreground mb-2 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <span class="text-primary font-mono text-xs font-bold">{example.language.toUpperCase()}</span>
                     </div>
                     {example.title}
                   </h3>
-                  <p class="text-gray-600 text-sm mb-4">{example.description}</p>
+                  <p class="text-muted-foreground text-sm mb-4">{example.description}</p>
                 </div>
                 
-                <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
-                  <pre class="text-green-400 text-sm">
+                <div class="bg-muted rounded-lg p-4 overflow-x-auto">
+                  <pre class="text-foreground text-sm">
                     <code>{example.code}</code>
                   </pre>
                 </div>
                 
                 <div class="flex justify-between items-center mt-4">
                   <Button
+                    variant="outline"
                     onClick={() => {
                       navigator.clipboard.writeText(example.code);
                       toast.success('Code copied to clipboard!');
                     }}
-                    class="btn-secondary"
                   >
                     Copy Code
                   </Button>
                   <Button
-                    onClick={() => window.open(`https://your-trackeep.com/api/v1/browser-extension/validate`, '_blank')}
-                    class="btn-primary"
+                    onClick={() => window.open(`${apiBaseUrl}/browser-extension/validate`, '_blank')}
                   >
                     Test API
                   </Button>
@@ -662,6 +692,19 @@ curl -X POST \\\n  -H "Authorization: Bearer tk_your_api_key_here" \\\n  -H "Con
           </For>
         </div>
       </Show>
+
+      <ConfirmModal
+        isOpen={showConfirmModal()}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setConfirmTarget(null);
+        }}
+        onConfirm={() => confirmModalConfig().onConfirm()}
+        title={confirmModalConfig().title}
+        message={confirmModalConfig().message}
+        confirmText="Revoke"
+        type="danger"
+      />
     </div>
   );
 };

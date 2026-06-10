@@ -8,7 +8,6 @@ import { Bookmarks } from '@/pages/content/Bookmarks'
 import { Tasks } from '@/pages/productivity/Tasks'
 import { Files } from '@/pages/content/Files'
 import { Notes } from '@/pages/content/Notes'
-import Chat from '@/pages/communication/Chat'
 import { Settings } from '@/pages/settings/Settings'
 import { Login } from '@/pages/auth/Login'
 import { Youtube } from '@/pages/content/Youtube'
@@ -23,11 +22,11 @@ import { LearningPaths } from '@/pages/content/LearningPaths'
 import { GitHub } from '@/pages/content/GitHub'
 import { TimeTracking } from '@/pages/productivity/TimeTracking'
 import { Calendar } from '@/pages/productivity/Calendar'
+import { WorkspaceSetup } from '@/pages/auth/WorkspaceSetup'
 import { AuthCallback } from '@/pages/auth/AuthCallback'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { Search } from '@/pages/content/Search'
 import { Analytics } from '@/pages/admin/Analytics'
-import { Messages } from '@/pages/communication/Messages'
 import { ShareTarget } from '@/pages/misc/ShareTarget'
 import BrowserExtensionSettings from '@/pages/settings/BrowserExtensionSettings'
 import { initializeDemoMode, clearDemoMode, isEnvDemoMode } from '@/lib/demo-mode'
@@ -40,29 +39,78 @@ const initializeDarkMode = () => {
   const savedTheme = localStorage.getItem('theme');
   const user = localStorage.getItem('user') || localStorage.getItem('trackeep_user');
   
+  const root = document.documentElement;
+  
+  root.style.removeProperty('--foreground');
+  root.style.removeProperty('--colors-foreground');
+  root.style.removeProperty('--background');
+  root.style.removeProperty('--colors-background');
+  root.style.removeProperty('--primary');
+  root.style.removeProperty('--colors-primary');
+  root.style.removeProperty('--muted');
+  root.style.removeProperty('--colors-muted');
+  root.style.removeProperty('--border');
+  root.style.removeProperty('--colors-border');
+  
   if (user) {
     try {
       const userData = JSON.parse(user);
       // Prefer user's saved theme from profile, fallback to localStorage
       const userTheme = userData.theme || savedTheme;
       if (userTheme === 'dark') {
-        document.documentElement.setAttribute('data-kb-theme', 'dark');
+        root.setAttribute('data-kb-theme', 'dark');
       } else {
-        document.documentElement.removeAttribute('data-kb-theme');
+        root.removeAttribute('data-kb-theme');
       }
     } catch (e) {
       // Fallback to localStorage or dark mode if user data is invalid
       if (savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-kb-theme', 'dark');
+        root.setAttribute('data-kb-theme', 'dark');
       } else {
-        document.documentElement.removeAttribute('data-kb-theme');
+        root.removeAttribute('data-kb-theme');
       }
     }
   } else if (savedTheme === 'dark') {
-    document.documentElement.setAttribute('data-kb-theme', 'dark');
+    root.setAttribute('data-kb-theme', 'dark');
   } else {
     // Default to dark mode
-    document.documentElement.setAttribute('data-kb-theme', 'dark');
+    root.setAttribute('data-kb-theme', 'dark');
+  }
+  
+  const savedColorScheme = localStorage.getItem('colorScheme');
+  if (savedColorScheme && savedColorScheme !== 'default') {
+    const schemeColors: Record<string, string> = {
+      'ocean': '#0077be',
+      'forest': '#228b22',
+      'sunset': '#ff6b35',
+      'purple': '#8b5cf6',
+    };
+    const primary = schemeColors[savedColorScheme];
+    if (primary) {
+      const hexToHsl = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return '0 0% 100%';
+        let r = parseInt(result[1], 16) / 255;
+        let g = parseInt(result[2], 16) / 255;
+        let b = parseInt(result[3], 16) / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+          }
+        }
+        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+      };
+      const hsl = hexToHsl(primary);
+      root.style.setProperty('--primary', hsl);
+      root.style.setProperty('--colors-primary', hsl);
+    }
   }
 };
 
@@ -143,6 +191,13 @@ function App() {
               </Layout>
             </ProtectedRoute>
           )} />
+          <Route path="/app/workspace-setup" component={() => (
+            <ProtectedRoute>
+              <Layout title="Workspace Setup">
+                <WorkspaceSetup />
+              </Layout>
+            </ProtectedRoute>
+          )} />
           <Route path="/app/bookmarks" component={() => (
             <ProtectedRoute>
               <Layout title="Bookmarks">
@@ -206,20 +261,7 @@ function App() {
               </Layout>
             </ProtectedRoute>
           )} />
-          <Route path="/app/chat" component={() => (
-            <ProtectedRoute>
-              <Layout title="AI Chat" fullBleed>
-                <Chat />
-              </Layout>
-            </ProtectedRoute>
-          )} />
-          <Route path="/app/messages" component={() => (
-            <ProtectedRoute>
-              <Layout title="Messages" fullBleed>
-                <Messages />
-              </Layout>
-            </ProtectedRoute>
-          )} />
+
           <Route path="/app/members" component={() => (
             <ProtectedRoute>
               <Layout title="Members">

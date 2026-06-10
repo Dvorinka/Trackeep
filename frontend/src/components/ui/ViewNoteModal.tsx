@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { ModalPortal } from '@/components/ui/ModalPortal';
-import { Show } from 'solid-js';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Show, createSignal } from 'solid-js';
 import { NoteContentRenderer } from '@/components/notes/NoteContentRenderer';
 import { IconX, IconEdit, IconPin, IconTrash, IconCopy, IconDownload, IconPaperclip } from '@tabler/icons-solidjs';
 
@@ -70,6 +71,8 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
 
     props.onUpdateNote(props.note.id, nextContent);
   };
+
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
   
   return (
     <ModalPortal>
@@ -135,12 +138,7 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => {
-                if (confirm('Are you sure you want to delete this note?')) {
-                  props.onDelete(props.note!.id);
-                  props.onClose();
-                }
-              }}
+              onClick={() => setShowDeleteModal(true)}
               class="text-red-400 hover:text-red-300 p-1"
             >
               <IconTrash size={18} />
@@ -212,6 +210,20 @@ export const ViewNoteModal = (props: ViewNoteModalProps) => {
           </div>
         </Show>
       </>
+
+      <ConfirmModal
+        isOpen={showDeleteModal()}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          props.onDelete(props.note!.id);
+          setShowDeleteModal(false);
+          props.onClose();
+        }}
+        title="Delete Note"
+        message="Are you sure you want to delete this note? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </ModalPortal>
   );
 };

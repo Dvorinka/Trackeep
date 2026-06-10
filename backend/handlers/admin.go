@@ -269,7 +269,7 @@ func AdminCreateUser(c *gin.Context) {
 		return
 	}
 
-	_ = ensureMessagingDefaults(db, user.ID)
+
 
 	user.Password = ""
 	c.JSON(http.StatusCreated, gin.H{

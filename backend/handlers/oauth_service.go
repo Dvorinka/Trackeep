@@ -268,7 +268,7 @@ func upsertCentralizedOAuthUser(db *gorm.DB, controllerUser centralizedOAuthUser
 		return nil, err
 	}
 
-	_ = ensureMessagingDefaults(db, user.ID)
+
 
 	return &user, nil
 }

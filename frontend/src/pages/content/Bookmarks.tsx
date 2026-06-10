@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { BookmarkModal } from '@/components/ui/BookmarkModal';
 import { EditBookmarkModal } from '@/components/ui/EditBookmarkModal';
 import { VideoUploadModal } from '@/components/ui/VideoUploadModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { SearchTagFilterBar } from '@/components/ui/SearchTagFilterBar';
 import { IconDotsVertical, IconStar, IconEdit, IconTrash, IconExternalLink, IconVideo, IconBookmark } from '@tabler/icons-solidjs';
@@ -267,27 +268,39 @@ export const Bookmarks = () => {
     haptics.selection(); // Selection feedback for starring
   };
 
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [bookmarkToDelete, setBookmarkToDelete] = createSignal<number | null>(null);
+  const [modalError, setModalError] = createSignal('');
+
   const deleteBookmark = async (bookmarkId: number) => {
-    if (confirm('Are you sure you want to delete this bookmark?')) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/bookmarks/${bookmarkId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
-          },
-        });
+    setBookmarkToDelete(bookmarkId);
+    setShowDeleteModal(true);
+  };
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete bookmark');
-        }
+  const confirmDeleteBookmark = async () => {
+    const bookmarkId = bookmarkToDelete();
+    if (!bookmarkId) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookmarks/${bookmarkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': localStorage.getItem('trackeep_token') ? `Bearer ${localStorage.getItem('trackeep_token')}` : '',
+        },
+      });
 
-        setBookmarks(prev => prev.filter(bookmark => bookmark.id !== bookmarkId));
-        haptics.delete(); // Delete feedback
-      } catch (error) {
-        haptics.error(); // Error feedback
-        alert(error instanceof Error ? error.message : 'Failed to delete bookmark');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete bookmark');
       }
+
+      setBookmarks(prev => prev.filter(bookmark => bookmark.id !== bookmarkId));
+      haptics.delete(); // Delete feedback
+      setShowDeleteModal(false);
+      setBookmarkToDelete(null);
+    } catch (error) {
+      haptics.error(); // Error feedback
+      setModalError(error instanceof Error ? error.message : 'Failed to delete bookmark');
     }
   };
 
@@ -773,6 +786,20 @@ export const Bookmarks = () => {
         isOpen={showVideoModal()}
         onClose={() => setShowVideoModal(false)}
         onSubmit={handleVideoSubmit}
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteModal()}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setBookmarkToDelete(null);
+          setModalError('');
+        }}
+        onConfirm={confirmDeleteBookmark}
+        title="Delete Bookmark"
+        message={modalError() || 'Are you sure you want to delete this bookmark? This action cannot be undone.'}
+        confirmText="Delete"
+        type="danger"
       />
     </div>
   );

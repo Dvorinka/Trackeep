@@ -16,6 +16,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 interface SavedSearch {
   id: number;
@@ -47,6 +48,8 @@ export const SavedSearches = () => {
   const [loading, setLoading] = createSignal(false);
   const [showCreateModal, setShowCreateModal] = createSignal(false);
   const [editingSearch, setEditingSearch] = createSignal<SavedSearch | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [searchToDelete, setSearchToDelete] = createSignal<number | null>(null);
   const [formData, setFormData] = createSignal<SavedSearchFormData>({
     name: '',
     query: '',
@@ -136,9 +139,13 @@ export const SavedSearches = () => {
 
   // Delete saved search
   const deleteSavedSearch = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this saved search?')) {
-      return;
-    }
+    setSearchToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteSavedSearch = async () => {
+    const id = searchToDelete();
+    if (!id) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -151,6 +158,8 @@ export const SavedSearches = () => {
 
       if (response.ok) {
         loadSavedSearches();
+        setShowDeleteModal(false);
+        setSearchToDelete(null);
       }
     } catch (error) {
       console.error('Failed to delete saved search:', error);
@@ -479,6 +488,19 @@ export const SavedSearches = () => {
           </Card>
         </div>
       </Show>
+
+      <ConfirmModal
+        isOpen={showDeleteModal()}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSearchToDelete(null);
+        }}
+        onConfirm={confirmDeleteSavedSearch}
+        title="Delete Saved Search"
+        message="Are you sure you want to delete this saved search? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

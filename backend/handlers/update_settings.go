@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/trackeep/backend/config"
@@ -97,4 +99,20 @@ func getDefaultUpdateSettings() UpdateSettings {
 		UpdateCheckInterval: getEnvWithDefault("UPDATE_CHECK_INTERVAL", "24h"),
 		PrereleaseUpdates:   getBoolEnvWithDefault("PRERELEASE_UPDATES", false),
 	}
+}
+
+func getBoolEnvWithDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			return parsed
+		}
+	}
+	return defaultValue
+}
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

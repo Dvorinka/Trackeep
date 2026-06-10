@@ -540,17 +540,6 @@ const generateMockAISettings = () => ({
   },
 });
 
-const generateMockSearchSettings = () => ({
-  brave_api_key: '',
-  brave_search_base_url: 'https://api.search.brave.com/res/v1/web/search',
-  serper_api_key: '',
-  serper_base_url: 'https://google.serper.dev/search',
-  search_api_provider: 'brave',
-  search_results_limit: 10,
-  search_cache_ttl: 300,
-  search_rate_limit: 100,
-});
-
 const generateMockEmailSettings = () => ({
   smtp_enabled: false,
   smtp_host: '',
@@ -1061,15 +1050,6 @@ export const demoFetch = async (url: string, options?: RequestInit): Promise<Res
   if (path.includes('/api/v1/auth/ai/settings')) {
     if (method === 'GET') {
       return jsonResponse(generateMockAISettings());
-    }
-    if (method === 'PUT') {
-      return jsonResponse(body);
-    }
-  }
-
-  if (path.includes('/api/v1/auth/search/settings')) {
-    if (method === 'GET') {
-      return jsonResponse(generateMockSearchSettings());
     }
     if (method === 'PUT') {
       return jsonResponse(body);

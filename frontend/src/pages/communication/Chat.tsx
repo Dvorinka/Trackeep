@@ -3,7 +3,6 @@ import { getApiOrigin } from '@/lib/api-url'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
-import { AIProviderIcon } from '@/components/AIProviderIcon'
 import { 
   Send, 
   CheckSquare,
@@ -736,11 +735,7 @@ const Chat = () => {
                             {message.role === 'user' ? (
                               <User class="w-4 h-4 text-xs" />
                             ) : (
-                              <AIProviderIcon 
-                                providerId={selectedModel()} 
-                                size="1rem"
-                                class="text-primary animate-pulse"
-                              />
+                              <Sparkles class="w-4 h-4 text-primary animate-pulse" />
                             )}
                           </div>
                           <div class="flex-1">
@@ -771,11 +766,7 @@ const Chat = () => {
                       onClick={() => setShowModelPicker(!showModelPicker())}
                       class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-muted to-muted/80 hover:from-muted/90 hover:to-muted/70 rounded-xl text-sm transition-all duration-200 border border-border/50 shadow-sm hover:shadow-md"
                     >
-                      <AIProviderIcon 
-                        providerId={selectedModel()} 
-                        size="1rem"
-                        class="transition-transform hover:scale-110"
-                      />
+                      <Sparkles class="w-4 h-4 transition-transform hover:scale-110" />
                       <span class="text-sm font-medium">
                         {getAIModels().find(m => m.id === selectedModel())?.name || 'Select Model'}
                       </span>
@@ -803,10 +794,7 @@ const Chat = () => {
                             >
                               <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3 flex-1">
-                                  <AIProviderIcon 
-                                    providerId={model.id} 
-                                    size="1rem"
-                                  />
+                                  <Sparkles class="w-4 h-4" />
                                   <div class="flex-1">
                                     <div class="font-medium text-sm">{model.name}</div>
                                     <div class="text-xs text-muted-foreground mt-1">{model.description}</div>

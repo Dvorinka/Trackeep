@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onMount, Show } from 'solid-js';
 import { IconTrash, IconRestore, IconFileText, IconFileTypePpt, IconFileTypeDocx, IconClock, IconSettings, IconAlertTriangle } from '@tabler/icons-solidjs';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { getApiV1BaseUrl } from '@/lib/api-url';
 
 interface RemovedItem {
@@ -31,6 +32,12 @@ export const RemovedStuff = () => {
   const [showSettings, setShowSettings] = createSignal(false);
   const [selectedItems, setSelectedItems] = createSignal<string[]>([]);
   const [loadedRemovedItems, setLoadedRemovedItems] = createSignal(false);
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [deleteModalConfig, setDeleteModalConfig] = createSignal({
+    title: 'Delete Item',
+    message: 'Are you sure you want to delete this item?',
+    onConfirm: () => {}
+  });
 
   createEffect(() => {
     if (!loadedRemovedItems()) return;
@@ -167,48 +174,59 @@ export const RemovedStuff = () => {
   };
 
   const handleEmptyTrash = () => {
-    if (confirm('Are you sure you want to permanently delete all items in the trash? This action cannot be undone.')) {
-      setRemovedItems([]);
-      alert('Trash emptied successfully!');
-    }
+    setDeleteModalConfig({
+      title: 'Empty Trash',
+      message: 'Are you sure you want to permanently delete all items in the trash? This action cannot be undone.',
+      onConfirm: () => {
+        setRemovedItems([]);
+        setShowDeleteModal(false);
+      }
+    });
+    setShowDeleteModal(true);
   };
 
   const handleRestoreItem = (id: string) => {
     const item = removedItems().find(item => item.id === id);
     if (item) {
       setRemovedItems(prev => prev.filter(item => item.id !== id));
-      alert(`"${item.name}" has been restored successfully!`);
     }
   };
 
   const handlePermanentlyDelete = (id: string) => {
     const item = removedItems().find(item => item.id === id);
-    if (item && confirm(`Are you sure you want to permanently delete "${item.name}"? This action cannot be undone.`)) {
-      setRemovedItems(prev => prev.filter(item => item.id !== id));
-      alert(`"${item.name}" has been permanently deleted!`);
+    if (item) {
+      setDeleteModalConfig({
+        title: 'Delete Permanently',
+        message: `Are you sure you want to permanently delete "${item.name}"? This action cannot be undone.`,
+        onConfirm: () => {
+          setRemovedItems(prev => prev.filter(item => item.id !== id));
+          setShowDeleteModal(false);
+        }
+      });
+      setShowDeleteModal(true);
     }
   };
 
   const handleBulkRestore = () => {
     if (selectedItems().length === 0) return;
     
-    if (confirm(`Are you sure you want to restore ${selectedItems().length} items?`)) {
-      const itemsToRestore = removedItems().filter(item => selectedItems().includes(item.id));
-      setRemovedItems(prev => prev.filter(item => !selectedItems().includes(item.id)));
-      setSelectedItems([]);
-      alert(`${itemsToRestore.length} items have been restored successfully!`);
-    }
+    setRemovedItems(prev => prev.filter(item => !selectedItems().includes(item.id)));
+    setSelectedItems([]);
   };
 
   const handleBulkDelete = () => {
     if (selectedItems().length === 0) return;
     
-    if (confirm(`Are you sure you want to permanently delete ${selectedItems().length} items? This action cannot be undone.`)) {
-      const itemsToDelete = removedItems().filter(item => selectedItems().includes(item.id));
-      setRemovedItems(prev => prev.filter(item => !selectedItems().includes(item.id)));
-      setSelectedItems([]);
-      alert(`${itemsToDelete.length} items have been permanently deleted!`);
-    }
+    setDeleteModalConfig({
+      title: 'Delete Permanently',
+      message: `Are you sure you want to permanently delete ${selectedItems().length} items? This action cannot be undone.`,
+      onConfirm: () => {
+        setRemovedItems(prev => prev.filter(item => !selectedItems().includes(item.id)));
+        setSelectedItems([]);
+        setShowDeleteModal(false);
+      }
+    });
+    setShowDeleteModal(true);
   };
 
   const getItemsReadyForAutoRemove = () => {
@@ -442,6 +460,16 @@ export const RemovedStuff = () => {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteModal()}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => deleteModalConfig().onConfirm()}
+        title={deleteModalConfig().title}
+        message={deleteModalConfig().message}
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

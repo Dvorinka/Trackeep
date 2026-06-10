@@ -24,12 +24,10 @@ import {
   IconChartLine,
   IconActivity,
   IconSearch,
-  IconChevronDown,
   IconVideo,
   IconSchool,
   IconX
 } from '@tabler/icons-solidjs';
-import { BrowserSearch } from '@/components/search/BrowserSearch';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Card } from '@/components/ui/Card';
 import { FilePreviewModal } from '@/components/ui/FilePreviewModal';
@@ -210,7 +208,7 @@ export const Dashboard = () => {
   const [documents, setDocuments] = createSignal<Document[]>([]);
   const [, setRecentActivity] = createSignal<RecentActivity[]>([]);
   const [githubActivityEvents, setGithubActivityEvents] = createSignal<GitHubActivityEvent[]>([]);
-  const [showBrowserSearch, setShowBrowserSearch] = createSignal(true);
+
   const [showFilePreview, setShowFilePreview] = createSignal(false);
   const [selectedFile, setSelectedFile] = createSignal<Document | null>(null);
   const [currentPage, setCurrentPage] = createSignal(1);
@@ -293,9 +291,6 @@ export const Dashboard = () => {
   };
 
   onMount(async () => {
-    // Load browser search setting from localStorage
-    setShowBrowserSearch(localStorage.getItem('showBrowserSearch') !== 'false');
-
     if (isDemoMode()) {
       setDashboardStats(getMockStats());
       setDocuments(getMockDocuments());
@@ -961,40 +956,6 @@ export const Dashboard = () => {
       <Show when={isSearchAvailable()}>
         <div class="mb-8">
           <div class="border rounded-lg">
-            {/* Collapsible Header */}
-            <button
-              onClick={() => {
-                const newState = !showBrowserSearch();
-                setShowBrowserSearch(newState);
-                localStorage.setItem('showBrowserSearch', newState.toString());
-              }}
-              class="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors rounded-t-lg"
-            >
-              <div class="flex items-center gap-2">
-                <IconSearch class="size-4 text-primary" />
-                <h2 class="text-lg font-semibold">Browser Search</h2>
-                <span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                  Powered by Brave Search
-                </span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground">
-                  {showBrowserSearch() ? 'Hide' : 'Show'}
-                </span>
-                <IconChevronDown 
-                  class={`size-4 text-muted-foreground transition-transform duration-200 ${
-                    showBrowserSearch() ? 'rotate-180' : ''
-                  }`} 
-                />
-              </div>
-            </button>
-            
-            {/* Collapsible Content */}
-            <Show when={showBrowserSearch()}>
-              <div class="border-t border-border p-4">
-                <BrowserSearch />
-              </div>
-            </Show>
           </div>
         </div>
       </Show>
